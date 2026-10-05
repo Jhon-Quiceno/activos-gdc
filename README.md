@@ -1,58 +1,142 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Sistema de Hoja de Vida de Equipos
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+**Gobernación de Córdoba · Dirección TIC**
 
-## About Laravel
+Aplicación web para llevar el ciclo de vida completo de cada equipo tecnológico de la entidad: registro, componentes, traslados, diagnóstico y baja, con generación de formatos PDF firmados y código QR por equipo para consultar la hoja de vida escaneando una etiqueta física.
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+El sistema reemplaza hojas de cálculo y procesos en papel dispersos por un inventario maestro único: cada equipo (computadores, monitores, impresoras, UPS, switches, servidores, etc.) queda identificado por su serial y código de activo, con un historial inmutable de todo lo que le ha pasado y quién lo registró.
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+Para el detalle funcional completo, ver:
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+- [Análisis de requerimientos](docs/analisis-requerimientos.md) — documento de referencia permanente: 35 requerimientos esenciales, modelo de dominio, reglas de negocio y casos de uso.
+- [Plan de trabajo de dos semanas](docs/plan-2-semanas.md) — plan de la Fase 1 y reparto de tareas del equipo.
 
-## Learning Laravel
+## Stack
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+- **Backend:** Laravel 13
+- **Frontend:** Livewire (Breeze), Tailwind CSS
+- **Base de datos:** MySQL 8.4
+- **Entorno:** Docker / Sail (incluye Mailpit para correo de pruebas)
+- **Gestor de paquetes JS:** pnpm
+- **Pruebas:** Pest
 
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+Paquetes adicionales: `barryvdh/laravel-dompdf` (formatos y reportes en PDF), `maatwebsite/excel` (importación/exportación de inventario), `simplesoftwareio/simple-qrcode` (códigos QR), `spatie/laravel-activitylog` (auditoría).
 
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
+## Prerrequisitos
 
-## Agentic Development
+Solo necesitas **Docker Desktop** instalado y corriendo. No se requiere PHP ni Node instalados localmente — todo corre dentro de los contenedores.
 
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+> **Nota sobre comandos en este proyecto:** no se usa `./vendor/bin/sail` porque ese script no detecta Git Bash/MinGW nativo en Windows (solo reconoce macOS, Linux o WSL2). Todos los comandos de este README usan `docker compose` directamente contra el servicio `laravel.test`. Si usas **WSL2 real** (una distribución Linux dentro de Windows), sí puedes usar `./vendor/bin/sail` como alternativa más corta; en Git Bash sobre Windows, usa siempre `docker compose`.
+
+## Puesta en marcha desde cero
+
+1. **Clonar el repositorio:**
+
+   ```bash
+   git clone https://github.com/Jhon-Quiceno/activos-gdc.git
+   cd activos-gdc
+   ```
+
+2. **Copiar el archivo de entorno:**
+
+   ```bash
+   cp .env.example .env
+   ```
+
+3. **Levantar los contenedores:**
+
+   ```bash
+   docker compose up -d
+   ```
+
+   Esto levanta la aplicación (`laravel.test`), MySQL 8.4 y Mailpit.
+
+   > En Windows con Git Bash, si algún comando de Docker falla por rutas raras, antepón `export MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL="*"` antes del comando.
+
+4. **Instalar dependencias de PHP** (normalmente ya vienen instaladas en la imagen; solo si hace falta):
+
+   ```bash
+   docker compose exec laravel.test composer install
+   ```
+
+5. **Generar la clave de la aplicación:**
+
+   ```bash
+   docker compose exec laravel.test php artisan key:generate
+   ```
+
+6. **Ejecutar migraciones y seeders:**
+
+   ```bash
+   docker compose exec laravel.test php artisan migrate:fresh --seed
+   ```
+
+7. **Instalar dependencias de JavaScript:**
+
+   ```bash
+   docker compose exec laravel.test pnpm install
+   ```
+
+8. **Compilar assets:**
+
+   ```bash
+   docker compose exec laravel.test pnpm run build
+   ```
+
+   Para desarrollo con recarga en caliente, usa en su lugar:
+
+   ```bash
+   docker compose exec laravel.test pnpm run dev
+   ```
+
+9. **Acceder a la aplicación:**
+
+   - Aplicación: [http://localhost](http://localhost)
+   - Mailpit (correo de pruebas): [http://localhost:8025](http://localhost:8025)
+
+   El registro público de usuarios está desactivado: los usuarios los crea un Administrador desde el panel de administración.
+
+## Correr las pruebas
 
 ```bash
-composer require laravel/boost --dev
-
-php artisan boost:install
+docker compose exec laravel.test ./vendor/bin/pest
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+Las pruebas deben pasar en verde antes de abrir cualquier Pull Request (ver [normas de trabajo](docs/normas-de-trabajo.md)).
 
-## Contributing
+## Estructura de carpetas
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+```
+app/
+  Http/          Controladores y middleware
+  Livewire/      Componentes Livewire, organizados por bloque funcional
+  Models/        Modelos Eloquent
+  Providers/     Service providers
+  View/          Composers y lógica de vistas
+resources/
+  views/         Plantillas Blade, organizadas por bloque funcional
+docs/            Documentación funcional del proyecto (ver abajo)
+odd/             Seguimiento de tareas de desarrollo (Organic Driven Development)
+database/        Migraciones, seeders y factories
+tests/           Pruebas Pest, organizadas por bloque funcional
+```
 
-## Code of Conduct
+La carpeta `docs/` contiene:
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+- [`analisis-requerimientos.md`](docs/analisis-requerimientos.md) — requerimientos, modelo de dominio y reglas de negocio.
+- [`plan-2-semanas.md`](docs/plan-2-semanas.md) — plan de trabajo de la Fase 1.
+- [`normas-de-trabajo.md`](docs/normas-de-trabajo.md) — reglas de ramas, migraciones, carpetas y eventos para trabajar en equipo sin pisarse.
+- `juan-jose.md`, `anuar.md`, `juan-camilo.md`, `alex.md`, `manuel.md` — tareas específicas de cada integrante del equipo.
 
-## Security Vulnerabilities
+## Ramas y flujo de trabajo
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+El repositorio tiene dos ramas protegidas:
 
-## License
+- **`main`** — versión estable, solo recibe código ya integrado y probado.
+- **`develop`** — rama de integración diaria del equipo.
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+Todo el mundo trabaja en ramas `feature/<bloque>-<tarea>` creadas siempre desde `develop`, nunca desde `main`, con Pull Requests pequeños y frecuentes. El detalle completo está en [docs/normas-de-trabajo.md](docs/normas-de-trabajo.md).
+
+---
+
+Gobernación de Córdoba, Dirección TIC, 2026.
