@@ -1,17 +1,22 @@
-<x-app-layout>
+<x-layouts.app-shell title="Inicio">
     <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            {{ __('Dashboard') }}
-        </h2>
+        <h1 class="truncate font-display text-lg font-semibold text-ink">{{ __('Inicio') }}</h1>
     </x-slot>
 
-    <div class="py-12">
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                <div class="p-6 text-gray-900">
-                    {{ __("You're logged in!") }}
-                </div>
-            </div>
+    <div class="space-y-6">
+        <x-ui.card>
+            <p class="font-display text-xl font-semibold text-ink">
+                {{ __('Bienvenido, :name', ['name' => auth()->user()->name]) }}
+            </p>
+            <p class="mt-2 text-sm text-ink-muted">
+                {{ __('Este es el panel de inicio del Sistema de Hoja de Vida de Equipos. Los indicadores reales se conectarán aquí próximamente.') }}
+            </p>
+        </x-ui.card>
+
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 nav:grid-cols-3">
+            <x-ui.kpi-card value="—" label="{{ __('Equipos registrados') }}" />
+            <x-ui.kpi-card value="—" label="{{ __('Movimientos del mes') }}" />
+            <x-ui.kpi-card value="—" label="{{ __('Pendientes por verificar') }}" />
         </div>
     </div>
-</x-app-layout>
+</x-layouts.app-shell>

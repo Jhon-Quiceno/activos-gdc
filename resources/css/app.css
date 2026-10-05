@@ -1,3 +1,50 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+    [x-cloak] {
+        display: none !important;
+    }
+
+    html {
+        font-size: 15px;
+    }
+
+    body {
+        @apply text-ink bg-app-bg;
+    }
+
+    h1, h2, h3 {
+        @apply font-display;
+    }
+}
+
+@layer components {
+    /* Línea conectora vertical del timeline de la hoja de vida */
+    .timeline-item {
+        @apply relative pl-8 pb-8;
+    }
+
+    .timeline-item::before {
+        content: '';
+        @apply absolute left-[5px] top-4 bottom-0 w-px bg-line;
+    }
+
+    .timeline-item:last-child::before {
+        @apply hidden;
+    }
+
+    .timeline-dot {
+        @apply absolute left-0 top-1 h-[11px] w-[11px] rounded-full bg-primary ring-4 ring-white;
+    }
+
+    /* Scrollbar discreto para el menú lateral */
+    .sidebar-scroll::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    .sidebar-scroll::-webkit-scrollbar-thumb {
+        @apply bg-white/10 rounded-full;
+    }
+}
