@@ -1,34 +1,97 @@
+@php
+    $cicloEstilos = [
+        'en_servicio' => ['variant' => 'success', 'label' => __('En servicio')],
+        'sin_asignar' => ['variant' => 'neutral', 'label' => __('Sin asignar')],
+        'dado_de_baja' => ['variant' => 'danger', 'label' => __('Dado de baja')],
+    ];
+@endphp
+
 <div class="space-y-6">
-    <x-ui.card class="text-center">
-        <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary">
-            <svg class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.129V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25m18 0A2.25 2.25 0 0018.75 3H5.25A2.25 2.25 0 003 5.25m18 0V12a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 12V5.25" />
-            </svg>
-        </div>
+    <x-ui.table>
+        <x-slot name="filters">
+            <div class="relative w-full max-w-sm">
+                <svg class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 10.5a6.5 6.5 0 11-13 0 6.5 6.5 0 0113 0z" />
+                </svg>
+                <input
+                    type="text"
+                    wire:model.live.debounce.400ms="busqueda"
+                    placeholder="{{ __('Buscar por serial, código, responsable, cédula, dependencia o sede...') }}"
+                    class="h-11 w-full rounded-lg border-line-input pl-9 text-sm text-ink placeholder:text-ink-muted focus:border-primary focus:ring-primary"
+                >
+            </div>
 
-        <p class="mt-4 font-display text-xl font-semibold text-ink">{{ __('Equipos') }}</p>
-        <p class="mx-auto mt-2 max-w-md text-sm text-ink-muted">
-            {{ __('Aquí vas a poder buscar, registrar y consultar la hoja de vida de cada equipo.') }}
-        </p>
+            <span class="ml-auto text-sm text-ink-muted">
+                {{ trans_choice(':count equipo|:count equipos', $equipos->total(), ['count' => $equipos->total()]) }}
+            </span>
+        </x-slot>
 
-        <span class="mt-4 inline-flex items-center gap-1.5 rounded-full bg-neutral-bg px-3 py-1 text-xs font-semibold text-neutral-text">
-            {{ __('Próximamente') }}
-        </span>
-    </x-ui.card>
+        <thead>
+            <tr>
+                <th>{{ __('Equipo') }}</th>
+                <th>{{ __('Serial / Código') }}</th>
+                <th>{{ __('Responsable') }}</th>
+                <th>{{ __('Ubicación') }}</th>
+                <th>{{ __('Estado') }}</th>
+            </tr>
+        </thead>
+        <tbody>
+            @forelse ($equipos as $equipo)
+                @php
+                    $asignacion = $equipo->asignacionActual;
+                    $ciclo = $cicloEstilos[$equipo->estado_ciclo_vida] ?? ['variant' => 'neutral', 'label' => $equipo->estado_ciclo_vida];
+                @endphp
+                <tr wire:key="equipo-{{ $equipo->id }}">
+                    <td>
+                        <p class="font-semibold text-ink">{{ $equipo->tipoEquipo?->nombre }}</p>
+                        <p class="text-xs text-ink-muted">{{ $equipo->marca?->nombre }} @if($equipo->modelo) · {{ $equipo->modelo }} @endif</p>
+                    </td>
+                    <td>
+                        <p class="font-mono text-sm">{{ $equipo->serial }}</p>
+                        <p class="text-xs text-ink-muted">{{ $equipo->codigo_activo ?? __('Sin código de activo') }}</p>
+                    </td>
+                    <td>
+                        @if($asignacion?->persona)
+                            <p>{{ $asignacion->persona->nombre }}</p>
+                            <p class="text-xs text-ink-muted">{{ $asignacion->persona->cargo }}</p>
+                        @else
+                            <span class="text-ink-muted">{{ __('Sin asignar') }}</span>
+                        @endif
+                    </td>
+                    <td>
+                        @if($asignacion)
+                            <p>{{ $asignacion->sede?->nombre }}</p>
+                            <p class="text-xs text-ink-muted">{{ $asignacion->dependencia?->nombre }}</p>
+                        @else
+                            <span class="text-ink-muted">—</span>
+                        @endif
+                    </td>
+                    <td>
+                        <div class="flex flex-col items-start gap-1">
+                            <x-ui.badge :variant="$ciclo['variant']">{{ $ciclo['label'] }}</x-ui.badge>
+                            @if($equipo->verificacion === 'pendiente_de_verificar')
+                                <x-ui.badge variant="warning">{{ __('Pendiente de verificar') }}</x-ui.badge>
+                            @endif
+                        </div>
+                    </td>
+                </tr>
+            @empty
+                <tr>
+                    <td colspan="5" class="py-10 text-center text-ink-muted">
+                        {{ __('No se encontraron equipos con ese criterio de búsqueda.') }}
+                    </td>
+                </tr>
+            @endforelse
+        </tbody>
 
-    {{-- Vista fantasma de la forma futura del listado de equipos --}}
-    <x-ui.card :padding="false" class="opacity-50" aria-hidden="true">
-        <div class="divide-y divide-line">
-            @for ($i = 0; $i < 4; $i++)
-                <div class="flex items-center gap-4 px-5 py-4">
-                    <div class="h-10 w-10 shrink-0 rounded-lg bg-line"></div>
-                    <div class="flex-1 space-y-2">
-                        <div class="h-3 w-1/3 rounded bg-line"></div>
-                        <div class="h-2.5 w-1/4 rounded bg-line"></div>
-                    </div>
-                    <div class="h-6 w-24 shrink-0 rounded-full bg-line"></div>
-                </div>
-            @endfor
-        </div>
-    </x-ui.card>
+        @if($equipos->hasPages())
+            <x-slot name="pagination">
+                {{ $equipos->links() }}
+            </x-slot>
+        @endif
+    </x-ui.table>
+
+    <p class="text-xs text-ink-muted">
+        {{ __('El registro, la edición y la hoja de vida completa de cada equipo son la siguiente parte de este bloque.') }}
+    </p>
 </div>

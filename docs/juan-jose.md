@@ -9,9 +9,11 @@ Juan José lleva el **bloque central** del sistema: todo lo demás se ve a trav�
 
 ## Tareas por día
 
+> **Días 1–2 ya hechos por el líder** como parte del bootstrap, para dejar un ejemplo real de cómo conectar una pantalla al modelo de datos: el listado de equipos con búsqueda (`app/Livewire/Equipos/Index.php` y `resources/views/livewire/equipos/index.blade.php`) ya existe y funciona contra la base real — búsqueda por serial, código de activo, responsable, cédula, dependencia y sede, tolerando espacios y guiones (`I1 24147` = `I1-24147`). Arrancá directo en los días 3–4; revisá ese archivo primero para seguir el mismo patrón (Livewire + `x-ui.table` + `x-ui.badge`) en el resto de tus pantallas.
+
 | Días | Tareas | Entregable |
 |---|---|---|
-| 1–2 | Listado de equipos y búsqueda por serial, código de activo, responsable, cédula, dependencia y sede, tolerando espacios y guiones (`I1 24147` = `I1-24147`). | Listado con búsqueda. |
+| ~~1–2~~ | ~~Listado de equipos y búsqueda por serial, código de activo, responsable, cédula, dependencia y sede, tolerando espacios y guiones (`I1 24147` = `I1-24147`).~~ | **Ya hecho** — listado con búsqueda. |
 | 3–4 | Registro y edición de equipo con formulario que cambia según el tipo; serial obligatorio y único; código de activo con formato `I1-######`; aviso de duplicados; propiedad Gobernación o tercero. | Registrar un equipo. |
 | 5–6 | Vista de hoja de vida: ficha, configuración, componentes actuales, responsable, ubicación e historial cronológico. Botones de acción que llaman a los flujos de Anuar. | Hoja de vida completa. |
 | 7–8 | Componentes y cambio de componente (agregar, cambiar, quitar) con seriales y motivo; actualiza la configuración y registra el evento. Eventos inmutables y anulación/aclaración. | Cambio de componente funcionando. |
