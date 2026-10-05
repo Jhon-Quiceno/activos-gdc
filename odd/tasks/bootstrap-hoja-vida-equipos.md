@@ -33,8 +33,11 @@ No se implementa funcionalidad completa de cada módulo todavía (eso lo hace ca
 - [x] T10 — `README.md` reescrito completo con stack, puesta en marcha con Docker, estructura, pruebas, ramas. Incluye nota crítica sobre `-u sail` (ver T12).
 - [x] T11 — `migrate:fresh --seed` corrido y verificado limpio con todo el modelo combinado (29/29 tests, ~100 equipos, relaciones cargando sin error).
 - [x] T12 — GATE: login + dashboard construidos, mostrados al usuario en su propio navegador (no solo capturas) y APROBADOS. Bugs encontrados y corregidos en vivo: (1) Breeze en inglés con estilos genéricos → componentes restilados + español completo (laravel-lang, RNF-02); (2) logo invisible sobre sidebar navy → tarjeta blanca + wordmark; (3) `docker compose exec` sin `-u sail` deja `storage/`/`bootstrap/cache` de root, el servidor (user `sail`) no puede compilar vistas → 500 `tempnam()`; corregido y documentado. Feedback del usuario tras aprobar: "mejorar los diseños para que no se vean tan estáticos" → ver T12b.
-- [~] T12b — Pasada de pulido visual (no bloqueante, pedida por el usuario tras aprobar el gate): transiciones/hover/sombras en el UI kit, KPIs del dashboard con datos reales + timeline de actividad reciente, estados vacíos decentes en las 6 pantallas stub en vez del texto plano "Próximamente". En progreso (delegado).
-- [ ] T13 — Verificación final combinada (build + pest + migrate:fresh --seed) y commit/push de cierre del bootstrap.
+- [x] T12b — Pulido visual: sombras/transiciones/feedback táctil en todo el UI kit, barra de acento animada en el ítem activo del sidebar, dashboard con KPIs reales (100 equipos, 100 movimientos del mes, 46 pendientes de verificar con barra de progreso) + timeline de actividad reciente real, y las 6 pantallas stub con estado vacío intencional (ícono, descripción, skeleton) en vez de texto plano. Verificado visualmente en el navegador.
+- [x] T13 — Verificación final: `pnpm run build` limpio, `./vendor/bin/pest` 29/29 en verde, revisado en el navegador (login, dashboard, stub de Equipos). Todo commiteado y pusheado a `develop` (9 commits en total). Bootstrap del proyecto completo.
+
+## Siguiente paso
+El bootstrap que le correspondía al líder (Jhon) antes del día 1 está terminado. Lo que sigue es trabajo de cada uno de los 5 programadores según `docs/juan-jose.md`, `docs/anuar.md`, `docs/juan-camilo.md`, `docs/alex.md` y `docs/manuel.md` — construir sus bloques reales encima de esta base, siempre en ramas `feature/<bloque>-<tarea>` desde `develop`. Pendiente no bloqueante: usuarios de GitHub del equipo para invitarlos al repo.
 
 ## Checks aplicables
 - `sail artisan migrate:fresh --seed` corre sin errores.
