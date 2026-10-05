@@ -15,8 +15,8 @@
     ];
 
     $sizes = [
-        'md' => 'h-11 px-5 text-sm',
-        'sm' => 'h-9 px-3.5 text-sm',
+        'md' => 'h-11 px-5 text-[15px]',
+        'sm' => 'h-9 px-3.5 text-[14px]',
     ];
 
     $classes = 'inline-flex items-center justify-center gap-2 rounded-lg font-semibold transition duration-150 active:scale-[0.98] '

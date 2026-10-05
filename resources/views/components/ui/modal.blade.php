@@ -19,7 +19,7 @@
     <div class="p-6">
         @if ($title)
             <div class="mb-4 flex items-center justify-between gap-4">
-                <h3 class="font-display text-lg font-semibold text-ink">{{ $title }}</h3>
+                <h3 class="section-title">{{ $title }}</h3>
                 <button
                     type="button"
                     x-on:click="$dispatch('close-modal', '{{ $name }}')"
@@ -33,7 +33,7 @@
             </div>
         @endif
 
-        <div class="text-sm text-ink">
+        <div class="text-[14px] text-ink">
             {{ $slot }}
         </div>
 

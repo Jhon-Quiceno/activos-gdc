@@ -33,6 +33,6 @@
     ];
 @endphp
 
-<span {{ $attributes->merge(['class' => 'inline-flex items-center whitespace-nowrap rounded-full px-3 py-1 text-xs font-semibold ring-1 ring-inset ring-black/5 transition-colors ' . ($styles[$resolved] ?? $styles['neutral'])]) }}>
+<span {{ $attributes->merge(['class' => 'inline-flex items-center whitespace-nowrap rounded-full px-3 py-1 text-[13px] font-semibold ring-1 ring-inset ring-black/5 transition-colors ' . ($styles[$resolved] ?? $styles['neutral'])]) }}>
     {{ $status ?? $slot }}
 </span>

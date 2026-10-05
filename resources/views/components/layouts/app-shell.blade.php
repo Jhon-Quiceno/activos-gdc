@@ -104,30 +104,31 @@
                     <input
                         type="search"
                         name="q"
+                        value="{{ request('q') }}"
                         aria-label="{{ __('Buscar equipos') }}"
                         placeholder="{{ __('Buscar por serial, código de activo, responsable o cédula…') }}"
-                        class="h-11 w-full rounded-lg border-line bg-app-bg pl-10 text-[14px] text-ink placeholder:text-ink-muted focus:border-primary focus:bg-white focus:ring-primary"
+                        class="h-11 w-full rounded-lg border-line bg-app-bg pl-10 text-[15px] text-ink placeholder:text-ink-muted focus:border-primary focus:bg-white focus:ring-primary"
                     >
                 </form>
 
-                <a
-                    href="{{ route('movimientos.index') }}"
-                    wire:navigate
-                    class="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-line text-ink transition hover:bg-app-bg"
-                    aria-label="{{ __('Pendientes de firma: :count', ['count' => $pendientesFirma]) }}"
-                >
-                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 8a6 6 0 0112 0c0 7 3 8 3 8H3s3-1 3-8" />
-                        <path stroke-linecap="round" d="M10 21h4" />
-                    </svg>
-                    @if($pendientesFirma > 0)
-                        <span class="absolute -right-1 -top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-danger-hover px-1 text-[11px] font-semibold text-white">
-                            {{ $pendientesFirma > 99 ? '99+' : $pendientesFirma }}
-                        </span>
-                    @endif
-                </a>
+                <div class="ml-auto flex shrink-0 items-center gap-4">
+                    <a
+                        href="{{ route('movimientos.index') }}"
+                        wire:navigate
+                        class="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-line text-ink transition hover:bg-app-bg"
+                        aria-label="{{ __('Pendientes de firma: :count', ['count' => $pendientesFirma]) }}"
+                    >
+                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 8a6 6 0 0112 0c0 7 3 8 3 8H3s3-1 3-8" />
+                            <path stroke-linecap="round" d="M10 21h4" />
+                        </svg>
+                        @if($pendientesFirma > 0)
+                            <span class="absolute -right-1 -top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-danger-hover px-1 text-[11px] font-semibold text-white">
+                                {{ $pendientesFirma > 99 ? '99+' : $pendientesFirma }}
+                            </span>
+                        @endif
+                    </a>
 
-                <div class="shrink-0">
                     <livewire:layout.topbar-user-menu />
                 </div>
             </header>

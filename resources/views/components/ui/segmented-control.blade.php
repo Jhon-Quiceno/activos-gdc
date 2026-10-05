@@ -14,7 +14,7 @@
             role="tab"
             aria-selected="{{ (string) $selected === (string) $value ? 'true' : 'false' }}"
             @if ($model) wire:click="$set('{{ $model }}', '{{ $value }}')" @endif
-            class="rounded-md px-4 py-2 text-sm font-semibold transition-all duration-150 active:scale-[0.97]
+            class="rounded-md px-4 py-2 text-[15px] font-semibold transition-all duration-150 active:scale-[0.97]
                 {{ (string) $selected === (string) $value ? 'bg-primary text-white shadow-sm' : 'text-ink-muted hover:bg-app-bg hover:text-ink' }}"
         >
             {{ $label }}

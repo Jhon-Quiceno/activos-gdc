@@ -7,11 +7,11 @@
             </svg>
         </div>
 
-        <p class="mx-auto mt-4 max-w-md text-sm text-ink-muted">
+        <p class="mx-auto mt-4 max-w-md text-[14px] text-ink-muted">
             {{ __('Aquí vas a poder generar e imprimir las etiquetas QR de cada equipo.') }}
         </p>
 
-        <span class="mt-4 inline-flex items-center gap-1.5 rounded-full bg-neutral-bg px-3 py-1 text-xs font-semibold text-neutral-text">
+        <span class="mt-4 inline-flex items-center gap-1.5 rounded-full bg-neutral-bg px-3 py-1 text-[13px] font-semibold text-neutral-text">
             {{ __('Próximamente') }}
         </span>
     </x-ui.card>

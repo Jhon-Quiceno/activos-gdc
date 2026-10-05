@@ -8,20 +8,18 @@
 
 <div class="space-y-6">
     <x-ui.table>
+        {{--
+            La búsqueda vive en la barra superior (global, ya filtra esta misma lista
+            por estar enlazada a la URL ?q=). No se repite aquí para no duplicarla.
+        --}}
         <x-slot name="filters">
-            <div class="relative w-full max-w-sm">
-                <svg class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 10.5a6.5 6.5 0 11-13 0 6.5 6.5 0 0113 0z" />
-                </svg>
-                <input
-                    type="text"
-                    wire:model.live.debounce.400ms="busqueda"
-                    placeholder="{{ __('Buscar por serial, código, responsable, cédula, dependencia o sede...') }}"
-                    class="h-11 w-full rounded-lg border-line-input pl-9 text-sm text-ink placeholder:text-ink-muted focus:border-primary focus:ring-primary"
-                >
-            </div>
+            <span class="text-[14px] text-ink-muted">
+                @if($busqueda !== '')
+                    {{ __('Resultados para ":termino"', ['termino' => $busqueda]) }}
+                @endif
+            </span>
 
-            <span class="ml-auto text-sm text-ink-muted">
+            <span class="ml-auto text-[14px] text-ink-muted">
                 {{ trans_choice(':count equipo|:count equipos', $equipos->total(), ['count' => $equipos->total()]) }}
             </span>
         </x-slot>
@@ -44,16 +42,16 @@
                 <tr wire:key="equipo-{{ $equipo->id }}">
                     <td>
                         <p class="font-semibold text-ink">{{ $equipo->tipoEquipo?->nombre }}</p>
-                        <p class="text-xs text-ink-muted">{{ $equipo->marca?->nombre }} @if($equipo->modelo) · {{ $equipo->modelo }} @endif</p>
+                        <p class="text-[13px] text-ink-muted">{{ $equipo->marca?->nombre }} @if($equipo->modelo) · {{ $equipo->modelo }} @endif</p>
                     </td>
                     <td>
-                        <p class="font-mono text-sm">{{ $equipo->serial }}</p>
-                        <p class="text-xs text-ink-muted">{{ $equipo->codigo_activo ?? __('Sin código de activo') }}</p>
+                        <p class="font-mono text-[14px]">{{ $equipo->serial }}</p>
+                        <p class="text-[13px] text-ink-muted">{{ $equipo->codigo_activo ?? __('Sin código de activo') }}</p>
                     </td>
                     <td>
                         @if($asignacion?->persona)
                             <p>{{ $asignacion->persona->nombre }}</p>
-                            <p class="text-xs text-ink-muted">{{ $asignacion->persona->cargo }}</p>
+                            <p class="text-[13px] text-ink-muted">{{ $asignacion->persona->cargo }}</p>
                         @else
                             <span class="text-ink-muted">{{ __('Sin asignar') }}</span>
                         @endif
@@ -61,7 +59,7 @@
                     <td>
                         @if($asignacion)
                             <p>{{ $asignacion->sede?->nombre }}</p>
-                            <p class="text-xs text-ink-muted">{{ $asignacion->dependencia?->nombre }}</p>
+                            <p class="text-[13px] text-ink-muted">{{ $asignacion->dependencia?->nombre }}</p>
                         @else
                             <span class="text-ink-muted">—</span>
                         @endif
@@ -91,7 +89,7 @@
         @endif
     </x-ui.table>
 
-    <p class="text-xs text-ink-muted">
+    <p class="text-[13px] text-ink-muted">
         {{ __('El registro, la edición y la hoja de vida completa de cada equipo son la siguiente parte de este bloque.') }}
     </p>
 </div>
