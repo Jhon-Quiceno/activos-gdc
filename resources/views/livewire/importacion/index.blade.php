@@ -140,11 +140,11 @@
 
     {{-- Footer del wizard --}}
     <div class="flex items-center justify-between gap-4">
-        <x-ui.button variant="secondary" type="button" wire:click="volver" @disabled($pasoActual === 1)>
+        <x-ui.button variant="secondary" type="button" wire:click="volver" :disabled="$pasoActual === 1">
             {{ __('Volver') }}
         </x-ui.button>
 
-        <x-ui.button variant="primary" type="button" wire:click="continuar" @disabled($pasoActual === 4)>
+        <x-ui.button variant="primary" type="button" wire:click="continuar" :disabled="$pasoActual === 4">
             {{ $pasoActual < 4 ? __('Continuar a confirmar') : __('Confirmar importación') }}
         </x-ui.button>
     </div>

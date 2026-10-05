@@ -26,9 +26,10 @@ class Index extends Component
     {
         $this->equivalencias = [
             ['origen' => 'Sec Educación', 'sugerido' => 'Secretaría de Educación'],
-            ['origen' => 'Sec. Infraestructura', 'sugerido' => 'Secretaría de Infraestructura'],
-            ['origen' => 'Hacienda', 'sugerido' => 'Secretaría de Hacienda'],
-            ['origen' => 'TICs', 'sugerido' => 'Dirección TIC'],
+            ['origen' => 'Educación', 'sugerido' => 'Secretaría de Educación'],
+            ['origen' => 'Sec infraestructura', 'sugerido' => 'Secretaría de Infraestructura'],
+            ['origen' => 'Almacen', 'sugerido' => 'Almacén'],
+            ['origen' => 'W10 pro', 'sugerido' => 'Windows 10 Pro'],
         ];
     }
 
@@ -64,13 +65,13 @@ class Index extends Component
         ];
 
         $advertencias = [
-            ['fila' => 12, 'valor' => 'I1-025646', 'detalle' => __('Serial normalizado automáticamente (se eliminó un espacio).'), 'tipo' => 'corregido'],
-            ['fila' => 47, 'valor' => 'SIN-SERIAL', 'detalle' => __('El valor de serial no es reconocible, requiere revisión manual.'), 'tipo' => 'revisar'],
-            ['fila' => 58, 'valor' => 'I1-018200', 'detalle' => __('Este serial ya existe en la fila 203.'), 'tipo' => 'repetido'],
-            ['fila' => 101, 'valor' => 'N/A', 'detalle' => __('No trae código de activo asignado.'), 'tipo' => 'sin_codigo'],
-            ['fila' => 134, 'valor' => 'N/A', 'detalle' => __('No trae número de cédula del responsable.'), 'tipo' => 'sin_cedula'],
-            ['fila' => 201, 'valor' => 'Portátil Dell Latitude 5420', 'detalle' => __('Marcado como equipo personal, se excluye de la importación.'), 'tipo' => 'excluido'],
-            ['fila' => 203, 'valor' => 'I1-018200', 'detalle' => __('Serial repetido; se conservará el de la fila 58.'), 'tipo' => 'repetido'],
+            ['fila' => 2, 'valor' => 'I 1 26004', 'detalle' => __('Código con espacios; se normalizó a I1-026004.'), 'tipo' => 'corregido'],
+            ['fila' => 4, 'valor' => '-022894', 'detalle' => __('Código incompleto.'), 'tipo' => 'revisar'],
+            ['fila' => 9, 'valor' => '020410', 'detalle' => __('Código sin prefijo I1.'), 'tipo' => 'revisar'],
+            ['fila' => 82, 'valor' => 'I1-001664', 'detalle' => __('Código repetido entre PC y monitor.'), 'tipo' => 'repetido'],
+            ['fila' => 94, 'valor' => 'Sin Código', 'detalle' => __('Impresora sin código de activo.'), 'tipo' => 'sin_codigo'],
+            ['fila' => 6, 'valor' => '—', 'detalle' => __('Sin cédula: «No se encontraba en su lugar».'), 'tipo' => 'sin_cedula'],
+            ['fila' => '—', 'valor' => 'No es de la gobernación', 'detalle' => __('Equipo personal: se excluye.'), 'tipo' => 'excluido'],
         ];
 
         $tiposAdvertencia = [

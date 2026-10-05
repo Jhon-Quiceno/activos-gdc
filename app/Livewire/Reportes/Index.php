@@ -32,63 +32,63 @@ class Index extends Component
     public const REPORTES = [
         'inventario_general' => [
             'titulo' => 'Inventario general',
-            'descripcion' => '¿Qué equipos hay, con todos sus datos?',
+            'descripcion' => 'Todos los equipos con sus datos',
         ],
         'por_dependencia' => [
             'titulo' => 'Por dependencia',
-            'descripcion' => '¿Qué tiene cada dependencia?',
+            'descripcion' => 'Qué tiene cada dependencia',
         ],
         'por_sede_piso' => [
             'titulo' => 'Por sede y piso',
-            'descripcion' => '¿Qué hay en cada edificio?',
+            'descripcion' => 'Qué hay en cada edificio',
         ],
         'por_funcionario' => [
             'titulo' => 'Por funcionario',
-            'descripcion' => '¿Qué tiene a cargo cada persona?',
+            'descripcion' => 'Equipos a cargo de cada persona',
         ],
         'por_tipo_marca_modelo' => [
             'titulo' => 'Por tipo, marca y modelo',
-            'descripcion' => '¿Cómo está compuesto el parque?',
+            'descripcion' => 'Composición del parque',
         ],
         'por_estado' => [
             'titulo' => 'Por estado',
-            'descripcion' => '¿Cuántos en servicio, sin asignar y dados de baja?',
+            'descripcion' => 'En servicio, sin asignar, dados de baja',
         ],
         'terceros' => [
             'titulo' => 'Equipos de terceros',
-            'descripcion' => '¿Qué equipos no son de la Gobernación y de quién son?',
+            'descripcion' => 'Qué no es de la Gobernación y de quién es',
         ],
         'dados_de_baja' => [
             'titulo' => 'Dados de baja',
-            'descripcion' => '¿Qué salió de servicio, cuándo y por qué?',
+            'descripcion' => 'Qué salió de servicio y por qué',
         ],
         'obsolescencia_so' => [
             'titulo' => 'Obsolescencia por sistema operativo',
-            'descripcion' => '¿Cuántos equipos siguen con Windows 7 u 8?',
+            'descripcion' => 'Equipos con Windows 7 u 8',
         ],
         'sin_antivirus' => [
             'titulo' => 'Sin antivirus',
-            'descripcion' => '¿Qué equipos no están protegidos?',
+            'descripcion' => 'Equipos sin protección',
         ],
         'historial_equipo' => [
             'titulo' => 'Historial por equipo',
-            'descripcion' => '¿Qué se le ha hecho a este equipo?',
+            'descripcion' => 'Todo lo que se le ha hecho',
         ],
         'cambios_componentes' => [
             'titulo' => 'Cambios de componentes',
-            'descripcion' => '¿Qué se agregó, cambió o quitó, y a qué equipos?',
+            'descripcion' => 'Qué se agregó, cambió o quitó',
         ],
         'traslados' => [
             'titulo' => 'Traslados',
-            'descripcion' => '¿Qué se movió y a dónde?',
+            'descripcion' => 'Qué se movió y a dónde',
         ],
         'pendientes_firma' => [
             'titulo' => 'Pendientes de firma',
-            'descripcion' => '¿Qué movimientos aún no tienen sus documentos firmados?',
+            'descripcion' => 'Movimientos sin documentos firmados',
         ],
         'calidad_inventario' => [
             'titulo' => 'Calidad del inventario',
-            'descripcion' => '¿Cuántos sin serial, sin código, sin responsable, con código repetido o pendientes de verificar?',
+            'descripcion' => 'Sin serial, sin código, repetidos',
         ],
     ];
 

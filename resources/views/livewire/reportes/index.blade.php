@@ -8,7 +8,7 @@
                 :accent="$reporteActivo === $clave ? 'primary' : null"
             >
                 <p class="text-[15px] font-semibold text-ink">{{ $reporte['titulo'] }}</p>
-                <p class="mt-1 text-[13px] text-ink-muted">{{ $reporte['descripcion'] }}</p>
+                <p class="mt-1 text-[14px] text-ink-muted">{{ $reporte['descripcion'] }}</p>
             </x-ui.card>
         @endforeach
     </div>
@@ -16,7 +16,7 @@
     <x-ui.card>
         <div class="flex flex-wrap items-start justify-between gap-4">
             <div>
-                <h2 class="text-[18px] font-semibold text-ink">{{ $reportes[$reporteActivo]['titulo'] }}</h2>
+                <h2 class="text-[16px] font-semibold text-ink">{{ $reportes[$reporteActivo]['titulo'] }}</h2>
                 <p class="mt-1 text-[14px] text-ink-muted">{{ $reportes[$reporteActivo]['descripcion'] }}</p>
             </div>
 

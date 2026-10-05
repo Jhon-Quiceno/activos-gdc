@@ -9,7 +9,7 @@
     <div class="space-y-6">
         <x-ui.page-header
             :title="__('Listas')"
-            :subtitle="__('Los elementos en uso no se eliminan: se desactivan para que el historial no se pierda.')"
+            :subtitle="__('Solo el Administrador ve esta sección. Estas listas alimentan los formularios; no se acepta texto libre en esos campos.')"
         />
 
         <livewire:admin.listas-panel />

@@ -102,7 +102,7 @@
                         {{ __('Debe cambiarla en su primer ingreso') }}
                     </label>
 
-                    <x-ui.button type="submit" variant="primary" class="w-full justify-center">
+                    <x-ui.button type="submit" variant="success" class="w-full justify-center">
                         {{ __('Crear usuario') }}
                     </x-ui.button>
                 </form>

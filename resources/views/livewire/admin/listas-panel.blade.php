@@ -105,9 +105,15 @@
                         </div>
                     @endif
 
-                    <x-ui.button type="submit" variant="primary">
-                        {{ __('Agregar') }}
-                    </x-ui.button>
+                    <div class="flex w-full flex-wrap items-center justify-between gap-4">
+                        <span class="text-[13px] text-ink-muted">
+                            {{ __('Los elementos en uso no se eliminan: se desactivan para que el historial no se pierda.') }}
+                        </span>
+
+                        <x-ui.button type="submit" variant="success">
+                            {{ __('Agregar') }}
+                        </x-ui.button>
+                    </div>
                 </form>
             </x-ui.card>
         </div>

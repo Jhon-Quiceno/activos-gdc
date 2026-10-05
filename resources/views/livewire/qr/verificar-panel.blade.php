@@ -21,7 +21,7 @@
 <div class="min-h-screen bg-app-bg pb-8">
     {{-- Header propio del mockup móvil --}}
     <header class="flex items-center justify-between bg-navy px-4 py-4 text-white">
-        <h1 class="text-[17px] font-semibold">{{ __('Verificar en sitio') }}</h1>
+        <h1 class="font-display text-[15px] font-bold">{{ __('Verificar en sitio') }}</h1>
         <span class="text-[13px] text-white/80">{{ __('Palacio Naín · P5') }}</span>
     </header>
 
@@ -61,10 +61,12 @@
 
             {{-- Resultado --}}
             <x-ui.card>
-                <p class="font-semibold text-ink">{{ $equipo->tipoEquipo?->nombre }}</p>
-                <p class="text-[13px] text-ink-muted">
-                    {{ $equipo->marca?->nombre }}
-                    @if ($equipo->modelo) · {{ $equipo->modelo }} @endif
+                <p class="font-semibold text-ink">
+                    {{ $equipo->tipoEquipo?->nombre }}
+                    @if ($equipo->marca)
+                        · {{ $equipo->marca->nombre }}
+                        @if ($equipo->modelo) {{ $equipo->modelo }} @endif
+                    @endif
                 </p>
 
                 <div class="mt-2 flex flex-wrap gap-2">
@@ -72,7 +74,7 @@
                     <x-ui.badge :variant="$verif['variant']">{{ $verif['label'] }}</x-ui.badge>
                 </div>
 
-                <p class="mt-3 text-[13px] text-ink-muted">
+                <p class="mt-3 text-[14px] text-ink-muted">
                     {{ $equipo->codigo_activo ?? __('Sin código de activo') }}
                     @if ($asignacion?->persona)
                         · {{ $asignacion->persona->nombre }}
@@ -138,6 +140,9 @@
             </x-ui.card>
 
             <x-ui.button variant="success" wire:click="marcarVerificado" class="w-full justify-center">
+                <svg class="h-[18px] w-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 12l5 5 9-10" />
+                </svg>
                 {{ __('Marcar como verificado') }}
             </x-ui.button>
         @endif

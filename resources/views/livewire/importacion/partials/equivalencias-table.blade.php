@@ -7,6 +7,7 @@
     <thead>
         <tr>
             <th>{{ __('En el archivo') }}</th>
+            <th></th>
             <th>{{ __('Valor oficial') }}</th>
         </tr>
     </thead>
@@ -14,6 +15,7 @@
         @foreach ($equivalencias as $indice => $equivalencia)
             <tr wire:key="equivalencia-{{ $indice }}">
                 <td class="font-mono text-ink-muted">{{ $equivalencia['origen'] }}</td>
+                <td class="text-ink-muted">&rarr;</td>
                 <td>
                     <select
                         wire:model="equivalencias.{{ $indice }}.sugerido"
