@@ -51,7 +51,7 @@ Si tu bloque registra traslados, cambios de componente, diagnósticos, bajas o c
 Nadie debe depender de datos que solo existen en su máquina. El flujo de trabajo diario es:
 
 ```bash
-docker compose exec laravel.test php artisan migrate:fresh --seed
+docker compose exec -u sail laravel.test php artisan migrate:fresh --seed
 ```
 
 Esto reconstruye la base de datos desde cero con los seeders oficiales (sedes, pisos, tipos de equipo, marcas, sistemas operativos, motivos de baja, y los equipos falsos de las factories). Si tu funcionalidad solo funciona con datos que tú insertaste manualmente, no está realmente lista.
@@ -78,7 +78,7 @@ Una tarea no está terminada solo porque el código "funciona en mi máquina". S
 Siempre, sin excepción, correr las pruebas y verificar que pasan en verde antes de abrir el PR:
 
 ```bash
-docker compose exec laravel.test ./vendor/bin/pest
+docker compose exec -u sail laravel.test ./vendor/bin/pest
 ```
 
 Un PR con pruebas rotas no se revisa; corrígelo antes de pedir revisión.

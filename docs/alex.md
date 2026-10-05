@@ -37,8 +37,8 @@ Consulta el detalle completo en el [Análisis de requerimientos](./analisis-requ
 - Nunca crear ni tocar migraciones: si falta un campo o un índice para optimizar un filtro, se pide a Jhon y lo agrega el mismo día.
 - Escribir solo en `app/Livewire/Reportes`, `resources/views/reportes` y `tests/Reportes`.
 - Los reportes son de solo lectura, pero si alguna acción del módulo llegara a generar un evento sobre un equipo, debe pasar por `HistorialService::registrar()`. Nunca se inserta un evento a mano.
-- Trabajar siempre con `docker compose exec laravel.test php artisan migrate:fresh --seed`.
-- Antes de abrir un PR, correr `docker compose exec laravel.test ./vendor/bin/pest` y que pase en verde.
+- Trabajar siempre con `docker compose exec -u sail laravel.test php artisan migrate:fresh --seed`.
+- Antes de abrir un PR, correr `docker compose exec -u sail laravel.test ./vendor/bin/pest` y que pase en verde.
 
 Para el detalle completo de estas reglas, ver [normas-de-trabajo.md](./normas-de-trabajo.md).
 

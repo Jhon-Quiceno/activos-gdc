@@ -36,8 +36,8 @@ Consulta el detalle completo de cada uno en el [Análisis de requerimientos](./a
 - Nunca crear ni tocar migraciones: si falta un campo, se pide a Jhon y lo agrega el mismo día.
 - Escribir solo en `app/Livewire/Nucleo1` (o el nombre de carpeta que defina el líder para este bloque), `resources/views/equipos` y `tests/Nucleo1`.
 - Todo cambio sobre un equipo pasa por `HistorialService::registrar()`. Nunca se inserta un evento a mano.
-- Trabajar siempre con `docker compose exec laravel.test php artisan migrate:fresh --seed`.
-- Antes de abrir un PR, correr `docker compose exec laravel.test ./vendor/bin/pest` y que pase en verde.
+- Trabajar siempre con `docker compose exec -u sail laravel.test php artisan migrate:fresh --seed`.
+- Antes de abrir un PR, correr `docker compose exec -u sail laravel.test ./vendor/bin/pest` y que pase en verde.
 
 Para el detalle completo de estas reglas, ver [normas-de-trabajo.md](./normas-de-trabajo.md).
 

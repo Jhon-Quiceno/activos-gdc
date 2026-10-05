@@ -35,8 +35,8 @@ Consulta el detalle completo de cada uno en el [Análisis de requerimientos](./a
 - Nunca crear ni tocar migraciones: si falta un campo (por ejemplo en `Importacion` o en la tabla de equivalencias), se pide a Jhon y lo agrega el mismo día.
 - Escribir solo en `app/Livewire/Importacion`, `resources/views/importacion` y `tests/Importacion`.
 - El evento de alta histórico que genera la importación pasa por `HistorialService::registrar()`, igual que cualquier otro evento. Nunca se inserta un evento a mano.
-- Trabajar siempre con `docker compose exec laravel.test php artisan migrate:fresh --seed`.
-- Antes de abrir un PR, correr `docker compose exec laravel.test ./vendor/bin/pest` y que pase en verde.
+- Trabajar siempre con `docker compose exec -u sail laravel.test php artisan migrate:fresh --seed`.
+- Antes de abrir un PR, correr `docker compose exec -u sail laravel.test ./vendor/bin/pest` y que pase en verde.
 
 Para el detalle completo de estas reglas, ver [normas-de-trabajo.md](./normas-de-trabajo.md).
 

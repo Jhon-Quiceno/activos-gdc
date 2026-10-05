@@ -26,7 +26,9 @@ Paquetes adicionales: `barryvdh/laravel-dompdf` (formatos y reportes en PDF), `m
 
 Solo necesitas **Docker Desktop** instalado y corriendo. No se requiere PHP ni Node instalados localmente — todo corre dentro de los contenedores.
 
-> **Nota sobre comandos en este proyecto:** no se usa `./vendor/bin/sail` porque ese script no detecta Git Bash/MinGW nativo en Windows (solo reconoce macOS, Linux o WSL2). Todos los comandos de este README usan `docker compose` directamente contra el servicio `laravel.test`. Si usas **WSL2 real** (una distribución Linux dentro de Windows), sí puedes usar `./vendor/bin/sail` como alternativa más corta; en Git Bash sobre Windows, usa siempre `docker compose`.
+> **Nota sobre comandos en este proyecto:** no se usa `./vendor/bin/sail` porque ese script no detecta Git Bash/MinGW nativo en Windows (solo reconoce macOS, Linux o WSL2). Todos los comandos de este README usan `docker compose exec -u sail laravel.test ...`. Si usas **WSL2 real** (una distribución Linux dentro de Windows), sí puedes usar `./vendor/bin/sail` como alternativa más corta; en Git Bash sobre Windows, usa siempre `docker compose`.
+>
+> **Importante — siempre usa `-u sail`:** sin ese flag, `docker compose exec` corre como `root` y los archivos que toque (`storage/`, `bootstrap/cache/`) quedan con dueño `root`. El servidor web dentro del contenedor corre como el usuario `sail`, así que si esas carpetas quedan de `root` el sitio se cae con un error 500 (`tempnam(): file created in the system's temporary directory`) al intentar compilar una vista nueva. Si eso te pasa, corrígelo con: `docker compose exec -u sail laravel.test chown -R sail:sail storage bootstrap/cache`.
 
 ## Puesta en marcha desde cero
 
@@ -56,37 +58,37 @@ Solo necesitas **Docker Desktop** instalado y corriendo. No se requiere PHP ni N
 4. **Instalar dependencias de PHP** (normalmente ya vienen instaladas en la imagen; solo si hace falta):
 
    ```bash
-   docker compose exec laravel.test composer install
+   docker compose exec -u sail laravel.test composer install
    ```
 
 5. **Generar la clave de la aplicación:**
 
    ```bash
-   docker compose exec laravel.test php artisan key:generate
+   docker compose exec -u sail laravel.test php artisan key:generate
    ```
 
 6. **Ejecutar migraciones y seeders:**
 
    ```bash
-   docker compose exec laravel.test php artisan migrate:fresh --seed
+   docker compose exec -u sail laravel.test php artisan migrate:fresh --seed
    ```
 
 7. **Instalar dependencias de JavaScript:**
 
    ```bash
-   docker compose exec laravel.test pnpm install
+   docker compose exec -u sail laravel.test pnpm install
    ```
 
 8. **Compilar assets:**
 
    ```bash
-   docker compose exec laravel.test pnpm run build
+   docker compose exec -u sail laravel.test pnpm run build
    ```
 
    Para desarrollo con recarga en caliente, usa en su lugar:
 
    ```bash
-   docker compose exec laravel.test pnpm run dev
+   docker compose exec -u sail laravel.test pnpm run dev
    ```
 
 9. **Acceder a la aplicación:**
@@ -99,7 +101,7 @@ Solo necesitas **Docker Desktop** instalado y corriendo. No se requiere PHP ni N
 ## Correr las pruebas
 
 ```bash
-docker compose exec laravel.test ./vendor/bin/pest
+docker compose exec -u sail laravel.test ./vendor/bin/pest
 ```
 
 Las pruebas deben pasar en verde antes de abrir cualquier Pull Request (ver [normas de trabajo](docs/normas-de-trabajo.md)).
