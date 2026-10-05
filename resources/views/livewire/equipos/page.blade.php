@@ -1,7 +1,7 @@
 <x-layouts.app-shell title="Equipos">
-    <x-slot name="header">
-        <h1 class="truncate font-display text-lg font-semibold text-ink">{{ __('Equipos') }}</h1>
-    </x-slot>
+    <div class="space-y-6">
+        <x-ui.page-header :title="__('Equipos')" :subtitle="__('Se identifican por serial y código de activo.')" />
 
-    <livewire:equipos.index />
+        <livewire:equipos.index />
+    </div>
 </x-layouts.app-shell>

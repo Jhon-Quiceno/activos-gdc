@@ -1,7 +1,7 @@
 <x-layouts.app-shell title="Movimientos">
-    <x-slot name="header">
-        <h1 class="truncate font-display text-lg font-semibold text-ink">{{ __('Movimientos') }}</h1>
-    </x-slot>
+    <div class="space-y-6">
+        <x-ui.page-header :title="__('Movimientos')" :subtitle="__('Traslados, cambios de responsable, diagnósticos y bajas.')" />
 
-    <livewire:movimientos.index />
+        <livewire:movimientos.index />
+    </div>
 </x-layouts.app-shell>

@@ -1,7 +1,7 @@
 <x-layouts.app-shell title="Administración">
-    <x-slot name="header">
-        <h1 class="truncate font-display text-lg font-semibold text-ink">{{ __('Administración') }}</h1>
-    </x-slot>
+    <div class="space-y-6">
+        <x-ui.page-header :title="__('Administración')" :subtitle="__('Usuarios y listas administrables del sistema.')" />
 
-    <livewire:admin.index />
+        <livewire:admin.index />
+    </div>
 </x-layouts.app-shell>

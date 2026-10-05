@@ -1,7 +1,7 @@
 <x-layouts.app-shell title="Importación">
-    <x-slot name="header">
-        <h1 class="truncate font-display text-lg font-semibold text-ink">{{ __('Importación') }}</h1>
-    </x-slot>
+    <div class="space-y-6">
+        <x-ui.page-header :title="__('Importación')" :subtitle="__('Carga del inventario desde Excel.')" />
 
-    <livewire:importacion.index />
+        <livewire:importacion.index />
+    </div>
 </x-layouts.app-shell>

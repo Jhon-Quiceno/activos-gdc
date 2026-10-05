@@ -6,8 +6,7 @@
             </svg>
         </div>
 
-        <p class="mt-4 font-display text-xl font-semibold text-ink">{{ __('Reportes') }}</p>
-        <p class="mx-auto mt-2 max-w-md text-sm text-ink-muted">
+        <p class="mx-auto mt-4 max-w-md text-sm text-ink-muted">
             {{ __('Aquí vas a poder generar reportes y exportar los indicadores del inventario de equipos.') }}
         </p>
 

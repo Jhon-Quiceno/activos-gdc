@@ -35,19 +35,11 @@
 @endphp
 
 <x-layouts.app-shell title="Inicio">
-    <x-slot name="header">
-        <h1 class="truncate font-display text-lg font-semibold text-ink">{{ __('Inicio') }}</h1>
-    </x-slot>
-
     <div class="space-y-6">
-        <x-ui.card>
-            <p class="font-display text-xl font-semibold text-ink">
-                {{ __('Bienvenido, :name', ['name' => auth()->user()->name]) }}
-            </p>
-            <p class="mt-2 text-sm text-ink-muted">
-                {{ __('Este es el panel de inicio del Sistema de Hoja de Vida de Equipos.') }}
-            </p>
-        </x-ui.card>
+        <x-ui.page-header
+            :title="__('Hola, :name', ['name' => explode(' ', auth()->user()->name)[0]])"
+            :subtitle="__('Estado del parque tecnológico al :fecha', ['fecha' => now()->translatedFormat('j \d\e F \d\e Y')])"
+        />
 
         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 nav:grid-cols-3">
             <x-ui.kpi-card :value="$totalEquipos" label="{{ __('Equipos registrados') }}" accent="primary">
@@ -83,8 +75,8 @@
 
         <x-ui.card :padding="false">
             <div class="border-b border-line px-5 py-4">
-                <p class="font-display text-lg font-semibold text-ink">{{ __('Actividad reciente') }}</p>
-                <p class="mt-1 text-sm text-ink-muted">{{ __('Últimos eventos registrados en la hoja de vida de los equipos.') }}</p>
+                <p class="section-title">{{ __('Actividad reciente') }}</p>
+                <p class="mt-1 text-[13px] text-ink-muted">{{ __('Últimos eventos registrados en la hoja de vida de los equipos.') }}</p>
             </div>
 
             <div class="px-5 py-4">

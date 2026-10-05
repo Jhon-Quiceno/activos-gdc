@@ -21,6 +21,16 @@
 }
 
 @layer components {
+    /* Título de página (26px), igual en todas las pantallas (prototipo Claude Design) */
+    .page-title {
+        @apply font-display text-[26px] font-semibold text-ink;
+    }
+
+    /* Título de sección dentro de una card (16px) */
+    .section-title {
+        @apply font-display text-[16px] font-semibold text-ink;
+    }
+
     /* Línea conectora vertical del timeline de la hoja de vida */
     .timeline-item {
         @apply relative pl-8 pb-8;

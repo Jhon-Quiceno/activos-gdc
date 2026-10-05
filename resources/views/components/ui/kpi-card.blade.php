@@ -47,8 +47,8 @@
 <div {{ $attributes->merge(['class' => 'rounded-lg border border-line bg-white p-5 shadow-sm transition-shadow duration-200 hover:shadow-md']) }}>
     <div class="flex items-start justify-between gap-3">
         <div class="min-w-0">
-            <p class="font-display text-3xl font-bold text-ink">{{ $value }}</p>
-            <p class="mt-1 text-sm text-ink-muted">{{ $label }}</p>
+            <p class="font-display text-[30px] font-bold leading-tight text-ink">{{ $value }}</p>
+            <p class="mt-1 text-[13px] text-ink-muted">{{ $label }}</p>
         </div>
 
         @isset($icon)

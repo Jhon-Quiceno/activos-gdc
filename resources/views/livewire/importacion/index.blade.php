@@ -6,8 +6,7 @@
             </svg>
         </div>
 
-        <p class="mt-4 font-display text-xl font-semibold text-ink">{{ __('Importación') }}</p>
-        <p class="mx-auto mt-2 max-w-md text-sm text-ink-muted">
+        <p class="mx-auto mt-4 max-w-md text-sm text-ink-muted">
             {{ __('Aquí vas a poder cargar masivamente equipos desde Excel/CSV y revisar el resultado de cada importación.') }}
         </p>
 
