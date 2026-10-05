@@ -1,15 +1,18 @@
 @php
     $totalEquipos = \App\Models\Equipo::count();
 
-    $movimientosMes = \App\Models\Evento::whereMonth('fecha', now()->month)
-        ->whereYear('fecha', now()->year)
-        ->count();
-
     $pendientesVerificar = \App\Models\Equipo::where('verificacion', 'pendiente_de_verificar')->count();
 
     $porcentajePendientes = $totalEquipos > 0
         ? (int) round(($pendientesVerificar / $totalEquipos) * 100)
         : 0;
+
+    // --- KPIs del encabezado (prototipo: Total de equipos / En servicio / Sin asignar / Dados de baja) ---
+    $enServicio = \App\Models\Equipo::where('estado_ciclo_vida', 'en_servicio')->count();
+    $sinAsignar = \App\Models\Equipo::where('estado_ciclo_vida', 'sin_asignar')->count();
+    $dadosDeBaja = \App\Models\Equipo::where('estado_ciclo_vida', 'dado_de_baja')->count();
+    $totalPuestos = \App\Models\PuestoTrabajo::count();
+    $totalSedes = \App\Models\Sede::count();
 
     $tipoEventoLabels = [
         'alta' => __('Alta'),
@@ -63,7 +66,7 @@
     $pctRepetidos = $pctDe($codigosRepetidos);
 
     $calidadInventario = [
-        ['label' => __('Pendientes de verificar'), 'value' => $pendientesVerificar . ' (' . $pctPendientes . '%)', 'percent' => $pctPendientes, 'color' => 'bg-warning-text'],
+        ['label' => __('Pendientes de verificar serial'), 'value' => $pendientesVerificar . ' (' . $pctPendientes . '%)', 'percent' => $pctPendientes, 'color' => 'bg-warning-text'],
         ['label' => __('Sin código de activo'), 'value' => $sinCodigoActivo . ' (' . $pctSinCodigo . '%)', 'percent' => $pctSinCodigo, 'color' => 'bg-primary'],
         ['label' => __('Sin responsable'), 'value' => $sinResponsable . ' (' . $pctSinResponsable . '%)', 'percent' => $pctSinResponsable, 'color' => 'bg-primary'],
         ['label' => __('Sin cédula del responsable'), 'value' => $sinCedula . ' (' . $pctSinCedula . '%)', 'percent' => $pctSinCedula, 'color' => 'bg-primary'],
@@ -126,35 +129,49 @@
         <x-ui.page-header
             :title="__('Hola, :name', ['name' => explode(' ', auth()->user()->name)[0]])"
             :subtitle="__('Estado del parque tecnológico al :fecha', ['fecha' => now()->translatedFormat('j \d\e F \d\e Y')])"
-        />
+        >
+            <x-slot name="actions">
+                <x-ui.button :href="route('equipos.crear')" variant="primary">
+                    <svg class="h-[18px] w-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14M5 12h14" />
+                    </svg>
+                    {{ __('Registrar equipo') }}
+                </x-ui.button>
+            </x-slot>
+        </x-ui.page-header>
 
-        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 nav:grid-cols-3">
-            <x-ui.kpi-card :value="$totalEquipos" label="{{ __('Equipos registrados') }}" accent="primary">
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 nav:grid-cols-4">
+            <x-ui.kpi-card :value="$totalEquipos" label="{{ __('Total de equipos') }}" accent="primary">
                 <x-slot name="icon">
                     <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.129V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25m18 0A2.25 2.25 0 0018.75 3H5.25A2.25 2.25 0 003 5.25m18 0V12a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 12V5.25" />
                     </svg>
                 </x-slot>
+                <x-slot name="footer">
+                    {{ __(':puestos puestos · :sedes sedes', ['puestos' => $totalPuestos, 'sedes' => $totalSedes]) }}
+                </x-slot>
             </x-ui.kpi-card>
 
-            <x-ui.kpi-card :value="$movimientosMes" label="{{ __('Movimientos del mes') }}" accent="info">
+            <x-ui.kpi-card :value="$enServicio" label="{{ __('En servicio') }}" accent="success">
                 <x-slot name="icon">
                     <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-9L21 3m0 0l-4.5 4.5M21 3H7.5" />
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
                     </svg>
                 </x-slot>
             </x-ui.kpi-card>
 
-            <x-ui.kpi-card
-                :value="$pendientesVerificar"
-                label="{{ __('Pendientes por verificar') }}"
-                :accent="$pendientesVerificar > 0 ? 'warning' : 'success'"
-                :progress="$porcentajePendientes"
-                :progress-label="__(':pct% del total de equipos', ['pct' => $porcentajePendientes])"
-            >
+            <x-ui.kpi-card :value="$sinAsignar" label="{{ __('Sin asignar') }}" accent="warning">
                 <x-slot name="icon">
                     <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
+                    </svg>
+                </x-slot>
+            </x-ui.kpi-card>
+
+            <x-ui.kpi-card :value="$dadosDeBaja" label="{{ __('Dados de baja') }}" accent="danger">
+                <x-slot name="icon">
+                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
                     </svg>
                 </x-slot>
             </x-ui.kpi-card>

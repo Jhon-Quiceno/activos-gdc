@@ -13,6 +13,11 @@
             <svg>...</svg>
         </x-slot>
     </x-ui.kpi-card>
+
+    Uso con texto secundario debajo (ej. "461 puestos · 11 sedes", como en el prototipo):
+    <x-ui.kpi-card value="930" label="Total de equipos">
+        <x-slot name="footer">461 puestos · 11 sedes</x-slot>
+    </x-ui.kpi-card>
 --}}
 @props([
     'value',
@@ -68,8 +73,12 @@
             </div>
 
             @if ($progressLabel)
-                <p class="mt-1.5 text-xs text-ink-muted">{{ $progressLabel }}</p>
+                <p class="mt-1.5 text-[13px] text-ink-muted">{{ $progressLabel }}</p>
             @endif
         </div>
     @endif
+
+    @isset($footer)
+        <p class="mt-2 text-[13px] text-ink-muted">{{ $footer }}</p>
+    @endisset
 </div>

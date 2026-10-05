@@ -23,7 +23,12 @@
                 </a>
             </div>
 
-            <div class="w-full sm:max-w-md mt-6 px-6 py-4 bg-white shadow-md overflow-hidden sm:rounded-lg">
+            <div class="w-full sm:max-w-[420px] mt-6 border border-line bg-white overflow-hidden rounded-lg p-6 sm:p-9">
+                <div class="mb-5">
+                    <h1 class="font-display text-[24px] font-semibold text-ink">{{ __('Hoja de Vida de Equipos') }}</h1>
+                    <p class="mt-1.5 text-ink-muted">{{ __('Dirección TIC · Gobernación de Córdoba') }}</p>
+                </div>
+
                 {{ $slot }}
             </div>
         </div>
