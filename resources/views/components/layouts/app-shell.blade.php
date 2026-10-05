@@ -96,20 +96,22 @@
                     </svg>
                 </button>
 
-                <form method="GET" action="{{ route('equipos.index') }}" class="relative w-full max-w-[560px]">
-                    <svg class="pointer-events-none absolute left-3.5 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-ink-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
-                        <circle cx="11" cy="11" r="7" />
-                        <path stroke-linecap="round" d="M21 21l-4.3-4.3" />
-                    </svg>
-                    <input
-                        type="search"
-                        name="q"
-                        value="{{ request('q') }}"
-                        aria-label="{{ __('Buscar equipos') }}"
-                        placeholder="{{ __('Buscar por serial, código de activo, responsable o cédula…') }}"
-                        class="h-11 w-full rounded-lg border-line bg-app-bg pl-10 text-[15px] text-ink placeholder:text-ink-muted focus:border-primary focus:bg-white focus:ring-primary"
-                    >
-                </form>
+                {{-- En Equipos la búsqueda ya vive en la tabla de esa pantalla; no se repite aquí. --}}
+                @unless(request()->routeIs('equipos.*'))
+                    <form method="GET" action="{{ route('equipos.index') }}" class="relative w-full max-w-[560px]">
+                        <svg class="pointer-events-none absolute left-3.5 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-ink-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+                            <circle cx="11" cy="11" r="7" />
+                            <path stroke-linecap="round" d="M21 21l-4.3-4.3" />
+                        </svg>
+                        <input
+                            type="search"
+                            name="q"
+                            aria-label="{{ __('Buscar equipos') }}"
+                            placeholder="{{ __('Buscar por serial, código de activo, responsable o cédula…') }}"
+                            class="h-11 w-full rounded-lg border-line bg-app-bg pl-10 text-[15px] text-ink placeholder:text-ink-muted focus:border-primary focus:bg-white focus:ring-primary"
+                        >
+                    </form>
+                @endunless
 
                 <div class="ml-auto flex shrink-0 items-center gap-4">
                     <a
