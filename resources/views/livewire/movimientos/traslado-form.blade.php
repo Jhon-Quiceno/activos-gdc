@@ -31,7 +31,7 @@
             @if ($bodega)
                 <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div>
-                        <label class="text-[13px] font-semibold text-ink-label">{{ __('Sede de la bodega') }} *</label>
+                        <label class="text-[13px] font-semibold text-ink-label">{{ __('Sede de la bodega') }}</label>
                         <select wire:model="sedeId" class="mt-1 h-11 w-full rounded-lg border-line-input text-[14px] text-ink focus:border-primary focus:ring-primary">
                             <option value="">{{ __('Selecciona…') }}</option>
                             @foreach ($sedes as $sede)
@@ -42,7 +42,7 @@
                     </div>
 
                     <div>
-                        <label class="text-[13px] font-semibold text-ink-label">{{ __('Piso') }} *</label>
+                        <label class="text-[13px] font-semibold text-ink-label">{{ __('Piso') }}</label>
                         <select wire:model="pisoId" class="mt-1 h-11 w-full rounded-lg border-line-input text-[14px] text-ink focus:border-primary focus:ring-primary">
                             <option value="">{{ __('Selecciona…') }}</option>
                             @foreach ($pisos as $piso)
@@ -55,11 +55,11 @@
             @else
                 <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div class="sm:col-span-2">
-                        <x-ui.input name="nuevoResponsable" :label="__('Nuevo responsable') . ' *'" wire:model="nuevoResponsable" required />
+                        <x-ui.input name="nuevoResponsable" :label="__('Nuevo responsable')" wire:model="nuevoResponsable" required />
                     </div>
 
                     <div>
-                        <label class="text-[13px] font-semibold text-ink-label">{{ __('Sede') }} *</label>
+                        <label class="text-[13px] font-semibold text-ink-label">{{ __('Sede') }}</label>
                         <select wire:model="sedeId" class="mt-1 h-11 w-full rounded-lg border-line-input text-[14px] text-ink focus:border-primary focus:ring-primary">
                             <option value="">{{ __('Selecciona…') }}</option>
                             @foreach ($sedes as $sede)
@@ -70,7 +70,7 @@
                     </div>
 
                     <div>
-                        <label class="text-[13px] font-semibold text-ink-label">{{ __('Piso') }} *</label>
+                        <label class="text-[13px] font-semibold text-ink-label">{{ __('Piso') }}</label>
                         <select wire:model="pisoId" class="mt-1 h-11 w-full rounded-lg border-line-input text-[14px] text-ink focus:border-primary focus:ring-primary">
                             <option value="">{{ __('Selecciona…') }}</option>
                             @foreach ($pisos as $piso)
@@ -81,7 +81,7 @@
                     </div>
 
                     <div>
-                        <label class="text-[13px] font-semibold text-ink-label">{{ __('Dependencia') }} *</label>
+                        <label class="text-[13px] font-semibold text-ink-label">{{ __('Dependencia') }}</label>
                         <select wire:model="dependenciaId" class="mt-1 h-11 w-full rounded-lg border-line-input text-[14px] text-ink focus:border-primary focus:ring-primary">
                             <option value="">{{ __('Selecciona…') }}</option>
                             @foreach ($dependencias as $dependencia)
@@ -92,11 +92,11 @@
                     </div>
 
                     <div>
-                        <x-ui.input type="date" name="fecha" :label="__('Fecha') . ' *'" wire:model="fecha" required />
+                        <x-ui.input type="date" name="fecha" :label="__('Fecha')" wire:model="fecha" required />
                     </div>
 
                     <div class="sm:col-span-2">
-                        <label class="text-[13px] font-semibold text-ink-label">{{ __('Motivo') }} *</label>
+                        <label class="text-[13px] font-semibold text-ink-label">{{ __('Motivo') }}</label>
                         <textarea wire:model="motivo" rows="3" class="mt-1 w-full rounded-lg border-line-input text-[14px] text-ink focus:border-primary focus:ring-primary"></textarea>
                         <x-input-error :messages="$errors->get('motivo')" class="mt-1" />
                     </div>
@@ -117,6 +117,9 @@
                     <p class="text-[14px] font-semibold text-ink">{{ __('Formato de baja') }}</p>
                     <x-ui.badge variant="warning">{{ __('Pendiente de firma') }}</x-ui.badge>
                 </div>
+                <p class="mt-1 text-[13px] text-ink-muted">
+                    {{ __('Firma quien entrega: :nombre', ['nombre' => $asignacion?->persona?->nombre ?? __('Sin asignar')]) }}
+                </p>
                 <div class="mt-3 flex flex-wrap gap-2">
                     {{-- TODO: los formatos PDF prellenados los genera el bloque de dompdf. --}}
                     <x-ui.button variant="secondary" size="sm" type="button">{{ __('Descargar PDF prellenado') }}</x-ui.button>
@@ -129,6 +132,9 @@
                     <p class="text-[14px] font-semibold text-ink">{{ __('Formato de entrega') }}</p>
                     <x-ui.badge variant="warning">{{ __('Pendiente de firma') }}</x-ui.badge>
                 </div>
+                <p class="mt-1 text-[13px] text-ink-muted">
+                    {{ __('Firma quien recibe: :nombre', ['nombre' => $bodega ? __('Bodega (sin responsable)') : ($nuevoResponsable !== '' ? $nuevoResponsable : __('Sin definir'))]) }}
+                </p>
                 <div class="mt-3 flex flex-wrap gap-2">
                     <x-ui.button variant="secondary" size="sm" type="button">{{ __('Descargar PDF prellenado') }}</x-ui.button>
                     <x-ui.button variant="ghost" size="sm" type="button">{{ __('Subir documento firmado') }}</x-ui.button>

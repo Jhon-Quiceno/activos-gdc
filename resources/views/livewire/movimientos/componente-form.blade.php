@@ -21,7 +21,7 @@
                 <p class="section-title">{{ __('Componente que sale') }}</p>
 
                 <div class="mt-3">
-                    <label class="text-[13px] font-semibold text-ink-label">{{ __('Componente') }} *</label>
+                    <label class="text-[13px] font-semibold text-ink-label">{{ __('De la configuración actual') }}</label>
                     <select wire:model="componenteRetiradoId" class="mt-1 h-11 w-full rounded-lg border-line-input text-[14px] text-ink focus:border-primary focus:ring-primary">
                         <option value="">{{ __('Selecciona…') }}</option>
                         @foreach ($equipo->componentes as $componente)
@@ -36,7 +36,7 @@
                 </div>
 
                 <div class="mt-4">
-                    <label class="text-[13px] font-semibold text-ink-label">{{ __('Destino de lo retirado') }} *</label>
+                    <label class="text-[13px] font-semibold text-ink-label">{{ __('Destino de lo retirado') }}</label>
                     <select wire:model="destinoRetirado" class="mt-1 h-11 w-full rounded-lg border-line-input text-[14px] text-ink focus:border-primary focus:ring-primary">
                         <option value="">{{ __('Selecciona…') }}</option>
                         <option value="bodega">{{ __('Bodega') }}</option>
@@ -54,7 +54,7 @@
 
                 <div class="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div class="sm:col-span-2">
-                        <label class="text-[13px] font-semibold text-ink-label">{{ __('Tipo') }} *</label>
+                        <label class="text-[13px] font-semibold text-ink-label">{{ __('Tipo') }}</label>
                         <select wire:model="tipoComponenteId" class="mt-1 h-11 w-full rounded-lg border-line-input text-[14px] text-ink focus:border-primary focus:ring-primary">
                             <option value="">{{ __('Selecciona…') }}</option>
                             @foreach ($tiposComponente as $tipo)
@@ -75,7 +75,7 @@
     <x-ui.card>
         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
-                <label class="text-[13px] font-semibold text-ink-label">{{ __('Motivo') }} *</label>
+                <label class="text-[13px] font-semibold text-ink-label">{{ __('Motivo') }}</label>
                 <textarea wire:model="motivo" rows="3" class="mt-1 w-full rounded-lg border-line-input text-[14px] text-ink focus:border-primary focus:ring-primary"></textarea>
                 <x-input-error :messages="$errors->get('motivo')" class="mt-1" />
             </div>

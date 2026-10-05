@@ -14,7 +14,8 @@
     <x-ui.table>
         <x-slot name="filters">
             <div>
-                <select wire:model.live="tipo" class="h-11 w-48 rounded-lg border-line-input text-[14px] text-ink focus:border-primary focus:ring-primary">
+                <label class="text-[13px] font-semibold text-ink-label">{{ __('Tipo de evento') }}</label>
+                <select wire:model.live="tipo" class="mt-1 h-11 w-48 rounded-lg border-line-input text-[14px] text-ink focus:border-primary focus:ring-primary">
                     <option value="">{{ __('Todos los tipos') }}</option>
                     <option value="alta">{{ __('Alta') }}</option>
                     <option value="traslado_responsable">{{ __('Traslado') }}</option>
@@ -23,7 +24,8 @@
             </div>
 
             <div>
-                <select wire:model.live="antiguedad" class="h-11 w-48 rounded-lg border-line-input text-[14px] text-ink focus:border-primary focus:ring-primary">
+                <label class="text-[13px] font-semibold text-ink-label">{{ __('Antigüedad') }}</label>
+                <select wire:model.live="antiguedad" class="mt-1 h-11 w-48 rounded-lg border-line-input text-[14px] text-ink focus:border-primary focus:ring-primary">
                     <option value="">{{ __('Cualquier antigüedad') }}</option>
                     <option value="mas_30">{{ __('Más de 30 días') }}</option>
                 </select>

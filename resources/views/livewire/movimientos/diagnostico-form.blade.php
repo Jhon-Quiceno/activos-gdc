@@ -47,14 +47,18 @@
         </div>
 
         <div class="mt-4">
-            <label class="text-[13px] font-semibold text-ink-label">{{ __('Recomendaciones') }}</label>
+            <label class="text-[13px] font-semibold text-ink-label">{{ __('Recomendaciones / sugerencias del área de sistemas') }}</label>
             <textarea wire:model="recomendaciones" rows="3" class="mt-1 w-full rounded-lg border-line-input text-[14px] text-ink focus:border-primary focus:ring-primary"></textarea>
         </div>
 
         <div class="mt-4">
             <label class="text-[13px] font-semibold text-ink-label">{{ __('Evidencias') }}</label>
             {{-- TODO: la subida y el almacenamiento real de evidencias los resuelve el bloque de documentos. --}}
-            <input type="file" class="mt-1 block w-full text-[14px] text-ink-muted" disabled>
+            <label class="mt-1 flex cursor-not-allowed items-center justify-center gap-2 rounded-lg border border-dashed border-line-input px-4 py-4 text-[14px] text-ink-muted">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21V9M7 14l5-5 5 5"></path><path d="M4 3h16"></path></svg>
+                {{ __('Arrastra fotos o haz clic para subir') }}
+                <input type="file" class="hidden" disabled>
+            </label>
         </div>
 
         <label class="mt-4 flex items-center gap-2 text-[14px] text-ink">
