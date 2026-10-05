@@ -33,10 +33,21 @@ Consulta el detalle completo de cada uno en el [Análisis de requerimientos](./a
 
 - Ramas `feature/importacion-<tarea>` creadas siempre desde `develop`, nunca desde `main`.
 - Nunca crear ni tocar migraciones: si falta un campo (por ejemplo en `Importacion` o en la tabla de equivalencias), se pide a Jhon y lo agrega el mismo día.
-- Escribir solo en `app/Livewire/Importacion`, `resources/views/importacion` y `tests/Importacion`.
+- Escribir solo en `app/Livewire/Importacion`, `resources/views/livewire/importacion` y `tests/Feature/Importacion`.
 - El evento de alta histórico que genera la importación pasa por `HistorialService::registrar()`, igual que cualquier otro evento. Nunca se inserta un evento a mano.
 - Trabajar siempre con `docker compose exec -u sail laravel.test php artisan migrate:fresh --seed`.
 - Antes de abrir un PR, correr `docker compose exec -u sail laravel.test ./vendor/bin/pest` y que pase en verde.
+
+### Cómo crear tu rama (copiar y pegar)
+
+```bash
+git checkout develop
+git pull origin develop
+git checkout -b feature/importacion-equivalencias   # cambia por tu tarea
+# ...trabajar y commitear...
+git push -u origin feature/importacion-equivalencias
+# abrir el Pull Request en GitHub apuntando a develop, nunca a main
+```
 
 Para el detalle completo de estas reglas, ver [normas-de-trabajo.md](./normas-de-trabajo.md).
 

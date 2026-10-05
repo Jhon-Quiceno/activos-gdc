@@ -16,7 +16,8 @@ No se implementa funcionalidad completa de cada módulo todavía (eso lo hace ca
 - Paquetes: barryvdh/laravel-dompdf, maatwebsite/excel, simplesoftwareio/simple-qrcode, spatie/laravel-activitylog, pestphp/pest.
 - Paleta/tipografía extraídas del prototipo (navy #163A6B / #1E4D8C, fondo #F5F7FA, texto #1C2733, etc.; Source Sans 3 + Work Sans) — ver detalle en la tarea de diseño.
 - Logo institucional en `C:\Users\Jhon\Pictures\logoGob.svg`.
-- Gap conocido, no bloqueante: faltan los usuarios de GitHub de los 5 integrantes para invitarlos y crear GitHub Projects/issues — queda pendiente para cuando el usuario los tenga.
+- Resuelto: no hace falta invitar colaboradores por usuario de GitHub — el líder comparte el repo (público) directamente con el equipo. GitHub Projects/issues quedan fuera de este bootstrap.
+- Pendiente de confirmar con el usuario: si construyo también las 15 pantallas restantes del prototipo ahora (adelantaría trabajo que el plan de 2 semanas asigna a cada programador) o si el bootstrap se queda en layout/componentes/rutas vacías (ya hecho) para que cada quien construya la suya. Pregunté explícitamente, esperando respuesta.
 - Discrepancia resuelta: el usuario pidió "3 archivos más" de documentación por programador, pero el plan divide el trabajo entre 5 personas (Juan José, Anuar, Juan Camilo, Alex, Manuel) sin contar al líder. Se crean 5 archivos, uno por persona, no 3 — se lo señalo al usuario con evidencia del propio plan.
 
 ## Tareas

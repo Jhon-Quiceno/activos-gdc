@@ -35,10 +35,21 @@ Consulta el detalle completo en el [Análisis de requerimientos](./analisis-requ
 
 - Ramas `feature/reportes-<tarea>` creadas siempre desde `develop`, nunca desde `main`.
 - Nunca crear ni tocar migraciones: si falta un campo o un índice para optimizar un filtro, se pide a Jhon y lo agrega el mismo día.
-- Escribir solo en `app/Livewire/Reportes`, `resources/views/reportes` y `tests/Reportes`.
+- Escribir solo en `app/Livewire/Reportes`, `resources/views/livewire/reportes` y `tests/Feature/Reportes`.
 - Los reportes son de solo lectura, pero si alguna acción del módulo llegara a generar un evento sobre un equipo, debe pasar por `HistorialService::registrar()`. Nunca se inserta un evento a mano.
 - Trabajar siempre con `docker compose exec -u sail laravel.test php artisan migrate:fresh --seed`.
 - Antes de abrir un PR, correr `docker compose exec -u sail laravel.test ./vendor/bin/pest` y que pase en verde.
+
+### Cómo crear tu rama (copiar y pegar)
+
+```bash
+git checkout develop
+git pull origin develop
+git checkout -b feature/reportes-base   # cambia "base" por tu tarea
+# ...trabajar y commitear...
+git push -u origin feature/reportes-base
+# abrir el Pull Request en GitHub apuntando a develop, nunca a main
+```
 
 Para el detalle completo de estas reglas, ver [normas-de-trabajo.md](./normas-de-trabajo.md).
 

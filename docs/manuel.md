@@ -32,12 +32,29 @@ Consulta el detalle completo en el [Análisis de requerimientos](./analisis-requ
 
 ## Recordatorio de las normas de trabajo
 
-- Ramas `feature/admin-<tarea>` o `feature/qr-<tarea>` creadas siempre desde `develop`, nunca desde `main`.
+- Ramas `feature/admin-<tarea>` (usuarios y listas) o `feature/qr-<tarea>` (códigos QR y etiquetas) creadas siempre desde `develop`, nunca desde `main`. Son dos bloques, así que usa el prefijo que corresponda a la tarea.
 - Nunca crear ni tocar migraciones: si falta un campo (por ejemplo en `Usuario`, `EtiquetaQR` o `Auditoria`), se pide a Jhon y lo agrega el mismo día.
-- Escribir solo en `app/Livewire/Admin` (y/o `app/Livewire/Qr`), `resources/views/admin` (y/o `resources/views/qr`) y `tests/Admin` (y/o `tests/Qr`).
+- Escribir solo en `app/Livewire/Admin` y `resources/views/livewire/admin` y `tests/Feature/Admin` para usuarios/listas; en `app/Livewire/Qr`, `resources/views/livewire/qr` y `tests/Feature/Qr` para códigos QR y etiquetas.
 - Si alguna acción de este bloque genera un evento sobre un equipo, debe pasar por `HistorialService::registrar()`. Nunca se inserta un evento a mano.
 - Trabajar siempre con `docker compose exec -u sail laravel.test php artisan migrate:fresh --seed`.
 - Antes de abrir un PR, correr `docker compose exec -u sail laravel.test ./vendor/bin/pest` y que pase en verde.
+
+### Cómo crear tu rama (copiar y pegar)
+
+```bash
+git checkout develop
+git pull origin develop
+
+# Para usuarios y listas administrables:
+git checkout -b feature/admin-usuarios   # cambia "usuarios" por tu tarea
+
+# Para códigos QR y etiquetas (en otra tarea, otra rama):
+git checkout -b feature/qr-generacion    # cambia "generacion" por tu tarea
+
+# ...trabajar y commitear...
+git push -u origin <nombre-de-tu-rama>
+# abrir el Pull Request en GitHub apuntando a develop, nunca a main
+```
 
 Para el detalle completo de estas reglas, ver [normas-de-trabajo.md](./normas-de-trabajo.md).
 

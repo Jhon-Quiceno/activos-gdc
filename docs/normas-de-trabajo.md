@@ -11,10 +11,44 @@ Cinco personas tocando el mismo repositorio en paralelo solo funciona si cada un
 
 ## 1. Ramas
 
-- Toda tarea se trabaja en una rama `feature/<bloque>-<tarea>` (por ejemplo, `feature/nucleo1-busqueda-equipos` o `feature/qr-etiqueta-individual`).
+- Toda tarea se trabaja en una rama `feature/<bloque>-<tarea>` (por ejemplo, `feature/equipos-busqueda` o `feature/qr-etiqueta-individual`).
 - Esa rama se crea **siempre desde `develop`**, nunca desde `main`. `main` solo recibe código ya integrado y probado.
 - Los Pull Request deben ser **pequeños**: uno por tarea, no uno gigante al final de la semana.
 - Se espera **al menos un PR cada dos días** por persona. Si una tarea es más grande, se parte en PR más chicos en vez de acumular cambios.
+
+### Prefijo de rama por bloque
+
+| Persona | Bloque | Prefijo de rama |
+|---|---|---|
+| Juan José | Equipos y hoja de vida | `feature/equipos-<tarea>` |
+| Anuar | Movimientos y formatos | `feature/movimientos-<tarea>` |
+| Juan Camilo | Carga del inventario | `feature/importacion-<tarea>` |
+| Alex | Reportes | `feature/reportes-<tarea>` |
+| Manuel | Administración | `feature/admin-<tarea>` |
+| Manuel | Etiquetas QR | `feature/qr-<tarea>` |
+
+### Flujo paso a paso (copiar y pegar, cambiando el nombre de la rama)
+
+```bash
+# 1. Pararse siempre sobre develop actualizado, nunca sobre main
+git checkout develop
+git pull origin develop
+
+# 2. Crear la rama de la tarea DESDE develop
+git checkout -b feature/equipos-busqueda
+
+# 3. Trabajar, commitear seguido con mensajes claros
+git add .
+git commit -m "feat: busqueda de equipos por serial y codigo de activo"
+
+# 4. Subir la rama (la primera vez con -u, después alcanza con "git push")
+git push -u origin feature/equipos-busqueda
+
+# 5. Abrir el Pull Request en GitHub apuntando a develop (NUNCA a main)
+#    y esperar la revisión de Jhon antes de hacer merge.
+```
+
+Si la tarea tarda más de dos días, no se acumula todo en una sola rama: se abre un PR más chico con lo que ya está listo y se continúa en una rama nueva para lo que falta.
 
 ## 2. Migraciones
 
@@ -24,11 +58,18 @@ Cinco personas tocando el mismo repositorio en paralelo solo funciona si cada un
 
 ## 3. Carpetas por bloque
 
-Cada bloque (persona) escribe exclusivamente en sus propias carpetas:
+Cada bloque (persona) escribe exclusivamente en sus propias carpetas. Estos son los nombres reales ya creados en el proyecto (no son un ejemplo, son las carpetas que existen hoy):
 
-- `app/Livewire/<Bloque>`
-- `resources/views/<bloque>`
-- `tests/<Bloque>`
+| Bloque | Carpeta Livewire | Carpeta de vistas | Carpeta de pruebas | Ruta |
+|---|---|---|---|---|
+| Equipos (Juan José) | `app/Livewire/Equipos` | `resources/views/livewire/equipos` | `tests/Feature/Equipos` | `/equipos` |
+| Movimientos (Anuar) | `app/Livewire/Movimientos` | `resources/views/livewire/movimientos` | `tests/Feature/Movimientos` | `/movimientos` |
+| Importación (Juan Camilo) | `app/Livewire/Importacion` | `resources/views/livewire/importacion` | `tests/Feature/Importacion` | `/importacion` |
+| Reportes (Alex) | `app/Livewire/Reportes` | `resources/views/livewire/reportes` | `tests/Feature/Reportes` | `/reportes` |
+| Administración (Manuel) | `app/Livewire/Admin` | `resources/views/livewire/admin` | `tests/Feature/Admin` | `/admin` |
+| Etiquetas QR (Manuel) | `app/Livewire/Qr` | `resources/views/livewire/qr` | `tests/Feature/Qr` | `/qr` |
+
+Cada carpeta de pruebas va dentro de `tests/Feature/` (no suelta en `tests/`) porque así está configurado `tests/Pest.php` para que los tests tomen automáticamente la clase base correcta.
 
 Lo que es compartido entre bloques —componentes Blade reutilizables (tabla, formulario, tarjeta, modal, badges) y `HistorialService`— **lo cambia únicamente Jhon**. Si un bloque necesita un ajuste en una pieza compartida, se solicita igual que una migración: se avisa y el líder lo resuelve el mismo día.
 

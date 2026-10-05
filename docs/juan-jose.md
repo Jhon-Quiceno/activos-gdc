@@ -32,12 +32,23 @@ Consulta el detalle completo de cada uno en el [Análisis de requerimientos](./a
 
 ## Recordatorio de las normas de trabajo
 
-- Ramas `feature/nucleo1-<tarea>` creadas siempre desde `develop`, nunca desde `main`.
+- Ramas `feature/equipos-<tarea>` creadas siempre desde `develop`, nunca desde `main`.
 - Nunca crear ni tocar migraciones: si falta un campo, se pide a Jhon y lo agrega el mismo día.
-- Escribir solo en `app/Livewire/Nucleo1` (o el nombre de carpeta que defina el líder para este bloque), `resources/views/equipos` y `tests/Nucleo1`.
+- Escribir solo en `app/Livewire/Equipos`, `resources/views/livewire/equipos` y `tests/Feature/Equipos`.
 - Todo cambio sobre un equipo pasa por `HistorialService::registrar()`. Nunca se inserta un evento a mano.
 - Trabajar siempre con `docker compose exec -u sail laravel.test php artisan migrate:fresh --seed`.
 - Antes de abrir un PR, correr `docker compose exec -u sail laravel.test ./vendor/bin/pest` y que pase en verde.
+
+### Cómo crear tu rama (copiar y pegar)
+
+```bash
+git checkout develop
+git pull origin develop
+git checkout -b feature/equipos-busqueda   # cambia "busqueda" por tu tarea
+# ...trabajar y commitear...
+git push -u origin feature/equipos-busqueda
+# abrir el Pull Request en GitHub apuntando a develop, nunca a main
+```
 
 Para el detalle completo de estas reglas, ver [normas-de-trabajo.md](./normas-de-trabajo.md).
 
