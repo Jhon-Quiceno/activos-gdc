@@ -1,17 +1,22 @@
 @props(['title' => null])
 
 @php
+    // Exactamente los ítems del prototipo Claude Design (Inicio.dc.html / Equipos.dc.html):
+    // Inicio, Equipos, Traslados, Bajas, Importar inventario, Reportes — separador
+    // "Administración" — Usuarios, Listas. El prototipo no tiene "Movimientos" ni
+    // "Etiquetas QR" como ítems de menú (el QR se abre escaneando, no desde el sidebar).
     $navItems = [
         ['label' => 'Inicio', 'route' => 'dashboard', 'pattern' => 'dashboard', 'icon' => 'inicio'],
         ['label' => 'Equipos', 'route' => 'equipos.index', 'pattern' => 'equipos.*', 'icon' => 'equipos'],
-        ['label' => 'Movimientos', 'route' => 'movimientos.index', 'pattern' => 'movimientos.*', 'icon' => 'movimientos'],
-        ['label' => 'Importación', 'route' => 'importacion.index', 'pattern' => 'importacion.*', 'icon' => 'importacion'],
+        ['label' => 'Traslados', 'route' => 'movimientos.traslados.index', 'pattern' => 'movimientos.traslado*', 'icon' => 'movimientos'],
+        ['label' => 'Bajas', 'route' => 'movimientos.bajas.index', 'pattern' => 'movimientos.baja*', 'icon' => 'bajas'],
+        ['label' => 'Importar inventario', 'route' => 'importacion.index', 'pattern' => 'importacion.*', 'icon' => 'importacion'],
         ['label' => 'Reportes', 'route' => 'reportes.index', 'pattern' => 'reportes.*', 'icon' => 'reportes'],
     ];
 
     $adminItems = [
-        ['label' => 'Administración', 'route' => 'admin.index', 'pattern' => 'admin.*', 'icon' => 'admin'],
-        ['label' => 'Etiquetas QR', 'route' => 'qr.index', 'pattern' => 'qr.*', 'icon' => 'qr'],
+        ['label' => 'Usuarios', 'route' => 'admin.usuarios', 'pattern' => 'admin.usuarios', 'icon' => 'admin'],
+        ['label' => 'Listas', 'route' => 'admin.listas', 'pattern' => 'admin.listas', 'icon' => 'listas'],
     ];
 
     // RF-30/RN-05: eventos cuyo movimiento aún no tiene los documentos firmados.
@@ -115,7 +120,7 @@
 
                 <div class="ml-auto flex shrink-0 items-center gap-4">
                     <a
-                        href="{{ route('movimientos.index') }}"
+                        href="{{ route('movimientos.pendientes') }}"
                         wire:navigate
                         class="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-line text-ink transition hover:bg-app-bg"
                         aria-label="{{ __('Pendientes de firma: :count', ['count' => $pendientesFirma]) }}"

@@ -12,6 +12,8 @@
         'movimientos' => '<path d="M7 7h12l-3-3M17 17H5l3 3"/>',
         'importacion' => '<path d="M12 21V9M7 14l5-5 5 5"/><path d="M4 3h16"/>',
         'reportes' => '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',
+        'bajas' => '<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>',
+        'listas' => '<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>',
         'admin' => '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.5 3.4-5.5 6.5-5.5s5.7 2 6.5 5.5"/><path d="M16 4.5a3.5 3.5 0 010 7M18 14.5c2 .7 3.2 2.5 3.5 5.5"/>',
         // No existe en el prototipo (el QR ahí se abre escaneando, no desde el menú);
         // ícono nuevo con el mismo lenguaje visual (trazo, esquinas de un código QR).

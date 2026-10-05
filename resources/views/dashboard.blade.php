@@ -32,6 +32,93 @@
             'description' => $evento->descripcion,
             'author' => $evento->usuario?->name,
         ]);
+
+    // --- Calidad del inventario (RF-37) ---
+    $sinCodigoActivo = \App\Models\Equipo::whereNull('codigo_activo')->count();
+
+    $sinResponsable = \App\Models\Equipo::whereDoesntHave('asignacionActual', function ($q) {
+        $q->whereNotNull('persona_id');
+    })->count();
+
+    $sinCedula = \App\Models\Equipo::whereHas('asignacionActual.persona', function ($q) {
+        $q->whereNull('cedula');
+    })->count();
+
+    $codigosRepetidos = \App\Models\Equipo::whereNotNull('codigo_activo')
+        ->whereIn('codigo_activo', function ($q) {
+            $q->select('codigo_activo')->from('equipos')
+                ->whereNotNull('codigo_activo')
+                ->groupBy('codigo_activo')
+                ->havingRaw('COUNT(*) > 1');
+        })->count();
+
+    $pctDe = function (int $n) use ($totalEquipos) {
+        return $totalEquipos > 0 ? (int) round(($n / $totalEquipos) * 100) : 0;
+    };
+
+    $pctPendientes = $pctDe($pendientesVerificar);
+    $pctSinCodigo = $pctDe($sinCodigoActivo);
+    $pctSinResponsable = $pctDe($sinResponsable);
+    $pctSinCedula = $pctDe($sinCedula);
+    $pctRepetidos = $pctDe($codigosRepetidos);
+
+    $calidadInventario = [
+        ['label' => __('Pendientes de verificar'), 'value' => $pendientesVerificar . ' (' . $pctPendientes . '%)', 'percent' => $pctPendientes, 'color' => 'bg-warning-text'],
+        ['label' => __('Sin código de activo'), 'value' => $sinCodigoActivo . ' (' . $pctSinCodigo . '%)', 'percent' => $pctSinCodigo, 'color' => 'bg-primary'],
+        ['label' => __('Sin responsable'), 'value' => $sinResponsable . ' (' . $pctSinResponsable . '%)', 'percent' => $pctSinResponsable, 'color' => 'bg-primary'],
+        ['label' => __('Sin cédula del responsable'), 'value' => $sinCedula . ' (' . $pctSinCedula . '%)', 'percent' => $pctSinCedula, 'color' => 'bg-primary'],
+        ['label' => __('Códigos de activo repetidos'), 'value' => $codigosRepetidos . ' (' . $pctRepetidos . '%)', 'percent' => $pctRepetidos, 'color' => 'bg-danger-hover'],
+    ];
+
+    // --- Pendientes de firma (RF-30/RF-31) ---
+    $faltaPorTipo = [
+        'baja' => __('Formato de baja'),
+        'traslado_responsable' => __('Formato de entrega'),
+        'alta' => __('Formato de entrega'),
+    ];
+
+    $pendientesFirmaLista = \App\Models\Evento::with('equipo')
+        ->where('estado_firma', 'pendiente_de_firma')
+        ->latest('fecha')
+        ->take(3)
+        ->get();
+
+    // --- Equipos por tipo ---
+    $equiposPorTipo = \App\Models\Equipo::query()
+        ->select('tipo_equipo_id', \Illuminate\Support\Facades\DB::raw('count(*) as total'))
+        ->groupBy('tipo_equipo_id')
+        ->with('tipoEquipo:id,nombre')
+        ->orderByDesc('total')
+        ->take(7)
+        ->get();
+
+    $maxPorTipo = $equiposPorTipo->max('total') ?: 1;
+
+    $equiposPorTipo = $equiposPorTipo->map(fn ($fila) => [
+        'label' => $fila->tipoEquipo?->nombre ?? __('Sin tipo'),
+        'value' => $fila->total,
+        'percent' => (int) round(($fila->total / $maxPorTipo) * 100),
+        'color' => 'bg-primary',
+    ]);
+
+    // --- Equipos por sede (vía la asignación abierta) ---
+    $equiposPorSede = \Illuminate\Support\Facades\DB::table('asignaciones')
+        ->join('sedes', 'sedes.id', '=', 'asignaciones.sede_id')
+        ->whereNull('asignaciones.fecha_fin')
+        ->select('sedes.nombre', \Illuminate\Support\Facades\DB::raw('count(*) as total'))
+        ->groupBy('sedes.nombre')
+        ->orderByDesc('total')
+        ->take(7)
+        ->get();
+
+    $maxPorSede = $equiposPorSede->max('total') ?: 1;
+
+    $equiposPorSede = $equiposPorSede->map(fn ($fila) => [
+        'label' => $fila->nombre,
+        'value' => $fila->total,
+        'percent' => (int) round(($fila->total / $maxPorSede) * 100),
+        'color' => 'bg-success',
+    ]);
 @endphp
 
 <x-layouts.app-shell title="Inicio">
@@ -71,6 +158,67 @@
                     </svg>
                 </x-slot>
             </x-ui.kpi-card>
+        </div>
+
+        <div class="grid grid-cols-1 gap-4 nav:grid-cols-2">
+            <x-ui.card>
+                <p class="section-title">{{ __('Calidad del inventario') }}</p>
+                <div class="mt-4">
+                    <x-ui.bar-list variant="stacked" :items="$calidadInventario" />
+                </div>
+            </x-ui.card>
+
+            <x-ui.card :padding="false">
+                <div class="flex items-center justify-between gap-4 px-5 py-4">
+                    <p class="section-title">{{ __('Pendientes de firma') }}</p>
+                    <a href="{{ route('movimientos.pendientes') }}" wire:navigate class="text-[14px] font-semibold text-primary hover:text-primary-hover">
+                        {{ __('Ver todos') }}
+                    </a>
+                </div>
+
+                @if($pendientesFirmaLista->isEmpty())
+                    <p class="px-5 pb-5 text-[14px] text-ink-muted">{{ __('No hay movimientos pendientes de firma.') }}</p>
+                @else
+                    <x-ui.table>
+                        <thead>
+                            <tr>
+                                <th>{{ __('Evento') }}</th>
+                                <th>{{ __('Equipo') }}</th>
+                                <th>{{ __('Falta') }}</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($pendientesFirmaLista as $evento)
+                                <tr>
+                                    <td>{{ $tipoEventoLabels[$evento->tipo] ?? $evento->tipo }}</td>
+                                    <td class="font-mono">{{ $evento->equipo?->codigo_activo ?? $evento->equipo?->serial }}</td>
+                                    <td>{{ $faltaPorTipo[$evento->tipo] ?? __('Documento firmado') }}</td>
+                                    <td class="text-right">
+                                        <x-ui.button :href="route('movimientos.pendientes')" size="sm" variant="secondary">{{ __('Subir') }}</x-ui.button>
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </x-ui.table>
+                @endif
+            </x-ui.card>
+        </div>
+
+        <div class="grid grid-cols-1 gap-4 nav:grid-cols-2">
+            <x-ui.card>
+                <p class="section-title">{{ __('Equipos por tipo') }}</p>
+                <div class="mt-4">
+                    <x-ui.bar-list :items="$equiposPorTipo" />
+                </div>
+            </x-ui.card>
+
+            <x-ui.card>
+                <p class="section-title">{{ __('Equipos por sede') }}</p>
+                <div class="mt-4">
+                    <x-ui.bar-list label-width="170px" :items="$equiposPorSede" />
+                </div>
+            </x-ui.card>
         </div>
 
         <x-ui.card :padding="false">
