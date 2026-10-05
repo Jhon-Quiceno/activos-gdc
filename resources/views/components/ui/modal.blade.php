@@ -18,7 +18,19 @@
 <x-modal :name="$name" :max-width="$maxWidth" {{ $attributes }}>
     <div class="p-6">
         @if ($title)
-            <h3 class="mb-4 font-display text-lg font-semibold text-ink">{{ $title }}</h3>
+            <div class="mb-4 flex items-center justify-between gap-4">
+                <h3 class="font-display text-lg font-semibold text-ink">{{ $title }}</h3>
+                <button
+                    type="button"
+                    x-on:click="$dispatch('close-modal', '{{ $name }}')"
+                    class="shrink-0 rounded-lg p-1 text-ink-muted transition-colors duration-150 hover:bg-app-bg hover:text-ink"
+                    aria-label="{{ __('Cerrar') }}"
+                >
+                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
         @endif
 
         <div class="text-sm text-ink">

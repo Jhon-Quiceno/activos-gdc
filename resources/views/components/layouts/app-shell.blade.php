@@ -55,14 +55,19 @@
             <nav class="sidebar-scroll flex-1 overflow-y-auto px-3 pb-4">
                 <ul class="space-y-1">
                     @foreach ($navItems as $item)
+                        @php $isActive = request()->routeIs($item['pattern']); @endphp
                         <li>
                             <a
                                 href="{{ route($item['route']) }}"
                                 wire:navigate
-                                class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold transition
-                                    {{ request()->routeIs($item['pattern']) ? 'bg-navy-active text-white' : 'text-white/80 hover:bg-white/10 hover:text-white' }}"
+                                class="group relative flex items-center gap-3 overflow-hidden rounded-lg px-3 py-2.5 text-sm font-semibold transition-colors duration-150
+                                    {{ $isActive ? 'bg-navy-active text-white' : 'text-white/80 hover:bg-white/10 hover:text-white' }}"
                             >
-                                <span class="h-1.5 w-1.5 shrink-0 rounded-full {{ request()->routeIs($item['pattern']) ? 'bg-white' : 'bg-white/40' }}"></span>
+                                <span
+                                    class="absolute inset-y-1 left-0 w-1 rounded-r-full bg-white transition-transform duration-200 ease-out
+                                        {{ $isActive ? 'scale-y-100' : 'scale-y-0' }}"
+                                ></span>
+                                <span class="h-1.5 w-1.5 shrink-0 rounded-full transition-colors duration-150 {{ $isActive ? 'bg-white' : 'bg-white/40 group-hover:bg-white/70' }}"></span>
                                 {{ $item['label'] }}
                             </a>
                         </li>
@@ -97,7 +102,12 @@
                 </div>
             </header>
 
-            <main class="flex-1 bg-app-bg p-4 nav:p-6">
+            <main
+                x-data="{ shown: false }"
+                x-init="requestAnimationFrame(() => shown = true)"
+                :class="shown ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-1'"
+                class="flex-1 bg-app-bg p-4 transition-all duration-300 ease-out nav:p-6"
+            >
                 {{ $slot }}
             </main>
         </div>

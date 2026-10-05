@@ -17,7 +17,7 @@
 --}}
 @props(['filters' => null, 'pagination' => null])
 
-<div {{ $attributes->merge(['class' => 'overflow-hidden rounded-lg border border-line bg-white']) }}>
+<div {{ $attributes->merge(['class' => 'overflow-hidden rounded-lg border border-line bg-white shadow-sm']) }}>
     @isset($filters)
         <div class="flex flex-wrap items-center gap-3 border-b border-line px-5 py-4">
             {{ $filters }}
@@ -27,7 +27,7 @@
     <div class="overflow-x-auto">
         <table class="min-w-full divide-y divide-line text-sm
             [&_th]:bg-[#F8FAFC] [&_th]:px-4 [&_th]:py-3 [&_th]:text-left [&_th]:text-xs [&_th]:font-semibold [&_th]:uppercase [&_th]:tracking-wide [&_th]:text-ink-muted
-            [&_td]:px-4 [&_td]:py-3 [&_td]:text-ink [&_tbody_tr]:border-t [&_tbody_tr]:border-line [&_tbody_tr]:transition [&_tbody_tr:hover]:bg-app-bg">
+            [&_td]:px-4 [&_td]:py-3 [&_td]:text-ink [&_tbody_tr]:border-t [&_tbody_tr]:border-line [&_tbody_tr]:transition-colors [&_tbody_tr]:duration-150 [&_tbody_tr:hover]:bg-app-bg">
             {{ $slot }}
         </table>
     </div>

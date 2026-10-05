@@ -10,10 +10,10 @@
 
 <div {{ $attributes->merge(['class' => '']) }}>
     @forelse ($events as $event)
-        <div class="timeline-item">
-            <span class="timeline-dot"></span>
+        <div class="timeline-item group">
+            <span class="timeline-dot transition-transform duration-200 group-hover:scale-125"></span>
             <p class="text-xs font-semibold text-ink-muted">{{ data_get($event, 'date') }}</p>
-            <p class="font-display font-semibold text-ink">{{ data_get($event, 'type') }}</p>
+            <p class="font-display font-semibold text-ink transition-colors duration-150 group-hover:text-primary">{{ data_get($event, 'type') }}</p>
 
             @if (data_get($event, 'description'))
                 <p class="mt-1 text-sm text-ink-muted">{{ data_get($event, 'description') }}</p>
