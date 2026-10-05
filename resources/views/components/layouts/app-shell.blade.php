@@ -46,7 +46,10 @@
             :class="sidebarOpen && '!translate-x-0'"
         >
             <div class="flex items-center gap-3 px-5 py-6">
-                <img src="{{ asset('images/logoGob.svg') }}" alt="Gobernación de Córdoba" class="h-10 w-auto">
+                <div class="rounded-lg bg-white p-2">
+                    <img src="{{ asset('images/logoGob.svg') }}" alt="Gobernación de Córdoba" class="h-9 w-auto">
+                </div>
+                <span class="font-display text-sm font-semibold leading-tight text-white">Hoja de Vida<br>de Equipos</span>
             </div>
 
             <nav class="sidebar-scroll flex-1 overflow-y-auto px-3 pb-4">
