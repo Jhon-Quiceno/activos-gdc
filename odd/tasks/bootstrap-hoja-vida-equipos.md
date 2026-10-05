@@ -21,8 +21,8 @@ No se implementa funcionalidad completa de cada módulo todavía (eso lo hace ca
 
 ## Tareas
 
-- [ ] T1 — Instalar Laravel 12 + Sail (MySQL, Mailpit) + Breeze (stack Livewire) en la raíz del proyecto; registro público desactivado; `.env` de ejemplo. Ruta: inline/delegada (bash de instalación, sin research).
-- [ ] T2 — Git init, primer commit, crear repo público `activos-gdc` en GitHub (Jhon-Quiceno) vía `gh`, push a `main`, crear y pushear `develop`.
+- [x] T1 — Instalar Laravel + Sail (MySQL, Mailpit) + Breeze (stack Livewire) en la raíz del proyecto; registro público desactivado; pnpm como package manager (cambio de última hora pedido por el usuario); Pest instalado y en verde (24 tests). NOTA: el instalador trajo **Laravel 13.34.0** (versión más nueva que mi recomendación inicial de Laravel 12 — corrijo: mi conocimiento estaba desactualizado, Laravel 13 ya es la última estable a oct-2026 y es la que quedó instalada). Docker Desktop no estaba corriendo, hubo que iniciarlo; `vendor/bin/sail` no soporta Git Bash/MinGW nativo en Windows (solo WSL2/macOS/Linux) así que se documentará usar `docker compose` directo en el README.
+- [x] T2 — Git init, primer commit, repo público `activos-gdc` creado en GitHub (Jhon-Quiceno) vía `gh`, push a `main`, rama `develop` creada y pusheada, ambas ramas protegidas (PR obligatorio, sin force-push, sin delete). Evidencia: https://github.com/Jhon-Quiceno/activos-gdc
 - [ ] T3 — Migraciones y modelos de las ~19 entidades del análisis (sección 8): Equipo, TipoEquipo, Marca, ConfiguracionComputo, Componente, TipoComponente, PuestoTrabajo, Persona, Sede, Piso, Dependencia, Asignacion, Evento, CambioComponente, Diagnostico, Documento, EtiquetaQR, Usuario (extiende el de Breeze), Auditoria, Importacion. Incluir UUID interno del QR en Equipo. Ruta: delegada (escritor, multi-archivo).
 - [ ] T4 — Seeders (11 sedes, pisos 1–8, 12 tipos de equipo con sus campos, marcas, sistemas operativos, motivos de baja) y factories (~100 equipos falsos con responsables y eventos). Ruta: delegada.
 - [ ] T5 — `HistorialService::registrar` con firma definida y comentada. Ruta: inline (un archivo, ya entendido).
