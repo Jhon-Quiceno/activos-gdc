@@ -124,6 +124,23 @@ docker compose exec -u sail laravel.test ./vendor/bin/pest
 
 Un PR con pruebas rotas no se revisa; corrígelo antes de pedir revisión.
 
+## 9. Idioma: commits, comentarios y Pull Requests
+
+Todo el texto que escribimos alrededor del código va **en español**: mensajes de commit, descripciones y revisiones de Pull Request, comentarios en el código, y la documentación de `docs/`. La única excepción es el prefijo del [Conventional Commit](https://www.conventionalcommits.org/es/), que va siempre en inglés porque es el que entienden las herramientas (changelog, linters de commits, etc.).
+
+- **Commits:** `<prefijo en inglés>: <descripción en español>`.
+  - `feat: agregar busqueda de equipos por serial y codigo de activo`
+  - `fix: corregir el boton Dar de baja que se partia en dos lineas`
+  - `docs: actualizar el README con los usuarios de prueba`
+  - `refactor: extraer el calculo de dias pendientes a un metodo`
+  - `test: cubrir la inmutabilidad del evento de baja`
+  - Prefijos válidos: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`, `style`, `perf`.
+- **Pull Requests:** título y descripción en español (incluido el plan de pruebas).
+- **Comentarios en el código:** en español, y solo cuando explican un *por qué* no obvio (una regla de negocio, una decisión rara, un bug que se evitó) — no para describir qué hace el código línea por línea.
+- **Identificadores del código** (nombres de clases, métodos, variables, rutas, vistas) siguen **en inglés**, como ya está en todo el proyecto (`Equipo`, `HistorialService`, `movimientos.pendientes`); esto no cambia, solo aplica al texto alrededor del código.
+
+Lo que el usuario final ve (textos de pantalla, mensajes de validación, correos) ya está en español por el idioma de la app (`laravel-lang`, RNF-02) y no se ve afectado por esta norma — esto es sobre lo que escribimos nosotros como equipo, no sobre la UI.
+
 ---
 
 **Ver también:** [Análisis de requerimientos](./analisis-requerimientos.md) · [Plan de dos semanas](./plan-2-semanas.md)
