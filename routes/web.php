@@ -12,4 +12,38 @@ Route::view('profile', 'profile')
     ->middleware(['auth'])
     ->name('profile');
 
+Route::middleware(['auth'])->group(function () {
+    // --- Equipos (Juan José) ---
+    Route::view('/equipos', 'livewire.equipos.page')->name('equipos.index');
+    Route::view('/equipos/crear', 'livewire.equipos.crear')->name('equipos.crear');
+    Route::view('/equipos/{equipo}', 'livewire.equipos.show')->name('equipos.show');
+
+    // --- Movimientos (Anuar) ---
+    Route::view('/movimientos', 'livewire.movimientos.page')->name('movimientos.index');
+    Route::view('/movimientos/traslados', 'livewire.movimientos.traslados-index')->name('movimientos.traslados.index');
+    Route::view('/movimientos/traslados/{equipo}', 'livewire.movimientos.traslado')->name('movimientos.traslado');
+    Route::view('/movimientos/bajas', 'livewire.movimientos.bajas-index')->name('movimientos.bajas.index');
+    Route::view('/movimientos/bajas/{equipo}', 'livewire.movimientos.baja')->name('movimientos.baja');
+    Route::view('/movimientos/diagnostico/{equipo}', 'livewire.movimientos.diagnostico')->name('movimientos.diagnostico');
+    Route::view('/movimientos/componente/{equipo}', 'livewire.movimientos.componente')->name('movimientos.componente');
+    Route::view('/movimientos/pendientes', 'livewire.movimientos.pendientes')->name('movimientos.pendientes');
+    Route::view('/movimientos/{evento}/formato-entrega', 'livewire.movimientos.formato-entrega')->name('movimientos.formato-entrega');
+    Route::view('/movimientos/{evento}/formato-baja', 'livewire.movimientos.formato-baja')->name('movimientos.formato-baja');
+
+    // --- Importación (Juan Camilo) ---
+    Route::view('/importacion', 'livewire.importacion.page')->name('importacion.index');
+
+    // --- Reportes (Alex) ---
+    Route::view('/reportes', 'livewire.reportes.page')->name('reportes.index');
+
+    // --- Administración (Manuel) ---
+    Route::view('/admin', 'livewire.admin.page')->name('admin.index');
+    Route::view('/admin/usuarios', 'livewire.admin.usuarios')->name('admin.usuarios');
+    Route::view('/admin/listas', 'livewire.admin.listas')->name('admin.listas');
+
+    // --- Etiquetas QR (Manuel) ---
+    Route::view('/qr', 'livewire.qr.page')->name('qr.index');
+    Route::view('/qr/verificar', 'livewire.qr.verificar')->name('qr.verificar');
+});
+
 require __DIR__.'/auth.php';

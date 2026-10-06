@@ -1,6 +1,8 @@
 *.log
 .DS_Store
 .claude/
+.atl/
+.codegraph/
 .env
 .env.backup
 .env.production
