@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Str;
+use InvalidArgumentException;
 
 class Equipo extends Model
 {
@@ -51,7 +52,41 @@ class Equipo extends Model
             if (empty($equipo->qr_uuid)) {
                 $equipo->qr_uuid = (string) Str::uuid();
             }
+
+            self::validarJustificacionCodigoActivo($equipo);
         });
+
+        static::updating(function (Equipo $equipo): void {
+            // Revalidar también si solo cambia la justificación (no el código): si
+            // alguien la borra dejando un código duplicado, tiene que fallar igual.
+            if ($equipo->isDirty('codigo_activo') || $equipo->isDirty('codigo_activo_justificacion')) {
+                self::validarJustificacionCodigoActivo($equipo);
+            }
+        });
+    }
+
+    /**
+     * RN-03: el código de activo puede repetirse (ej. un All in One y su pantalla
+     * integrada comparten código), pero el sistema exige justificación cuando eso
+     * pasa. Se valida acá, a nivel de modelo, para que valga sin importar desde qué
+     * formulario o importación se cree/edite el equipo (mismo criterio que la
+     * inmutabilidad de Evento).
+     */
+    protected static function validarJustificacionCodigoActivo(Equipo $equipo): void
+    {
+        if (empty($equipo->codigo_activo)) {
+            return;
+        }
+
+        $existeEnOtroEquipo = static::where('codigo_activo', $equipo->codigo_activo)
+            ->when($equipo->exists, fn ($query) => $query->whereKeyNot($equipo->getKey()))
+            ->exists();
+
+        if ($existeEnOtroEquipo && trim((string) $equipo->codigo_activo_justificacion) === '') {
+            throw new InvalidArgumentException(
+                'El código de activo ya existe en otro equipo (RN-03): hace falta indicar codigo_activo_justificacion.'
+            );
+        }
     }
 
     public function tipoEquipo(): BelongsTo

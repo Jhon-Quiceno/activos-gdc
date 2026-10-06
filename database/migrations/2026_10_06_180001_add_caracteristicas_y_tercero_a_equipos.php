@@ -30,7 +30,7 @@ return new class extends Migration
 
             // RN-03 permite códigos repetidos con justificación, así que ya no puede
             // ser `unique()` a nivel de base de datos; la validación de "si está
-            // repetido, pedí justificación" queda a nivel de aplicación (formulario).
+            // repetido, pedí justificación" queda a cargo de Equipo::booted().
             $table->dropUnique(['codigo_activo']);
         });
     }
@@ -39,7 +39,13 @@ return new class extends Migration
     {
         Schema::table('equipos', function (Blueprint $table) {
             $table->dropColumn(['caracteristicas', 'figura_tercero', 'observaciones', 'codigo_activo_justificacion']);
-            $table->unique('codigo_activo');
+
+            // OJO: no se vuelve a agregar el unique() acá a propósito. Si para cuando
+            // se revierte esta migración ya existe algún codigo_activo duplicado
+            // (justamente lo que esta migración permite), un ADD UNIQUE fallaría a
+            // mitad de camino y dejaría la tabla en un estado inconsistente. Si
+            // necesitás volver a la restricción estricta, deduplicá primero a mano y
+            // agregala con una migración aparte.
         });
     }
 };
