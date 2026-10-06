@@ -45,7 +45,6 @@
                 <th>{{ __('Registrado por') }}</th>
                 <th>{{ __('Fecha') }}</th>
                 <th>{{ __('Pendiente') }}</th>
-                <th></th>
             </tr>
         </thead>
         <tbody>
@@ -54,18 +53,18 @@
                     $dias = (int) $evento->fecha->diffInDays(now());
                     $equipoEtiqueta = $evento->equipo?->codigo_activo ?: $evento->equipo?->serial;
                 @endphp
-                <tr wire:key="evento-{{ $evento->id }}">
+                <tr
+                    wire:key="evento-{{ $evento->id }}"
+                    @if($evento->equipo)
+                        onclick="window.location.href='{{ route('equipos.show', $evento->equipo) }}'"
+                        class="cursor-pointer"
+                    @endif
+                >
                     <td>
                         <p class="font-semibold text-ink">{{ $tipoEventoLabels[$evento->tipo] ?? $evento->tipo }}</p>
                     </td>
-                    <td>
-                        @if($evento->equipo)
-                            <a href="{{ route('equipos.show', $evento->equipo) }}" wire:navigate class="font-mono text-[14px] text-primary hover:underline">
-                                {{ $equipoEtiqueta ?? __('Sin identificar') }}
-                            </a>
-                        @else
-                            <span class="text-ink-muted">—</span>
-                        @endif
+                    <td class="font-mono">
+                        {{ $equipoEtiqueta ?? __('Sin identificar') }}
                     </td>
                     <td>
                         {{ $evento->tipo === 'baja' ? __('Formato de baja') : __('Formato de entrega') }}
@@ -84,17 +83,10 @@
                             {{ trans_choice(':count día|:count días', $dias, ['count' => $dias]) }}
                         </x-ui.badge>
                     </td>
-                    <td class="text-right">
-                        @if($evento->equipo)
-                            <x-ui.button variant="secondary" size="sm" :href="route('equipos.show', $evento->equipo)">
-                                {{ __('Ver equipo') }}
-                            </x-ui.button>
-                        @endif
-                    </td>
                 </tr>
             @empty
                 <tr>
-                    <td colspan="8" class="py-10 text-center text-ink-muted">
+                    <td colspan="7" class="py-10 text-center text-ink-muted">
                         {{ __('No hay movimientos pendientes de firma con ese filtro.') }}
                     </td>
                 </tr>
