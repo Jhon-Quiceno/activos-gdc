@@ -9,6 +9,7 @@ on:
 jobs:
   tests:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     services:
       mysql:
@@ -67,6 +68,9 @@ jobs:
       - name: Compilar assets
         run: pnpm run build
 
+      # A proposito sin --seed: las pruebas de Pest no dependen de los datos de
+      # demo (usan factories propias), y correr migrate:fresh --seed aca solo
+      # sumaria ~100 equipos falsos sin aportar nada a la cobertura.
       - name: Correr migraciones
         run: php artisan migrate --force
 
