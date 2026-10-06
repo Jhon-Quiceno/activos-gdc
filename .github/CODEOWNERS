@@ -1,0 +1,3 @@
+# El líder revisa todo antes de hacer merge (ver docs/normas-de-trabajo.md, seccion 7).
+# Esto hace que GitHub lo pida automaticamente como revisor en cada Pull Request.
+* @Jhon-Quiceno
