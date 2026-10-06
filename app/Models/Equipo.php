@@ -18,19 +18,30 @@ class Equipo extends Model
     protected $fillable = [
         'serial',
         'codigo_activo',
+        'codigo_activo_justificacion',
         'qr_uuid',
         'tipo_equipo_id',
         'marca_id',
         'modelo',
+        'caracteristicas',
         'propiedad',
         'propietario_tercero',
+        'figura_tercero',
         'estado_funcionamiento',
+        'observaciones',
         'estado_ciclo_vida',
         'verificacion',
         'puesto_trabajo_id',
         'importacion_id',
         'fila_origen_importacion',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'caracteristicas' => 'array',
+        ];
+    }
 
     protected static function booted(): void
     {
