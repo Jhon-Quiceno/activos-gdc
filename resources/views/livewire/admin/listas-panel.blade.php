@@ -41,19 +41,21 @@
                 <thead>
                     <tr>
                         <th>{{ __('Nombre') }}</th>
+                        <th>{{ __('Detalle') }}</th>
+                        <th>{{ __($usoLabel) }}</th>
                         <th>{{ __('Estado') }}</th>
                         <th>{{ __('Acciones') }}</th>
                     </tr>
                 </thead>
                 <tbody>
-                    @forelse ($registros as $registro)
+                    @forelse ($filas as $fila)
+                        @php $registro = $fila['registro']; @endphp
                         <tr wire:key="registro-{{ $listaActiva }}-{{ $registro->id }}">
                             <td class="font-semibold text-ink">
                                 {{ $config['campo'] === 'numero' ? __('Piso :numero', ['numero' => $registro->numero]) : $registro->nombre }}
-                                @if ($listaActiva === 'tipos_equipo')
-                                    <span class="ml-2 text-[13px] font-normal text-ink-muted">{{ $familias[$registro->familia] ?? $registro->familia }}</span>
-                                @endif
                             </td>
+                            <td class="text-ink-muted">{{ $fila['detalle'] }}</td>
+                            <td>{{ $fila['uso'] }}</td>
                             <td>
                                 <x-ui.badge variant="success">{{ __('Activo') }}</x-ui.badge>
                             </td>
@@ -70,7 +72,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="3" class="py-10 text-center text-ink-muted">
+                            <td colspan="5" class="py-10 text-center text-ink-muted">
                                 {{ __('Todavía no hay elementos en esta lista.') }}
                             </td>
                         </tr>

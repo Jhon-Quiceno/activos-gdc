@@ -38,7 +38,7 @@ class PendientesListado extends Component
     public function render()
     {
         $eventos = Evento::query()
-            ->with(['equipo', 'usuario'])
+            ->with(['equipo.asignacionActual.persona', 'usuario'])
             ->where('estado_firma', 'pendiente_de_firma')
             ->when($this->tipo !== '', fn ($query) => $query->where('tipo', $this->tipo))
             ->when($this->antiguedad === 'mas_30', fn ($query) => $query->where('fecha', '<=', now()->subDays(30)))

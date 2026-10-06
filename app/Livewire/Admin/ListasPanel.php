@@ -68,6 +68,25 @@ class ListasPanel extends Component
         'proyeccion' => 'Proyección',
     ];
 
+    /**
+     * Etiqueta de la columna de "uso" por catálogo, tal como aparece en
+     * Listas.dc.html (prototipo real, no la paráfrasis de la tarea): Sedes,
+     * Pisos y Dependencias miden puestos de inventario; Tipos de equipo mide
+     * equipos; el resto usa la etiqueta genérica "Uso".
+     *
+     * @var array<string, string>
+     */
+    private const USO_LABELS = [
+        'sedes' => 'Puestos (inventario)',
+        'pisos' => 'Puestos (inventario)',
+        'dependencias' => 'Puestos (inventario)',
+        'tipos_equipo' => 'Equipos',
+        'tipos_componente' => 'Uso',
+        'marcas' => 'Uso',
+        'sistemas_operativos' => 'Uso',
+        'motivos_baja' => 'Uso',
+    ];
+
     public function seleccionarLista(string $clave): void
     {
         if (! array_key_exists($clave, self::CATALOGOS)) {
@@ -164,6 +183,39 @@ class ListasPanel extends Component
     }
 
     /**
+     * Conteo real de "uso" por fila, según el catálogo activo. Cada rama usa
+     * la relación que mejor representa el uso de ese registro en el
+     * inventario; si no hay una relación directa y confiable, no se añade
+     * ninguna rama y la fila cae al '—' calculado en detalleUsoDe().
+     */
+    private function usoDe(mixed $registro): int
+    {
+        return match ($this->listaActiva) {
+            'sedes', 'pisos', 'dependencias' => $registro->asignaciones()->whereNull('fecha_fin')->count(),
+            'tipos_equipo', 'marcas' => $registro->equipos()->count(),
+            'tipos_componente' => $registro->componentes()->count(),
+            'sistemas_operativos' => $registro->configuracionesComputo()->count(),
+            'motivos_baja' => $registro->diagnosticos()->count(),
+            default => 0,
+        };
+    }
+
+    /**
+     * Columna "Detalle": solo Tipos de equipo tiene un dato real adicional
+     * (la familia). Los demás catálogos solo tienen `nombre` (o `numero` en
+     * Pisos), así que muestran '—' en vez de inventar variantes o notas que
+     * no existen en la BD.
+     */
+    private function detalleDe(mixed $registro): string
+    {
+        if ($this->listaActiva === 'tipos_equipo') {
+            return __('Familia').': '.(self::FAMILIAS[$registro->familia] ?? $registro->familia);
+        }
+
+        return '—';
+    }
+
+    /**
      * TODO: estos catálogos todavía no tienen columna `activo`/estado en BD
      * (fuera del alcance de esta tarea: no se tocan migraciones). Cuando exista,
      * este método debe alternarla igual que UsuariosPanel::alternarActivo().
@@ -181,12 +233,19 @@ class ListasPanel extends Component
 
         $registros = $config['model']::orderBy($config['campo'])->get();
 
+        $filas = $registros->map(fn ($registro) => [
+            'registro' => $registro,
+            'detalle' => $this->detalleDe($registro),
+            'uso' => $this->usoDe($registro),
+        ]);
+
         return view('livewire.admin.listas-panel', [
             'catalogos' => self::CATALOGOS,
             'conteos' => $conteos,
             'config' => $config,
-            'registros' => $registros,
+            'filas' => $filas,
             'familias' => self::FAMILIAS,
+            'usoLabel' => self::USO_LABELS[$this->listaActiva] ?? __('Uso'),
         ]);
     }
 }

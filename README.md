@@ -96,7 +96,43 @@ Solo necesitas **Docker Desktop** instalado y corriendo. No se requiere PHP ni N
    - Aplicación: [http://localhost](http://localhost)
    - Mailpit (correo de pruebas): [http://localhost:8025](http://localhost:8025)
 
-   El registro público de usuarios está desactivado: los usuarios los crea un Administrador desde el panel de administración.
+   El registro público de usuarios está desactivado: los usuarios los crea un Administrador desde `/admin/usuarios`.
+
+   **Usuarios de prueba** (creados por el seeder, contraseña `password` para todos):
+
+   | Correo | Perfil |
+   |---|---|
+   | `admin@gobernaciondecordoba.gov.co` | Administrador |
+   | `soporte.tic@gobernaciondecordoba.gov.co` | Administrador |
+   | `inventario@gobernaciondecordoba.gov.co` | Usuario |
+   | `consulta@gobernaciondecordoba.gov.co` | Usuario |
+
+   El seeder también carga ~100 equipos de prueba (con responsables, componentes e historial) para que cada pantalla tenga datos reales desde el primer `migrate:fresh --seed`.
+
+## Pantallas ya construidas
+
+Todo el diseño del prototipo de Claude Design ya está implementado y funcionando contra datos reales — lo que sigue es que cada bloque termine la lógica de negocio que le falta (ver `docs/<tu-nombre>.md` y `docs/normas-de-trabajo.md`). Mapa de rutas:
+
+| Bloque | Pantalla | Ruta |
+|---|---|---|
+| — | Inicio de sesión | `/login` |
+| — | Panel principal (KPIs, calidad del inventario, actividad reciente) | `/dashboard` |
+| Equipos | Listado (búsqueda, clic en una fila abre su hoja de vida) | `/equipos` |
+| Equipos | Hoja de vida del equipo | `/equipos/{equipo}` |
+| Equipos | Registrar equipo (formulario condicional por tipo) | `/equipos/crear` |
+| Movimientos | Traslados (listado) / Traslado o cambio de responsable | `/movimientos/traslados`, `/movimientos/traslados/{equipo}` |
+| Movimientos | Bajas (listado) / Registrar baja | `/movimientos/bajas`, `/movimientos/bajas/{equipo}` |
+| Movimientos | Diagnóstico | `/movimientos/diagnostico/{equipo}` |
+| Movimientos | Cambio de componente | `/movimientos/componente/{equipo}` |
+| Movimientos | Pendientes de firma | `/movimientos/pendientes` |
+| Movimientos | Formato de entrega / Formato de baja (documento imprimible) | `/movimientos/{evento}/formato-entrega`, `.../formato-baja` |
+| Importación | Importar inventario (wizard de 4 pasos) | `/importacion` |
+| Reportes | Catálogo de 15 reportes | `/reportes` |
+| Administración | Usuarios | `/admin/usuarios` |
+| Administración | Listas administrables (sedes, dependencias, marcas, etc.) | `/admin/listas` |
+| QR | Verificar en sitio (vista móvil) | `/qr/verificar` |
+
+Sistema de diseño compartido (paleta, tipografía, componentes `x-ui.*`) en `tailwind.config.js` y `resources/views/components/`. Antes de inventar un estilo nuevo, revisá si ya existe un componente para eso.
 
 ## Correr las pruebas
 

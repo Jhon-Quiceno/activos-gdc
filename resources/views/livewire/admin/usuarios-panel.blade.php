@@ -20,9 +20,10 @@
                 <thead>
                     <tr>
                         <th>{{ __('Nombre') }}</th>
-                        <th>{{ __('Correo') }}</th>
+                        <th>{{ __('Usuario') }}</th>
                         <th>{{ __('Perfil') }}</th>
                         <th>{{ __('Estado') }}</th>
+                        <th>{{ __('Último ingreso') }}</th>
                         <th>{{ __('Acciones') }}</th>
                     </tr>
                 </thead>
@@ -30,7 +31,7 @@
                     @forelse ($usuarios as $usuario)
                         <tr wire:key="usuario-{{ $usuario->id }}">
                             <td class="font-semibold text-ink">{{ $usuario->name }}</td>
-                            <td>{{ $usuario->email }}</td>
+                            <td class="font-mono tabular-nums">{{ $usuario->email }}</td>
                             <td>
                                 <x-ui.badge :variant="$usuario->perfil === 'administrador' ? 'info' : 'neutral'">
                                     {{ $usuario->perfil === 'administrador' ? __('Administrador') : __('Usuario') }}
@@ -41,6 +42,10 @@
                                     {{ $usuario->activo ? __('Activo') : __('Desactivado') }}
                                 </x-ui.badge>
                             </td>
+                            {{-- TODO: no existe columna `last_login_at` en la tabla `users` sembrada;
+                                 placeholder honesto hasta que se implemente el registro real de
+                                 último ingreso. Fuera de alcance agregar la migración aquí. --}}
+                            <td class="text-ink-muted">—</td>
                             <td>
                                 <div class="flex flex-wrap items-center gap-2">
                                     <x-ui.button size="sm" variant="secondary" wire:click="abrirEdicion({{ $usuario->id }})">
@@ -68,7 +73,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="5" class="py-10 text-center text-ink-muted">
+                            <td colspan="6" class="py-10 text-center text-ink-muted">
                                 {{ __('Todavía no hay usuarios registrados.') }}
                             </td>
                         </tr>

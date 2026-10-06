@@ -41,6 +41,7 @@
                 <th>{{ __('Evento') }}</th>
                 <th>{{ __('Equipo') }}</th>
                 <th>{{ __('Falta') }}</th>
+                <th>{{ __('Quién firma') }}</th>
                 <th>{{ __('Registrado por') }}</th>
                 <th>{{ __('Fecha') }}</th>
                 <th>{{ __('Pendiente') }}</th>
@@ -70,6 +71,9 @@
                         {{ $evento->tipo === 'baja' ? __('Formato de baja') : __('Formato de entrega') }}
                     </td>
                     <td>
+                        {{ $evento->equipo?->asignacionActual?->persona?->nombre ?? '—' }}
+                    </td>
+                    <td>
                         {{ $evento->usuario?->name ?? '—' }}
                     </td>
                     <td>
@@ -90,7 +94,7 @@
                 </tr>
             @empty
                 <tr>
-                    <td colspan="7" class="py-10 text-center text-ink-muted">
+                    <td colspan="8" class="py-10 text-center text-ink-muted">
                         {{ __('No hay movimientos pendientes de firma con ese filtro.') }}
                     </td>
                 </tr>
