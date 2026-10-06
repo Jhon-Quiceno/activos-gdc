@@ -57,6 +57,11 @@ Detalle completo en `docs/normas-de-trabajo.md`. Resumen:
   lanzan excepción, ver `app/Models/Evento.php`).
 - Trabajar siempre sobre `migrate:fresh --seed`; nadie depende de datos locales.
 - Antes de abrir un PR: `./vendor/bin/pest` en verde.
+- **Idioma de commits, comentarios y PR: español**, excepto el prefijo del commit
+  (Conventional Commits), que va en inglés: `feat: agregar busqueda por serial`,
+  `fix: corregir boton que se partia en dos lineas`. Detalle completo y lista de
+  prefijos válidos en [docs/normas-de-trabajo.md](docs/normas-de-trabajo.md#9-idioma-commits-comentarios-y-pull-requests).
+  Los identificadores del código (clases, métodos, variables, rutas) siguen en inglés.
 
 Bloques y a quién pertenecen (ver `docs/<nombre>.md` de cada persona):
 
