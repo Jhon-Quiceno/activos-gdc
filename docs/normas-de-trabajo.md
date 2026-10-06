@@ -137,7 +137,7 @@ Todo el texto que escribimos alrededor del código va **en español**: mensajes 
   - Prefijos válidos: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`, `style`, `perf`.
 - **Pull Requests:** título y descripción en español (incluido el plan de pruebas).
 - **Comentarios en el código:** en español, y solo cuando explican un *por qué* no obvio (una regla de negocio, una decisión rara, un bug que se evitó) — no para describir qué hace el código línea por línea.
-- **Identificadores del código** (nombres de clases, métodos, variables, rutas, vistas) siguen **en inglés**, como ya está en todo el proyecto (`Equipo`, `HistorialService`, `movimientos.pendientes`); esto no cambia, solo aplica al texto alrededor del código.
+- **Identificadores del código no cambian** — esta norma es solo sobre el texto alrededor del código (commits, comentarios, PR), no sobre nombres de clases, métodos, variables, rutas o vistas. Seguí el patrón que ya existe en el proyecto: los nombres de dominio del negocio van en español, igual que en los documentos de requerimientos (`Equipo`, `HistorialService`, la ruta `movimientos.pendientes`), mientras que los términos genéricos de programación van en inglés (`render`, `boot`, `HasMany`, convenciones propias de Laravel). Si tenés dudas sobre un nombre puntual, fijate cómo está nombrado algo similar ya existente.
 
 Lo que el usuario final ve (textos de pantalla, mensajes de validación, correos) ya está en español por el idioma de la app (`laravel-lang`, RNF-02) y no se ve afectado por esta norma — esto es sobre lo que escribimos nosotros como equipo, no sobre la UI.
 

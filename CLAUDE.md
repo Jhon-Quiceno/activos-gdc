@@ -61,7 +61,9 @@ Detalle completo en `docs/normas-de-trabajo.md`. Resumen:
   (Conventional Commits), que va en inglés: `feat: agregar busqueda por serial`,
   `fix: corregir boton que se partia en dos lineas`. Detalle completo y lista de
   prefijos válidos en [docs/normas-de-trabajo.md](docs/normas-de-trabajo.md#9-idioma-commits-comentarios-y-pull-requests).
-  Los identificadores del código (clases, métodos, variables, rutas) siguen en inglés.
+  Los identificadores del código no cambian por esta norma: seguí el patrón ya existente
+  (dominio del negocio en español — `Equipo`, `HistorialService` — términos genéricos de
+  programación en inglés — `render`, `HasMany`).
 
 Bloques y a quién pertenecen (ver `docs/<nombre>.md` de cada persona):
 
