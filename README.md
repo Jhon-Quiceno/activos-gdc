@@ -175,6 +175,10 @@ El repositorio tiene dos ramas protegidas:
 
 Todo el mundo trabaja en ramas `feature/<bloque>-<tarea>` creadas siempre desde `develop`, nunca desde `main`, con Pull Requests pequeños y frecuentes. El detalle completo está en [docs/normas-de-trabajo.md](docs/normas-de-trabajo.md).
 
+**Importante:** antes de empezar a trabajar cada día, actualizá tu rama contra `develop` con `git fetch origin` + `git rebase origin/develop` (y qué hacer si hay conflictos) — ver [la sección "Mantenerte al día con develop"](docs/normas-de-trabajo.md#mantenerte-al-día-con-develop) en las normas de trabajo.
+
+> **Windows:** si cada página tarda ~30 segundos en cargar, es porque el proyecto está en el filesystem de Windows en vez del de WSL2 — Docker Desktop tiene que cruzar esa frontera en cada acceso a archivo. Cloná el repo **dentro** de tu distro de WSL2 (no en una ruta tipo `C:\Users\...`) y el problema desaparece.
+
 ---
 
 Gobernación de Córdoba, Dirección TIC, 2026.
