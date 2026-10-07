@@ -5,8 +5,11 @@ namespace App\Livewire\Equipos;
 use App\Models\Equipo;
 use App\Models\Evento;
 use App\Services\HistorialService;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Support\Str;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * Hoja de vida de un equipo (RF-09): ficha, responsable y ubicación, software,
@@ -22,6 +25,9 @@ use Livewire\Component;
  *   configuración del equipo (hoy, el diagnóstico). Deshacer un traslado o un
  *   cambio de componente es lógica de esos flujos; la baja se anula desde
  *   Movimientos, que además devuelve el equipo a su estado anterior (RF-26).
+ *
+ * Y se exporta a PDF (RF-33): adelantado de la Fase 2 con autorización de Jhon
+ * (líder) el 7 de octubre de 2026. Ver exportarPdf().
  */
 class HojaDeVida extends Component
 {
@@ -148,7 +154,31 @@ class HojaDeVida extends Component
             && $this->admiteCorreccion($evento);
     }
 
-    public function render()
+    /**
+     * RF-33 · Descarga la hoja de vida completa (ficha, componentes e historial)
+     * como PDF tamaño carta, sin firma. Se genera al vuelo y no se guarda.
+     *
+     * Adelantado de la Fase 2 (análisis, sección 13; plan, sección 6) con
+     * autorización de Jhon el 7 de octubre de 2026.
+     */
+    public function exportarPdf(): StreamedResponse
+    {
+        $this->cargarHojaDeVida();
+
+        $pdf = Pdf::loadView('livewire.equipos.pdf.hoja-de-vida', [
+            'equipo' => $this->equipo,
+            'generadoPor' => auth()->user()->name,
+            'generadoEl' => now(),
+        ])->setPaper('letter');
+
+        $nombre = 'hoja-de-vida-'.Str::slug($this->equipo->codigo_activo ?? $this->equipo->serial).'.pdf';
+
+        return response()->streamDownload(fn () => print ($pdf->output()), $nombre, [
+            'Content-Type' => 'application/pdf',
+        ]);
+    }
+
+    private function cargarHojaDeVida(): void
     {
         $this->equipo->load([
             'tipoEquipo',
@@ -168,6 +198,11 @@ class HojaDeVida extends Component
                 'anulaciones.usuario',
             ])->orderByDesc('fecha')->orderByDesc('id'),
         ]);
+    }
+
+    public function render()
+    {
+        $this->cargarHojaDeVida();
 
         return view('livewire.equipos.hoja-de-vida', [
             'eventoSeleccionado' => $this->eventoSeleccionadoId

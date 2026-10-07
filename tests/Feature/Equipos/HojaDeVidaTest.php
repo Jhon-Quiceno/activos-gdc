@@ -239,6 +239,53 @@ class HojaDeVidaTest extends TestCase
         $this->assertSame(1, Evento::where('tipo', 'anulacion_aclaracion')->count());
     }
 
+    public function test_exporta_la_hoja_de_vida_en_pdf(): void
+    {
+        $equipo = $this->crearEquipo();
+        $this->registrarDiagnostico($equipo);
+
+        Livewire::actingAs($this->usuario)
+            ->test(HojaDeVida::class, ['equipo' => $equipo])
+            ->call('exportarPdf')
+            ->assertFileDownloaded('hoja-de-vida-sn-hv-0001.pdf');
+    }
+
+    public function test_el_pdf_incluye_el_historial_y_enmascara_la_cedula(): void
+    {
+        $equipo = $this->crearEquipo();
+        $diagnostico = $this->registrarDiagnostico($equipo);
+        app(HistorialService::class)->registrar($equipo, 'anulacion_aclaracion', $this->usuario, descripcion: 'Anulado por prueba', eventoAnulado: $diagnostico);
+        $persona = \App\Models\Persona::create(['nombre' => 'Pedro Funcionario', 'cedula' => '1067886226']);
+        $sede = \App\Models\Sede::create(['nombre' => 'Palacio Naín']);
+        $piso = \App\Models\Piso::create(['numero' => 2]);
+        \App\Models\Asignacion::create([
+            'equipo_id' => $equipo->id,
+            'persona_id' => $persona->id,
+            'sede_id' => $sede->id,
+            'piso_id' => $piso->id,
+            'fecha_inicio' => now(),
+        ]);
+
+        $equipo->load([
+            'tipoEquipo', 'marca', 'asignacionActual.persona', 'asignacionActual.sede', 'asignacionActual.piso',
+            'componentes', 'configuracionComputo',
+            'eventos' => fn ($q) => $q->with(['usuario', 'cambioComponente', 'diagnostico.motivoBaja', 'anulaciones.usuario']),
+        ]);
+
+        $html = view('livewire.equipos.pdf.hoja-de-vida', [
+            'equipo' => $equipo,
+            'generadoPor' => $this->usuario->name,
+            'generadoEl' => now(),
+        ])->render();
+
+        $this->assertStringContainsString('Pedro Funcionario', $html);
+        // RN-12: en una exportación la cédula va enmascarada.
+        $this->assertStringContainsString('****6226', $html);
+        $this->assertStringNotContainsString('1067886226', $html);
+        $this->assertStringContainsString('Fuente de poder quemada', $html);
+        $this->assertStringContainsString('[ANULADO]', $html);
+    }
+
     public function test_no_se_puede_corregir_un_evento_de_otro_equipo(): void
     {
         $equipo = $this->crearEquipo();
