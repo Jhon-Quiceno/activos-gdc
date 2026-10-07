@@ -284,6 +284,8 @@ class HojaDeVidaTest extends TestCase
         $this->assertStringNotContainsString('1067886226', $html);
         $this->assertStringContainsString('Fuente de poder quemada', $html);
         $this->assertStringContainsString('[ANULADO]', $html);
+        // Logo oficial incrustado en el encabezado.
+        $this->assertStringContainsString('src="data:image/png;base64,', $html);
     }
 
     public function test_no_se_puede_corregir_un_evento_de_otro_equipo(): void

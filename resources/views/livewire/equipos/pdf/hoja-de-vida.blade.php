@@ -55,6 +55,10 @@
         : $placeholder;
 
     $fecha = fn ($valor) => $valor ? $valor->format('d/m/Y H:i') : $placeholder;
+
+    // Logo oficial de la Gobernación (PNG recortado y reducido, junto a esta vista).
+    // Va incrustado en base64 para que dompdf no dependa de rutas ni de su chroot.
+    $logo = 'data:image/png;base64,'.base64_encode(file_get_contents(resource_path('views/livewire/equipos/pdf/logo-gobernacion.png')));
 @endphp
 <!DOCTYPE html>
 <html lang="es">
@@ -62,9 +66,10 @@
     <meta charset="utf-8">
     <title>{{ __('Hoja de vida · :serial', ['serial' => $equipo->serial]) }}</title>
     <style>
-        @page { margin: 90px 40px 60px 40px; }
+        @page { margin: 125px 40px 60px 40px; }
         body { font-family: "DejaVu Sans", sans-serif; font-size: 10px; color: #1C2733; }
-        header { position: fixed; top: -70px; left: 0; right: 0; }
+        header { position: fixed; top: -105px; left: 0; right: 0; }
+        .logo { height: 80px; }
         footer { position: fixed; bottom: -40px; left: 0; right: 0; font-size: 8px; color: #5B6B7C; border-top: 1px solid #999; padding-top: 4px; }
         table { width: 100%; border-collapse: collapse; margin-bottom: 12px; }
         td, th { border: 1px solid #333; padding: 4px 6px; vertical-align: top; text-align: left; }
@@ -85,7 +90,7 @@
     <header>
         <table class="cabecera">
             <tr>
-                <td style="width: 22%;" class="muted">{{ __('[LOGO GOBERNACIÓN]') }}</td>
+                <td style="width: 22%; padding: 4px;"><img src="{{ $logo }}" alt="{{ __('Gobernación de Córdoba') }}" class="logo"></td>
                 <td>
                     <span class="titulo">{{ __('Hoja de vida del equipo') }}</span><br>
                     {{ __('Dirección TIC · Gobernación de Córdoba') }}
