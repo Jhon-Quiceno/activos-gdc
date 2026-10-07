@@ -50,16 +50,19 @@
                 <p class="section-title">{{ __('2. Identificación') }}</p>
 
                 <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <x-ui.input name="serial" :label="__('Serial del fabricante') . ' *'" wire:model="serial" required />
+                    <x-ui.input name="serial" :label="__('Serial del fabricante') . ' *'" wire:model.blur="serial" required />
 
                     <div>
                         <x-ui.input
                             name="codigoActivo"
-                            :label="__('Código de activo')"
-                            wire:model="codigoActivo"
+                            :label="__('Código de activo') . ($sinCodigoActivo ? '' : ' *')"
+                            wire:model.blur="codigoActivo"
                             placeholder="I1-000000"
                             :disabled="$sinCodigoActivo"
                         />
+                        @unless ($sinCodigoActivo)
+                            <p class="mt-1 text-[13px] text-ink-muted">{{ __('Formato I1-######. Se corrige solo: «I1 24147» queda «I1-24147».') }}</p>
+                        @endunless
                         <label class="mt-2 flex items-center gap-2 text-[13px] text-ink-muted">
                             <input type="checkbox" wire:model.live="sinCodigoActivo" class="rounded border-line-input text-primary focus:ring-primary">
                             {{ __('El equipo no tiene código de activo') }}
@@ -378,7 +381,7 @@
                 @if ($asignarResponsable)
                     <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
                         <x-ui.input name="responsableNombre" :label="__('Responsable') . ' *'" wire:model="responsableNombre" required />
-                        <x-ui.input name="responsableCedula" :label="__('Cédula')" wire:model="responsableCedula" />
+                        <x-ui.input name="responsableCedula" :label="__('Cédula')" wire:model.blur="responsableCedula" inputmode="numeric" />
                         <x-ui.input name="responsableCargo" :label="__('Cargo')" wire:model="responsableCargo" />
 
                         <div>
@@ -438,7 +441,7 @@
                         </div>
 
                         <div>
-                            <label class="text-[13px] font-semibold text-ink-label">{{ __('Piso') }}</label>
+                            <label class="text-[13px] font-semibold text-ink-label">{{ __('Piso') }} *</label>
                             <select wire:model="pisoId" class="mt-1 h-11 w-full rounded-lg border-line-input text-[14px] text-ink focus:border-primary focus:ring-primary">
                                 <option value="">{{ __('Selecciona…') }}</option>
                                 @foreach ($pisos as $piso)
@@ -446,6 +449,17 @@
                                 @endforeach
                             </select>
                             <x-input-error :messages="$errors->get('pisoId')" class="mt-1" />
+                        </div>
+
+                        <div>
+                            <label class="text-[13px] font-semibold text-ink-label">{{ __('Dependencia') }} *</label>
+                            <select wire:model="dependenciaId" class="mt-1 h-11 w-full rounded-lg border-line-input text-[14px] text-ink focus:border-primary focus:ring-primary">
+                                <option value="">{{ __('Selecciona…') }}</option>
+                                @foreach ($dependencias as $dependencia)
+                                    <option value="{{ $dependencia->id }}">{{ $dependencia->nombre }}</option>
+                                @endforeach
+                            </select>
+                            <x-input-error :messages="$errors->get('dependenciaId')" class="mt-1" />
                         </div>
                     </div>
                 @endif
