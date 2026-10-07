@@ -4,6 +4,8 @@
         :subtitle="trim(($equipo->tipoEquipo?->nombre ?? '') . ' · ' . ($equipo->marca?->nombre ?? '') . ' ' . ($equipo->modelo ?? '') . ' · ' . $equipo->serial . ($equipo->codigo_activo ? ' · ' . $equipo->codigo_activo : ''))"
     />
 
+    <x-input-error :messages="$errors->get('equipo')" />
+
     <div>
         <x-ui.segmented-control
             :options="['agregar' => __('Agregar'), 'cambiar' => __('Cambiar'), 'quitar' => __('Quitar')]"

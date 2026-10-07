@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Movimientos;
 
+use App\Livewire\Movimientos\Soporte\ReglasMovimiento;
 use App\Models\CambioComponente;
 use App\Models\Componente;
 use App\Models\Equipo;
@@ -79,6 +80,9 @@ class ComponenteForm extends Component
 
     public function guardar(): void
     {
+        // RN-10: un equipo dado de baja (o con la baja en trámite) no admite
+        // cambios de componente.
+        ReglasMovimiento::asegurarQueAdmiteEventos($this->equipo);
         $this->validate();
 
         DB::transaction(function () {
