@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Movimientos;
 
+use App\Livewire\Movimientos\Soporte\ReglasMovimiento;
 use App\Models\CambioComponente;
 use App\Models\Componente;
 use App\Models\Equipo;
@@ -82,6 +83,12 @@ class ComponenteForm extends Component
         $this->validate();
 
         DB::transaction(function () {
+            // RN-10: un equipo dado de baja (o con la baja en trámite) no
+            // admite cambios de componente. Dentro de la transacción (no
+            // antes) para que el lockForUpdate() de la consulta sirva contra
+            // dos envíos concurrentes sobre el mismo equipo.
+            ReglasMovimiento::asegurarQueAdmiteEventos($this->equipo);
+
             $componenteRetirado = null;
             $componenteInstalado = null;
 
