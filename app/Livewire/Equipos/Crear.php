@@ -45,6 +45,12 @@ class Crear extends Component
 
     public bool $sinCodigoActivo = false;
 
+    /**
+     * RN-03: obligatoria solo si el código de activo ya existe en otro equipo
+     * (p. ej. un All in One que comparte código con su pantalla integrada).
+     */
+    public string $codigoActivoJustificacion = '';
+
     public ?int $marcaId = null;
 
     public string $modelo = '';
@@ -57,9 +63,8 @@ class Crear extends Component
     public string $propietarioTercero = '';
 
     /**
-     * Figura jurídica del tercero. No existe columna para esto en `equipos`
-     * (ver migración), así que se captura para completar el formulario del
-     * prototipo pero no se persiste, igual que "Observaciones" más abajo.
+     * Figura jurídica del tercero (RF-04): comodato, convenio o proveedor.
+     * Se guarda en `equipos.figura_tercero`.
      */
     public string $figura = '';
 
@@ -201,12 +206,18 @@ class Crear extends Component
             // RN-02: obligatorio y único en todo el inventario, incluidos los dados de baja.
             'serial' => ['required', 'string', 'max:255', $this->noRepetidoEnOtroEquipo('serial')],
             // RN-03: obligatorio salvo que se marque que el equipo no tiene código.
+            // Puede repetirse, pero entonces se exige justificación (abajo).
             'codigoActivo' => [
                 $this->sinCodigoActivo ? 'nullable' : 'required',
                 'string',
                 'max:255',
                 'regex:'.self::PATRON_CODIGO_ACTIVO,
-                $this->noRepetidoEnOtroEquipo('codigo_activo'),
+            ],
+            'codigoActivoJustificacion' => [
+                $this->equipoConMismoCodigo() ? 'required' : 'nullable',
+                'string',
+                'min:10',
+                'max:1000',
             ],
             'marcaId' => ['required', 'exists:marcas,id'],
             'modelo' => ['nullable', 'string', 'max:255'],
@@ -220,8 +231,14 @@ class Crear extends Component
 
         if ($this->propiedad === 'tercero') {
             $rules['propietarioTercero'] = ['required', 'string', 'max:255'];
-            $rules['figura'] = ['required', 'string'];
+            // RF-04: mismas opciones que el enum `equipos.figura_tercero`.
+            $rules['figura'] = ['required', 'in:comodato,convenio,proveedor'];
         }
+
+        // Características por tipo (RF-03): números enteros donde aplica.
+        $rules['numTomas'] = ['nullable', 'integer', 'min:0', 'max:100'];
+        $rules['numPuertos'] = ['nullable', 'integer', 'min:0', 'max:1000'];
+        $rules['observaciones'] = ['nullable', 'string', 'max:2000'];
 
         if ($this->asignarResponsable) {
             $rules['responsableNombre'] = ['required', 'string', 'max:255'];
@@ -237,6 +254,7 @@ class Crear extends Component
         return [
             'codigoActivo.required' => __('Escribe el código de activo o marca «El equipo no tiene código de activo».'),
             'codigoActivo.regex' => __('El código de activo debe tener el formato I1-###### (por ejemplo, I1-024147).'),
+            'codigoActivoJustificacion.required' => __('Este código de activo ya está en otro equipo: escribe por qué se repite (RN-03).'),
             'responsableCedula.regex' => __('La cédula solo puede tener números.'),
         ];
     }
@@ -247,10 +265,14 @@ class Crear extends Component
             'tipoEquipoId' => __('tipo de equipo'),
             'serial' => __('serial'),
             'codigoActivo' => __('código de activo'),
+            'codigoActivoJustificacion' => __('justificación'),
             'marcaId' => __('marca'),
             'estadoFuncionamiento' => __('estado de funcionamiento'),
             'propietarioTercero' => __('propietario'),
             'figura' => __('figura'),
+            'numTomas' => __('número de tomas'),
+            'numPuertos' => __('número de puertos'),
+            'observaciones' => __('observaciones'),
             'responsableNombre' => __('responsable'),
             'responsableCedula' => __('cédula'),
             'vinculacion' => __('vinculación'),
@@ -258,6 +280,19 @@ class Crear extends Component
             'sedeId' => __('sede'),
             'pisoId' => __('piso'),
         ];
+    }
+
+    /**
+     * RF-02 / RN-03: otro equipo que ya tiene este código de activo, si existe.
+     * La vista lo usa para avisar con cuál choca y pedir la justificación.
+     */
+    public function equipoConMismoCodigo(): ?Equipo
+    {
+        if ($this->sinCodigoActivo || $this->codigoActivo === '') {
+            return null;
+        }
+
+        return Equipo::with('tipoEquipo')->where('codigo_activo', $this->codigoActivo)->first();
     }
 
     /**
@@ -303,7 +338,8 @@ class Crear extends Component
     {
         if ($this->sinCodigoActivo) {
             $this->codigoActivo = '';
-            $this->resetValidation('codigoActivo');
+            $this->codigoActivoJustificacion = '';
+            $this->resetValidation(['codigoActivo', 'codigoActivoJustificacion']);
         }
     }
 
@@ -362,15 +398,22 @@ class Crear extends Component
     private function guardarEquipoEnTransaccion(): Equipo
     {
         return DB::transaction(function () {
+            $justificacion = trim($this->codigoActivoJustificacion);
+
             $equipo = Equipo::create([
                 'serial' => $this->serial,
                 'codigo_activo' => $this->codigoActivo !== '' ? $this->codigoActivo : null,
+                // Solo se guarda si el código realmente se repite (RN-03).
+                'codigo_activo_justificacion' => $this->equipoConMismoCodigo() && $justificacion !== '' ? $justificacion : null,
                 'tipo_equipo_id' => $this->tipoEquipoId,
                 'marca_id' => $this->marcaId,
                 'modelo' => $this->modelo !== '' ? $this->modelo : null,
+                'caracteristicas' => $this->caracteristicas(),
                 'propiedad' => $this->propiedad,
                 'propietario_tercero' => $this->propiedad === 'tercero' ? $this->propietarioTercero : null,
+                'figura_tercero' => $this->propiedad === 'tercero' ? $this->figura : null,
                 'estado_funcionamiento' => $this->estadoFuncionamiento,
+                'observaciones' => trim($this->observaciones) !== '' ? trim($this->observaciones) : null,
                 // RN: sin responsable asignado el equipo queda "sin_asignar" (bodega);
                 // con responsable queda "en_servicio".
                 'estado_ciclo_vida' => $this->asignarResponsable ? 'en_servicio' : 'sin_asignar',
@@ -394,6 +437,54 @@ class Crear extends Component
 
             return $equipo;
         });
+    }
+
+    /**
+     * Características propias del tipo (RF-03) para la columna JSON
+     * `equipos.caracteristicas`. Solo se guardan las de la familia elegida y
+     * con valor; el cómputo no usa esta columna (va en configuración y
+     * componentes). Devuelve null si no hay ninguna.
+     *
+     * @return array<string, string|int>|null
+     */
+    private function caracteristicas(): ?array
+    {
+        $porFamilia = [
+            'video' => [
+                'tamano_pulgadas' => $this->tamanoPulgadas,
+                'conexion' => $this->conexionMonitor,
+            ],
+            'impresion' => [
+                'funciones' => $this->funcionesImpresora,
+                'tipo_impresion' => $this->tipoImpresion,
+                'conexion' => $this->conexionImpresora,
+            ],
+            'digitalizacion' => [
+                'tipo_escaner' => $this->tipoEscaner,
+                'conexion' => $this->conexionEscaner,
+            ],
+            'energia' => [
+                'tipo' => $this->tipoEnergia,
+                'capacidad_va' => $this->capacidadVa,
+                'numero_tomas' => $this->numTomas !== '' ? (int) $this->numTomas : '',
+            ],
+            'conectividad' => [
+                'numero_puertos' => $this->numPuertos !== '' ? (int) $this->numPuertos : '',
+                'administrable' => $this->administrable,
+                'velocidad' => $this->velocidad,
+            ],
+            'proyeccion' => [
+                'lumenes' => $this->lumenes,
+                'resolucion' => $this->resolucion,
+            ],
+        ];
+
+        $valores = array_filter(
+            array_map(fn ($valor) => is_string($valor) ? trim($valor) : $valor, $porFamilia[$this->familiaSeleccionada] ?? []),
+            fn ($valor) => $valor !== '' && $valor !== null,
+        );
+
+        return $valores === [] ? null : $valores;
     }
 
     private function guardarConfiguracionComputo(Equipo $equipo): void

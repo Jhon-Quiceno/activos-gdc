@@ -161,15 +161,88 @@ class RegistrarEquipoTest extends TestCase
         $this->assertNull(Equipo::sole()->codigo_activo);
     }
 
-    public function test_no_permite_un_codigo_de_activo_repetido(): void
+    public function test_un_codigo_de_activo_repetido_exige_justificacion(): void
     {
         $this->crearEquipoExistente('OTRO-1', 'I1-024147');
 
         $this->formularioValido(['codigoActivo' => 'i1 024147'])
+            ->assertSee('Este código ya está en otro equipo: Monitor con serial OTRO-1')
             ->call('guardar')
-            ->assertHasErrors('codigoActivo');
+            ->assertHasErrors(['codigoActivoJustificacion' => 'required']);
 
         $this->assertSame(1, Equipo::count());
+    }
+
+    public function test_con_justificacion_se_registra_el_codigo_repetido(): void
+    {
+        $this->crearEquipoExistente('OTRO-1', 'I1-024147');
+
+        $this->formularioValido([
+            'codigoActivo' => 'I1-024147',
+            'codigoActivoJustificacion' => 'All in One: comparte código con su pantalla integrada.',
+        ])->call('guardar')->assertHasNoErrors();
+
+        $nuevo = Equipo::where('serial', 'CN-0001')->sole();
+
+        $this->assertSame('I1-024147', $nuevo->codigo_activo);
+        $this->assertSame('All in One: comparte código con su pantalla integrada.', $nuevo->codigo_activo_justificacion);
+    }
+
+    public function test_sin_codigo_repetido_no_se_guarda_justificacion(): void
+    {
+        $this->formularioValido(['codigoActivoJustificacion' => 'Texto que sobra porque no se repite.'])
+            ->call('guardar')
+            ->assertHasNoErrors();
+
+        $this->assertNull(Equipo::sole()->codigo_activo_justificacion);
+    }
+
+    public function test_guarda_las_caracteristicas_del_tipo_y_las_observaciones(): void
+    {
+        $this->formularioValido([
+            'tamanoPulgadas' => '24',
+            'conexionMonitor' => 'HDMI',
+            'observaciones' => '  Rayón en la esquina inferior.  ',
+        ])->call('guardar')->assertHasNoErrors();
+
+        $equipo = Equipo::sole();
+
+        // assertEquals y no assertSame: MySQL reordena las claves de un JSON al guardarlo.
+        $this->assertEquals(['tamano_pulgadas' => '24', 'conexion' => 'HDMI'], $equipo->caracteristicas);
+        $this->assertSame('Rayón en la esquina inferior.', $equipo->observaciones);
+    }
+
+    public function test_sin_caracteristicas_la_columna_queda_vacia(): void
+    {
+        $this->formularioValido()->call('guardar')->assertHasNoErrors();
+
+        $this->assertNull(Equipo::sole()->caracteristicas);
+    }
+
+    public function test_un_equipo_de_tercero_guarda_propietario_y_figura(): void
+    {
+        $this->formularioValido([
+            'propiedad' => 'tercero',
+            'propietarioTercero' => 'Ministerio TIC',
+            'figura' => 'comodato',
+        ])->call('guardar')->assertHasNoErrors();
+
+        $equipo = Equipo::sole();
+
+        $this->assertSame('tercero', $equipo->propiedad);
+        $this->assertSame('Ministerio TIC', $equipo->propietario_tercero);
+        $this->assertSame('comodato', $equipo->figura_tercero);
+    }
+
+    public function test_la_figura_del_tercero_debe_ser_una_de_las_permitidas(): void
+    {
+        $this->formularioValido([
+            'propiedad' => 'tercero',
+            'propietarioTercero' => 'Ministerio TIC',
+            'figura' => 'Otra',
+        ])->call('guardar')->assertHasErrors(['figura' => 'in']);
+
+        $this->assertSame(0, Equipo::count());
     }
 
     public function test_el_serial_es_unico_sin_importar_mayusculas_ni_espacios(): void
