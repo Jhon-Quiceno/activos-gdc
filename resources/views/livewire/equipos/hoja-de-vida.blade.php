@@ -74,6 +74,53 @@
         'otro_equipo' => __('Otro equipo'),
         'descarte' => __('Descarte'),
     ];
+
+    // RF-04: mismas opciones que el enum `equipos.figura_tercero` (ver Crear.php).
+    $figuraLabels = [
+        'comodato' => __('Comodato'),
+        'convenio' => __('Convenio'),
+        'proveedor' => __('Proveedor'),
+    ];
+
+    // Etiquetas de las claves que `equipos.caracteristicas` puede traer según la
+    // familia del tipo de equipo (ver Crear::caracteristicas()).
+    $caracteristicaLabels = [
+        'tamano_pulgadas' => __('Tamaño en pulgadas'),
+        'conexion' => __('Conexión'),
+        'funciones' => __('Funciones'),
+        'tipo_impresion' => __('Tipo de impresión'),
+        'tipo_escaner' => __('Tipo de escáner'),
+        'tipo' => __('Tipo'),
+        'capacidad_va' => __('Capacidad en VA'),
+        'numero_tomas' => __('N.° de tomas'),
+        'numero_puertos' => __('N.° de puertos'),
+        'administrable' => __('¿Administrable?'),
+        'velocidad' => __('Velocidad'),
+        'lumenes' => __('Lúmenes'),
+        'resolucion' => __('Resolución'),
+    ];
+
+    // Datos del equipo que no tienen un sitio fijo en la ficha porque dependen
+    // de la familia o de cómo se dio de alta: características propias del tipo,
+    // figura del tercero (solo si es propiedad de un tercero), justificación de
+    // un código de activo duplicado (RN-03) y observaciones libres.
+    $datosEquipo = [];
+
+    foreach (($equipo->caracteristicas ?? []) as $clave => $valor) {
+        $datosEquipo[$caracteristicaLabels[$clave] ?? $clave] = $valor;
+    }
+
+    if ($equipo->propiedad === 'tercero' && $equipo->figura_tercero) {
+        $datosEquipo[__('Figura del tercero')] = $figuraLabels[$equipo->figura_tercero] ?? $equipo->figura_tercero;
+    }
+
+    if (trim((string) $equipo->codigo_activo_justificacion) !== '') {
+        $datosEquipo[__('Justificación del código de activo')] = $equipo->codigo_activo_justificacion;
+    }
+
+    if (trim((string) $equipo->observaciones) !== '') {
+        $datosEquipo[__('Observaciones')] = $equipo->observaciones;
+    }
 @endphp
 
 <div class="space-y-6">
@@ -143,6 +190,15 @@
 
     <div class="grid grid-cols-1 gap-4 nav:grid-cols-2">
         <div class="space-y-4">
+            <x-ui.card>
+                <p class="section-title">{{ __('Datos del equipo') }}</p>
+                @if($datosEquipo)
+                    <x-ui.definition-list :items="$datosEquipo" class="mt-2" />
+                @else
+                    <p class="mt-3 text-[14px] text-ink-muted">{{ __('Sin datos adicionales registrados.') }}</p>
+                @endif
+            </x-ui.card>
+
             <x-ui.card>
                 <p class="section-title">{{ __('Responsable y ubicación') }}</p>
                 <x-ui.definition-list :items="$responsableUbicacion" class="mt-2" />
