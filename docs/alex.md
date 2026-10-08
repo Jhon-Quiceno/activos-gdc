@@ -23,6 +23,20 @@ RF-34, RF-35, RF-37 (los demás reportes del catálogo de la sección 11 del an�
 
 Consulta el detalle completo en el [Análisis de requerimientos](./analisis-requerimientos.md), sección 5.7 (requerimientos) y sección 11 (catálogo completo de reportes y salidas).
 
+## Estado al cierre de la Fase 1 (revisado por Jhon, 2026-10-08)
+
+**Este es el bloque más atrasado del proyecto.** No hay ninguna PR de Reportes fusionada ni abierta.
+
+| Días | Tarea | Estado |
+|---|---|---|
+| 1–2 | Componente de reporte reutilizable, filtros, exportación Excel/PDF | ❌ No hecho. `Reportes/Index.php` (186 líneas) no tiene ninguna llamada a `Excel::` ni `Pdf::` — no hay exportación de ningún tipo (RF-35). |
+| 3–5 | 7 reportes de inventario | ⚠️ Solo **1 de 7** tiene filtros y datos reales: obsolescencia por sistema operativo. Los demás (general, por dependencia, por sede/piso, por funcionario, por tipo/marca/modelo, por estado, de terceros) son placeholders. |
+| 6–7 | Reporte de calidad del inventario | ❌ No hecho (RF-37). Es un ítem de lista sin consulta real: no cuenta equipos sin serial, sin código, sin responsable, con código repetido ni pendientes de verificar. |
+| 8 | Reportes de movimientos (4) | ❌ No hecho. |
+| 9–10 | Probar con datos reales, cédula enmascarada | ❌ No hecho — no hay nada que probar todavía. |
+
+**Para Alex, si sigue en Fase 1:** prácticamente todo el bloque queda por construir. Prioridad sugerida: (1) el componente base de filtros + exportación, porque los demás reportes lo reutilizan; (2) el reporte de calidad (RF-37), que es el más simple de armar con lo que ya existe en `Equipo` (serial, código, verificación) y el más visible para el jefe; (3) el resto del catálogo de inventario; (4) reportes de movimientos, que ya tienen los eventos listos del lado de Anuar.
+
 ## Depende de / conecta con
 
 - **El modelo de datos de Jhon** — base de todos los reportes.
