@@ -16,6 +16,7 @@ use App\Models\TipoComponente;
 use App\Models\TipoEquipo;
 use App\Services\HistorialService;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Livewire\Component;
 
 /**
@@ -241,6 +242,23 @@ class Crear extends Component
 
         $this->validate();
 
+        try {
+            return $this->guardarEquipoEnTransaccion();
+        } catch (ValidationException $validationException) {
+            // El modelo valida RN-03 con la clave de columna `codigo_activo`; la
+            // remapeamos a la propiedad Livewire `codigoActivo` para que el error
+            // se muestre junto al campo correcto (x-ui.input busca $errors por el
+            // atributo `name`, que aquí es "codigoActivo").
+            $errores = $validationException->errors();
+
+            throw array_key_exists('codigo_activo', $errores)
+                ? ValidationException::withMessages(['codigoActivo' => $errores['codigo_activo']])
+                : $validationException;
+        }
+    }
+
+    private function guardarEquipoEnTransaccion(): Equipo
+    {
         return DB::transaction(function () {
             $equipo = Equipo::create([
                 'serial' => $this->serial,

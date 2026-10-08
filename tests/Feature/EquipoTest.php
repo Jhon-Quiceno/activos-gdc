@@ -6,7 +6,8 @@ use App\Models\Equipo;
 use App\Models\Marca;
 use App\Models\TipoEquipo;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use InvalidArgumentException;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
 
 class EquipoTest extends TestCase
@@ -30,9 +31,15 @@ class EquipoTest extends TestCase
     {
         $this->crearEquipoBase(['codigo_activo' => 'I1-000001']);
 
-        $this->expectException(InvalidArgumentException::class);
-
-        $this->crearEquipoBase(['codigo_activo' => 'I1-000001']);
+        try {
+            $this->crearEquipoBase(['codigo_activo' => 'I1-000001']);
+            $this->fail('Se esperaba que la validación de RN-03 fallara.');
+        } catch (ValidationException $validationException) {
+            // Debe ser un error de validación "amigable" (traducible a un mensaje
+            // de formulario), no una InvalidArgumentException cruda que produciría
+            // un 500 en cualquier caller que no la capture explícitamente.
+            $this->assertArrayHasKey('codigo_activo', $validationException->errors());
+        }
     }
 
     public function test_permite_codigo_activo_duplicado_con_justificacion(): void
@@ -56,7 +63,7 @@ class EquipoTest extends TestCase
             'codigo_activo_justificacion' => 'All in One: PC y pantalla comparten el mismo código de activo.',
         ]);
 
-        $this->expectException(InvalidArgumentException::class);
+        $this->expectException(ValidationException::class);
 
         $segundo->update(['codigo_activo_justificacion' => null]);
     }
@@ -65,7 +72,7 @@ class EquipoTest extends TestCase
     {
         $this->crearEquipoBase(['codigo_activo' => 'I1-000005']);
 
-        $this->expectException(InvalidArgumentException::class);
+        $this->expectException(ValidationException::class);
 
         $this->crearEquipoBase([
             'codigo_activo' => 'I1-000005',
@@ -78,5 +85,53 @@ class EquipoTest extends TestCase
         $equipo = $this->crearEquipoBase(['codigo_activo' => 'I1-000004']);
 
         $this->assertDatabaseHas('equipos', ['id' => $equipo->id, 'codigo_activo' => 'I1-000004']);
+    }
+
+    public function test_codigo_activo_igual_a_cero_no_se_salta_la_validacion(): void
+    {
+        // Bug: empty("0") es true en PHP. Un código de activo literal "0" no puede
+        // saltarse la validación de RN-03 como si no tuviera código.
+        $this->crearEquipoBase(['codigo_activo' => '0']);
+
+        $this->expectException(ValidationException::class);
+
+        $this->crearEquipoBase(['codigo_activo' => '0']);
+    }
+
+    public function test_espacios_alrededor_del_codigo_no_evitan_la_deteccion_de_duplicado(): void
+    {
+        $this->crearEquipoBase(['codigo_activo' => 'I1-000006']);
+
+        $this->expectException(ValidationException::class);
+
+        // Mismo código con espacios de más: debe normalizarse y detectarse igual
+        // como duplicado, no tratarse como un código distinto.
+        $this->crearEquipoBase(['codigo_activo' => '  I1-000006  ']);
+    }
+
+    public function test_el_codigo_activo_se_normaliza_con_trim_al_guardarse(): void
+    {
+        $equipo = $this->crearEquipoBase(['codigo_activo' => '  I1-000007  ']);
+
+        $this->assertSame('I1-000007', $equipo->codigo_activo);
+        $this->assertDatabaseHas('equipos', ['id' => $equipo->id, 'codigo_activo' => 'I1-000007']);
+    }
+
+    public function test_existe_un_indice_no_unico_sobre_codigo_activo(): void
+    {
+        $indices = DB::select("SHOW INDEX FROM equipos WHERE Column_name = 'codigo_activo'");
+
+        $this->assertNotEmpty(
+            $indices,
+            'Se esperaba al menos un índice sobre equipos.codigo_activo (RN-03 ya no puede ser unique).'
+        );
+
+        foreach ($indices as $indice) {
+            $this->assertSame(
+                1,
+                (int) $indice->Non_unique,
+                "El índice {$indice->Key_name} sobre codigo_activo no debería ser unique (RN-03 permite duplicados con justificación)."
+            );
+        }
     }
 }
