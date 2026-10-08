@@ -174,9 +174,10 @@
                         {{ __('Registrar baja') }}
                     </x-ui.button>
                 @endunless
-                {{-- TODO: dompdf (RF-33, Fase 2) --}}
-                <x-ui.button variant="secondary" type="button">
-                    {{ __('Exportar hoja de vida (PDF)') }}
+                {{-- RF-33: adelantado de la Fase 2 con autorización de Jhon (7 oct 2026). --}}
+                <x-ui.button variant="secondary" type="button" wire:click="exportarPdf" wire:loading.attr="disabled" wire:target="exportarPdf">
+                    <span wire:loading.remove wire:target="exportarPdf">{{ __('Exportar hoja de vida (PDF)') }}</span>
+                    <span wire:loading wire:target="exportarPdf">{{ __('Generando PDF…') }}</span>
                 </x-ui.button>
             </div>
         </div>

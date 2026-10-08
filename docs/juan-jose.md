@@ -25,6 +25,9 @@ RF-01, RF-02, RF-03, RF-04, RF-07, RF-09, RF-10, RF-11, RF-12, RF-14, RF-15.
 
 Consulta el detalle completo de cada uno en el [Análisis de requerimientos](./analisis-requerimientos.md), secciones 5.1 a 5.3.
 
+> **Agregado fuera del plan original: RF-33 · Exportar la hoja de vida a PDF.**
+> RF-33 estaba en la **Fase 2** (análisis, sección 13; plan, sección 6 «Qué queda fuera de estas dos semanas»). Se **adelantó a la Fase 1** con autorización de Jhon el **7 de octubre de 2026** y lo implementó Juan José: botón «Exportar hoja de vida (PDF)» en la hoja de vida, que descarga un PDF tamaño carta sin firma con la ficha, el responsable y la ubicación (cédula enmascarada, RN-12), el software, los componentes actuales y el historial completo. Código: `App\Livewire\Equipos\HojaDeVida::exportarPdf()` y `resources/views/livewire/equipos/pdf/hoja-de-vida.blade.php`.
+
 ## Depende de / conecta con
 
 - **El modelo de datos y `HistorialService` de Jhon** — ya deben existir antes del día 1; no se crean migraciones propias (ver norma 2 más abajo).
