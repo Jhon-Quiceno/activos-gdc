@@ -98,6 +98,16 @@ class Index extends Component
             abort(403);
         }
 
+        // RN-03: un código de activo repetido entre dos equipos no-AllInOne necesita
+        // justificación antes de guardarse. Por ahora bloqueamos la confirmación con
+        // un error claro en vez de dejar que la restricción única de la base de datos
+        // reviente a medio guardar (dejaría equipos huérfanos de esa fila).
+        $repetidos = $this->codigosRepetidosEnLote();
+        if ($repetidos !== []) {
+            $this->addError('archivo', __('Hay códigos de activo repetidos en el archivo (:codigos). Corrígelos antes de confirmar.', ['codigos' => implode(', ', $repetidos)]));
+            return;
+        }
+
         DB::transaction(function () use ($usuario): void {
             $importacion = Importacion::create([
                 'archivo' => $this->archivo->getClientOriginalName(),
@@ -146,6 +156,8 @@ class Index extends Component
 
     public function advertenciasPorFila(): array
     {
+        $conteoEnLote = $this->conteoCodigosEnLote();
+
         $advertencias = [];
         foreach ($this->filas as $fila) {
             foreach ($fila['equipos'] as $equipo) {
@@ -155,13 +167,53 @@ class Index extends Component
                 if (! $equipo['serial']) {
                     $advertencias[] = ['fila' => $fila['numero'], 'tipo' => 'sin_serial', 'detalle' => __('Equipo sin serial; queda pendiente de verificar.')];
                 }
-                if ($equipo['codigo'] && Equipo::where('codigo_activo', $this->normalizarCodigo($equipo['codigo']))->exists()) {
-                    $advertencias[] = ['fila' => $fila['numero'], 'tipo' => 'repetido', 'detalle' => __('Código de activo ya registrado.')];
+                if ($equipo['codigo']) {
+                    $codigo = $this->normalizarCodigo($equipo['codigo']);
+                    // RN-03: un código repetido se advierte tanto si ya choca con algo
+                    // persistido como si se repite DENTRO del mismo lote que se está
+                    // previsualizando (todavía no hay nada guardado en ese segundo caso).
+                    $repetidoEnLote = $codigo && ($conteoEnLote[$codigo] ?? 0) > 1;
+                    $repetidoEnBase = $codigo && Equipo::where('codigo_activo', $codigo)->exists();
+                    if ($repetidoEnLote || $repetidoEnBase) {
+                        $advertencias[] = ['fila' => $fila['numero'], 'tipo' => 'repetido', 'detalle' => __('Código de activo ya registrado.')];
+                    }
                 }
             }
         }
 
         return $advertencias;
+    }
+
+    /**
+     * Cuenta cuántas veces aparece cada código de activo (ya normalizado) entre todos
+     * los equipos detectados en el archivo actual, sin importar la fila.
+     *
+     * @return array<string, int>
+     */
+    private function conteoCodigosEnLote(): array
+    {
+        $conteo = [];
+        foreach ($this->filas as $fila) {
+            foreach ($fila['equipos'] as $equipo) {
+                if ($equipo['codigo'] && $codigo = $this->normalizarCodigo($equipo['codigo'])) {
+                    $conteo[$codigo] = ($conteo[$codigo] ?? 0) + 1;
+                }
+            }
+        }
+
+        return $conteo;
+    }
+
+    /**
+     * Códigos de activo (normalizados) que se repiten dos o más veces dentro del
+     * archivo que se está importando. No distingue All in One: esa excepción de
+     * RN-03 todavía no está implementada (ver nota en la clase).
+     *
+     * @return array<int, string>
+     */
+    private function codigosRepetidosEnLote(): array
+    {
+        return array_keys(array_filter($this->conteoCodigosEnLote(), fn (int $veces) => $veces > 1));
     }
 
     public function irAPaso(int $paso): void
