@@ -39,20 +39,22 @@
 
     @if ($pasoActual === 1)
         <x-ui.card>
-            <p class="section-title">{{ __('Archivo cargado') }}</p>
+            <p class="section-title">{{ __('Seleccionar archivo') }}</p>
+            <p class="mt-1 text-[13px] text-ink-muted">{{ __('Carga un archivo XLSX, XLS o CSV con la primera fila como encabezado.') }}</p>
 
-            <div class="mt-4 flex flex-wrap items-center justify-between gap-4 rounded-lg border border-line bg-app-bg px-4 py-3">
-                <div>
-                    <p class="font-mono text-[14px] text-ink">INVENTARIO DE LA INFRAESTRUCTURA TECNOLÓGICA 2026 (1-461).xlsx</p>
-                    <p class="mt-1 text-[13px] text-ink-muted">{{ __('461 filas · cargado hoy') }}</p>
+            <div class="mt-4 rounded-lg border border-dashed border-line-input bg-app-bg px-4 py-6">
+                <input type="file" wire:model="archivo" accept=".xlsx,.xls,.csv"
+                    class="block w-full text-[14px] text-ink-muted file:mr-4 file:rounded-lg file:border-0 file:bg-primary file:px-4 file:py-2 file:text-[13px] file:font-semibold file:text-white" />
+                <div wire:loading wire:target="archivo" class="mt-2 text-[13px] text-ink-muted">{{ __('Leyendo archivo...') }}</div>
+                @error('archivo') <p class="mt-2 text-[13px] text-danger-text">{{ $message }}</p> @enderror
+            </div>
+
+            @if ($archivo)
+                <div class="mt-4 flex items-center justify-between rounded-lg border border-line bg-app-bg px-4 py-3">
+                    <span class="font-mono text-[14px] text-ink">{{ $archivo->getClientOriginalName() }}</span>
+                    <x-ui.badge variant="success">{{ __('Cargado') }}</x-ui.badge>
                 </div>
-
-                <x-ui.badge variant="success">{{ __('Cargado') }}</x-ui.badge>
-            </div>
-
-            <div class="mt-4">
-                <x-ui.button variant="secondary" size="sm" type="button">{{ __('Reemplazar archivo') }}</x-ui.button>
-            </div>
+            @endif
         </x-ui.card>
     @elseif ($pasoActual === 2)
         <x-ui.card>
@@ -133,8 +135,11 @@
             </div>
 
             <p class="mx-auto mt-4 max-w-md text-[14px] text-ink-muted">
-                {{ __('930 equipos quedarán registrados con estado :estado. Este paso guardará la importación definitivamente (función de guardado fuera de alcance en esta versión).', ['estado' => __('Pendiente de verificar')]) }}
+                {{ __(':equipos equipos quedarán registrados con estado :estado. La fila de origen y el evento de alta quedarán guardados.', ['equipos' => $kpis['equipos_detectados'], 'estado' => __('Pendiente de verificar')]) }}
             </p>
+            @if (session('status'))
+                <p class="mt-4 text-[14px] font-semibold text-success-text">{{ session('status') }}</p>
+            @endif
         </x-ui.card>
     @endif
 
@@ -144,7 +149,9 @@
             {{ __('Volver') }}
         </x-ui.button>
 
-        <x-ui.button variant="primary" type="button" wire:click="continuar" :disabled="$pasoActual === 4">
+        <x-ui.button variant="primary" type="button"
+            wire:click="{{ $pasoActual === 4 ? 'confirmar' : 'continuar' }}"
+            :disabled="$pasoActual === 4 && count($filas) === 0">
             {{ $pasoActual < 4 ? __('Continuar a confirmar') : __('Confirmar importación') }}
         </x-ui.button>
     </div>
