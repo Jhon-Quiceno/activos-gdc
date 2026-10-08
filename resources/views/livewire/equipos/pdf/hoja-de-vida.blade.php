@@ -45,6 +45,48 @@
         'descarte' => __('Descarte'),
     ];
 
+    $figuraLabels = [
+        'comodato' => __('Comodato'),
+        'convenio' => __('Convenio'),
+        'proveedor' => __('Proveedor'),
+    ];
+
+    // Mismas claves que usa la pantalla (hoja-de-vida.blade.php) para
+    // `equipos.caracteristicas`, según la familia del tipo de equipo.
+    $caracteristicaLabels = [
+        'tamano_pulgadas' => __('Tamaño en pulgadas'),
+        'conexion' => __('Conexión'),
+        'funciones' => __('Funciones'),
+        'tipo_impresion' => __('Tipo de impresión'),
+        'tipo_escaner' => __('Tipo de escáner'),
+        'tipo' => __('Tipo'),
+        'capacidad_va' => __('Capacidad en VA'),
+        'numero_tomas' => __('N.° de tomas'),
+        'numero_puertos' => __('N.° de puertos'),
+        'administrable' => __('¿Administrable?'),
+        'velocidad' => __('Velocidad'),
+        'lumenes' => __('Lúmenes'),
+        'resolucion' => __('Resolución'),
+    ];
+
+    $datosEquipo = [];
+
+    foreach (($equipo->caracteristicas ?? []) as $clave => $valor) {
+        $datosEquipo[$caracteristicaLabels[$clave] ?? $clave] = $valor;
+    }
+
+    if ($equipo->propiedad === 'tercero' && $equipo->figura_tercero) {
+        $datosEquipo[__('Figura del tercero')] = $figuraLabels[$equipo->figura_tercero] ?? $equipo->figura_tercero;
+    }
+
+    if (trim((string) $equipo->codigo_activo_justificacion) !== '') {
+        $datosEquipo[__('Justificación del código de activo')] = $equipo->codigo_activo_justificacion;
+    }
+
+    if (trim((string) $equipo->observaciones) !== '') {
+        $datosEquipo[__('Observaciones')] = $equipo->observaciones;
+    }
+
     $asignacion = $equipo->asignacionActual;
     $persona = $asignacion?->persona;
     $configuracion = $equipo->configuracionComputo;
@@ -195,6 +237,25 @@
                 <td class="etiqueta">{{ __('Nombre de red') }}</td>
                 <td colspan="3">{{ $configuracion->nombre_red ?? $placeholder }}</td>
             </tr>
+        </table>
+    @endif
+
+    {{-- Características del tipo, figura del tercero, justificación de RN-03 y observaciones --}}
+    @if($datosEquipo)
+        <table>
+            <tr><td colspan="4" class="seccion">{{ __('Datos del equipo') }}</td></tr>
+            @foreach(array_chunk(array_keys($datosEquipo), 2) as $par)
+                <tr>
+                    @foreach($par as $clave)
+                        <td class="etiqueta">{{ $clave }}</td>
+                        <td>{{ $datosEquipo[$clave] }}</td>
+                    @endforeach
+                    @if(count($par) === 1)
+                        <td class="etiqueta"></td>
+                        <td></td>
+                    @endif
+                </tr>
+            @endforeach
         </table>
     @endif
 
