@@ -17,6 +17,7 @@ use App\Models\TipoEquipo;
 use App\Services\HistorialService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 use Maatwebsite\Excel\Facades\Excel;
@@ -108,8 +109,9 @@ class Index extends Component
             return;
         }
 
-        DB::transaction(function () use ($usuario): void {
-            $importacion = Importacion::create([
+        try {
+            DB::transaction(function () use ($usuario): void {
+                $importacion = Importacion::create([
                 'archivo' => $this->archivo->getClientOriginalName(),
                 'fecha' => now(),
                 'usuario_id' => $usuario->id,
@@ -120,21 +122,33 @@ class Index extends Component
             foreach ($this->filas as $fila) {
                 $puesto = $this->resolverPuesto($fila['datos']);
                 foreach ($fila['equipos'] as $datos) {
-                    $equipo = Equipo::create([
-                        'serial' => $datos['serial'] ?: $this->serialPendiente($fila['numero'], $datos['tipo']),
-                        'codigo_activo' => $this->normalizarCodigo($datos['codigo']),
-                        'tipo_equipo_id' => $this->tipoId($datos['tipo']),
-                        'marca_id' => $this->marcaId($datos['marca']),
-                        'modelo' => $datos['modelo'],
-                        'propiedad' => $datos['tercero'] ? 'tercero' : 'gobernacion',
-                        'propietario_tercero' => $datos['propietario'],
-                        'estado_funcionamiento' => $datos['estado'],
-                        'estado_ciclo_vida' => $puesto ? 'en_servicio' : 'sin_asignar',
-                        'verificacion' => 'pendiente_de_verificar',
-                        'puesto_trabajo_id' => $puesto?->id,
-                        'importacion_id' => $importacion->id,
-                        'fila_origen_importacion' => $fila['numero'],
-                    ]);
+                    try {
+                        $equipo = Equipo::create([
+                            'serial' => $datos['serial'] ?: $this->serialPendiente($fila['numero'], $datos['tipo']),
+                            'codigo_activo' => $this->normalizarCodigo($datos['codigo']),
+                            'tipo_equipo_id' => $this->tipoId($datos['tipo']),
+                            'marca_id' => $this->marcaId($datos['marca']),
+                            'modelo' => $datos['modelo'],
+                            'propiedad' => $datos['tercero'] ? 'tercero' : 'gobernacion',
+                            'propietario_tercero' => $datos['propietario'],
+                            'estado_funcionamiento' => $datos['estado'],
+                            'estado_ciclo_vida' => $puesto ? 'en_servicio' : 'sin_asignar',
+                            'verificacion' => 'pendiente_de_verificar',
+                            'puesto_trabajo_id' => $puesto?->id,
+                            'importacion_id' => $importacion->id,
+                            'fila_origen_importacion' => $fila['numero'],
+                        ]);
+                    } catch (ValidationException $validacionModelo) {
+                        // RN-03: el código ya existe en un equipo fuera de este archivo
+                        // (contra la base, no contra el lote). codigosRepetidosEnLote()
+                        // de arriba solo mira duplicados DENTRO del archivo; este caso
+                        // solo lo detecta el modelo al guardar. Lo convertimos en un
+                        // error de fila legible en vez de dejarlo reventar sin contexto.
+                        throw new \RuntimeException(__('Fila :fila: :mensaje', [
+                            'fila' => $fila['numero'],
+                            'mensaje' => $validacionModelo->errors()['codigo_activo'][0] ?? $validacionModelo->getMessage(),
+                        ]), previous: $validacionModelo);
+                    }
 
                     app(HistorialService::class)->registrar(
                         equipo: $equipo,
@@ -147,7 +161,14 @@ class Index extends Component
                     $this->crearConfiguracion($equipo, $fila['datos']);
                 }
             }
-        });
+            });
+        } catch (\RuntimeException $errorDeFila) {
+            // DB::transaction ya hizo rollback antes de relanzar la excepción
+            // original; nada queda a medias.
+            $this->addError('archivo', $errorDeFila->getMessage().' '.__('Corrígelo (agregando justificación en Equipos u otro código) antes de confirmar.'));
+
+            return;
+        }
 
         session()->flash('status', __('La importación fue confirmada correctamente.'));
         $this->reset(['archivo', 'filas', 'equivalencias', 'advertencias', 'kpis']);

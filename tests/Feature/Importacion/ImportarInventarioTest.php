@@ -204,6 +204,26 @@ it('bloquea la confirmacion si dos equipos no-AllInOne comparten codigo de activ
         ->and(Importacion::count())->toBe(0);
 });
 
+it('bloquea la confirmacion con un mensaje claro si el codigo ya existe en un equipo fuera del archivo (RN-03)', function () {
+    // Caso NO cubierto por codigosRepetidosEnLote(): el duplicado no está
+    // dentro del mismo archivo, sino contra un equipo ya persistido antes de
+    // esta importación. Sin captura explícita, Equipo::create() deja pasar
+    // la ValidationException del modelo sin contexto de fila.
+    Equipo::factory()->create(['codigo_activo' => 'I1-030099', 'tipo_equipo_id' => $this->pc->id]);
+
+    $archivo = csvInventario($this->encabezados, [
+        filaBase(['PC Serial' => 'PC-SN-0030', 'PC Codigo' => 'I1-030099', 'Monitor' => '', 'Impresora' => '']),
+    ]);
+
+    $testable = Livewire::actingAs($this->usuario)->test(Index::class)->set('archivo', $archivo);
+
+    $testable->call('confirmar')->assertHasErrors('archivo');
+
+    // Rollback completo: ni el nuevo equipo ni la importación quedan a medias.
+    expect(Equipo::count())->toBe(1) // solo el que ya existía antes
+        ->and(Importacion::count())->toBe(0);
+});
+
 it('no persiste nada al leer el archivo: solo al confirmar explicitamente (RF-40)', function () {
     $archivo = csvInventario($this->encabezados, [filaBase()]);
 
