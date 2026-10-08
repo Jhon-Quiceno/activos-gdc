@@ -174,6 +174,24 @@ class GestorFirmas
         }
 
         return DB::transaction(function () use ($evento, $tipo, $archivo, $esUnico) {
+            // Re-chequeo con lock: los de arriba (fuera de la transacción) son
+            // solo para fallar rápido con un mensaje claro. Sin este segundo
+            // chequeo ya bloqueado, una anulación y una subida de firma casi
+            // simultáneas sobre el mismo evento podían pasar las dos.
+            $bloqueado = Evento::query()->whereKey($evento->id)->lockForUpdate()->first();
+
+            if ($bloqueado->estado_firma !== 'pendiente_de_firma') {
+                throw ValidationException::withMessages([
+                    'archivo' => __('Este evento no está pendiente de firma: sus documentos ya están completos.'),
+                ]);
+            }
+
+            if ($bloqueado->anulaciones()->exists()) {
+                throw ValidationException::withMessages([
+                    'archivo' => __('Este evento fue anulado: ya no admite documentos.'),
+                ]);
+            }
+
             $ruta = $archivo->storeAs(
                 sprintf('movimientos/eventos/%d/firmados', $evento->id),
                 sprintf('%s-%s.%s', $esUnico ? 'documento-unico' : $tipo, now()->format('YmdHis'), strtolower($archivo->getClientOriginalExtension() ?: $archivo->extension())),

@@ -26,9 +26,15 @@ class ReglasMovimiento
      * memoria) porque el componente Livewire pudo haberse montado antes de que
      * otro usuario diera de baja el equipo.
      */
+    /**
+     * Llamar siempre dentro de una DB::transaction() ya abierta por el caller:
+     * lockForUpdate() solo bloquea la fila mientras dure esa transacción, así
+     * que si esto corre antes de abrirla (sin conexión en modo transacción) no
+     * protege nada contra dos requests concurrentes sobre el mismo equipo.
+     */
     public static function asegurarQueAdmiteEventos(Equipo $equipo, string $campo = 'equipo', bool $permitirConBajaEnTramite = false): void
     {
-        $estado = Equipo::query()->whereKey($equipo->id)->value('estado_ciclo_vida');
+        $estado = Equipo::query()->whereKey($equipo->id)->lockForUpdate()->value('estado_ciclo_vida');
 
         if ($estado === 'dado_de_baja') {
             throw ValidationException::withMessages([
@@ -50,13 +56,20 @@ class ReglasMovimiento
 
     /**
      * Baja registrada que todavía espera su formato firmado y no fue anulada.
+     *
+     * También cuenta un diagnóstico con «Generar formato» (DiagnosticoForm)
+     * que dejó un formato_baja sin firmar: aunque el evento quede con
+     * tipo=diagnostico, ese documento describe una baja en trámite igual que
+     * una de tipo=baja, y sin esto una segunda baja independiente podía
+     * registrarse sobre el mismo equipo sin que ninguna de las dos lo viera.
      */
     public static function bajaEnTramite(Equipo $equipo): ?Evento
     {
         return Evento::query()
             ->where('equipo_id', $equipo->id)
-            ->where('tipo', 'baja')
+            ->whereIn('tipo', ['baja', 'diagnostico'])
             ->where('estado_firma', 'pendiente_de_firma')
+            ->whereHas('documentos', fn ($query) => $query->where('tipo', 'formato_baja')->where('firmado', false))
             ->whereDoesntHave('anulaciones')
             ->latest('id')
             ->first();

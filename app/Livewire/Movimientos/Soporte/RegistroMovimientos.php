@@ -41,9 +41,12 @@ class RegistroMovimientos
      */
     public function trasladar(Equipo $equipo, User $usuario, array $datos): Evento
     {
-        ReglasMovimiento::asegurarQueAdmiteEventos($equipo);
-
         return DB::transaction(function () use ($equipo, $usuario, $datos) {
+            // Dentro de la transacción (no antes): lockForUpdate() solo
+            // protege contra dos movimientos concurrentes sobre el mismo
+            // equipo si la fila ya está bloqueada cuando se re-chequea.
+            ReglasMovimiento::asegurarQueAdmiteEventos($equipo);
+
             $equipo->loadMissing('asignacionActual.persona');
             $origen = $equipo->asignacionActual?->persona?->nombre ?? __('Sin asignar (bodega)');
             $persona = $datos['persona'];
@@ -86,11 +89,11 @@ class RegistroMovimientos
      */
     public function diagnosticar(Equipo $equipo, User $usuario, array $datos, array $evidencias = []): Evento
     {
-        // Un diagnóstico se puede registrar aunque haya una baja en trámite:
-        // no cambia responsable ni configuración.
-        ReglasMovimiento::asegurarQueAdmiteEventos($equipo, permitirConBajaEnTramite: true);
-
         return DB::transaction(function () use ($equipo, $usuario, $datos, $evidencias) {
+            // Un diagnóstico se puede registrar aunque haya una baja en
+            // trámite: no cambia responsable ni configuración.
+            ReglasMovimiento::asegurarQueAdmiteEventos($equipo, permitirConBajaEnTramite: true);
+
             $conFormato = (bool) ($datos['generar_formato'] ?? false);
 
             $evento = $this->historial->registrar(
@@ -137,8 +140,6 @@ class RegistroMovimientos
      */
     public function darDeBaja(Equipo $equipo, User $usuario, array $datos, array $evidencias = [], ?UploadedFile $formatoFirmado = null): Evento
     {
-        ReglasMovimiento::asegurarQueAdmiteEventos($equipo);
-
         if ($equipo->propiedad === 'tercero') {
             // CU-08: la precondición es que el equipo sea de la Gobernación; un
             // equipo de tercero se devuelve a su dueño, no se da de baja.
@@ -148,6 +149,8 @@ class RegistroMovimientos
         }
 
         $evento = DB::transaction(function () use ($equipo, $usuario, $datos, $evidencias) {
+            ReglasMovimiento::asegurarQueAdmiteEventos($equipo);
+
             $evento = $this->historial->registrar(
                 equipo: $equipo,
                 tipo: 'baja',

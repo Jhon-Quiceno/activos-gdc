@@ -33,9 +33,15 @@ class GestorAsignaciones
     ): Asignacion {
         $fecha = $fecha instanceof CarbonInterface ? $fecha : Carbon::parse($fecha);
 
+        // lockForUpdate(): este método se llama siempre dentro de la
+        // DB::transaction() del movimiento (ver RegistroMovimientos). Sin el
+        // lock, dos traslados casi simultáneos sobre el mismo equipo podían
+        // leer "sin asignación abierta que cerrar" los dos a la vez y terminar
+        // creando dos filas con fecha_fin IS NULL (viola RN-04).
         Asignacion::query()
             ->where('equipo_id', $equipo->id)
             ->whereNull('fecha_fin')
+            ->lockForUpdate()
             ->get()
             ->each(fn (Asignacion $abierta) => $abierta->update(['fecha_fin' => $fecha->toDateString()]));
 
