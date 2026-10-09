@@ -17,30 +17,53 @@
 
     <div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <div class="space-y-4 lg:col-span-2">
-            {{-- 1. Tipo de equipo --}}
+            {{--
+                1. Tipo de equipo: botones compactos, una línea por familia. Al elegir
+                un tipo la sección se pliega a una sola línea con «Cambiar»
+                (estado solo en el navegador, con Alpine).
+            --}}
             <x-ui.card>
-                <p class="section-title">{{ __('1. Tipo de equipo') }}</p>
+                {{-- La clave cambia al pasar de «sin tipo» a «con tipo» (y al limpiar el formulario), así Alpine reinicia el estado. --}}
+                <div x-data="{ abierto: @js($tipoEquipoId === null) }" wire:key="selector-tipo-{{ $tipoEquipoId ? 'elegido' : 'vacio' }}">
+                    <div class="flex flex-wrap items-center justify-between gap-2">
+                        <p class="section-title">{{ __('1. Tipo de equipo') }}</p>
 
-                @foreach ($familiaLabels as $familiaValor => $familiaEtiqueta)
-                    @if ($tiposPorFamilia->has($familiaValor))
-                        <div class="mt-4 first:mt-3">
-                            <p class="text-[12px] font-semibold uppercase tracking-wide text-ink-muted">{{ $familiaEtiqueta }}</p>
-                            <div class="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-3">
-                                @foreach ($tiposPorFamilia[$familiaValor] as $tipo)
-                                    <x-ui.card
-                                        clickable
-                                        :accent="$tipoEquipoId === $tipo->id ? 'primary' : null"
-                                        wire:click="seleccionarTipo({{ $tipo->id }})"
-                                        wire:key="tipo-{{ $tipo->id }}"
-                                        class="text-center"
-                                    >
-                                        <p class="text-[14px] font-semibold text-ink">{{ $tipo->nombre }}</p>
-                                    </x-ui.card>
-                                @endforeach
+                        @if ($tipoSeleccionado = $tiposPorFamilia->flatten()->firstWhere('id', $tipoEquipoId))
+                            <div x-show="! abierto" class="flex items-center gap-2 text-[14px]">
+                                <x-ui.badge variant="info">{{ $tipoSeleccionado->nombre }}</x-ui.badge>
+                                <span class="text-ink-muted">{{ $familiaLabels[$tipoSeleccionado->familia] ?? $tipoSeleccionado->familia }}</span>
+                                <button type="button" x-on:click="abierto = true" class="font-semibold text-primary hover:underline">
+                                    {{ __('Cambiar') }}
+                                </button>
                             </div>
-                        </div>
-                    @endif
-                @endforeach
+                        @endif
+                    </div>
+
+                    <div x-show="abierto" class="mt-3 space-y-2">
+                        @foreach ($familiaLabels as $familiaValor => $familiaEtiqueta)
+                            @if ($tiposPorFamilia->has($familiaValor))
+                                <div class="flex flex-wrap items-center gap-1.5">
+                                    <span class="w-[104px] shrink-0 text-[12px] font-semibold uppercase tracking-wide text-ink-muted">{{ $familiaEtiqueta }}</span>
+                                    @foreach ($tiposPorFamilia[$familiaValor] as $tipo)
+                                        <button
+                                            type="button"
+                                            wire:key="tipo-{{ $tipo->id }}"
+                                            wire:click="seleccionarTipo({{ $tipo->id }})"
+                                            x-on:click="abierto = false"
+                                            @class([
+                                                'h-8 rounded-full border px-3 text-[13px] font-semibold transition-colors duration-150',
+                                                'border-primary bg-primary text-white' => $tipoEquipoId === $tipo->id,
+                                                'border-line-input bg-white text-ink hover:border-primary hover:text-primary' => $tipoEquipoId !== $tipo->id,
+                                            ])
+                                        >
+                                            {{ $tipo->nombre }}
+                                        </button>
+                                    @endforeach
+                                </div>
+                            @endif
+                        @endforeach
+                    </div>
+                </div>
 
                 <x-input-error :messages="$errors->get('tipoEquipoId')" class="mt-3" />
             </x-ui.card>
