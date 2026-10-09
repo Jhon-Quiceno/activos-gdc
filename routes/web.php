@@ -17,6 +17,7 @@ Route::middleware(['auth'])->group(function () {
     Route::view('/equipos', 'livewire.equipos.page')->name('equipos.index');
     Route::view('/equipos/crear', 'livewire.equipos.crear')->name('equipos.crear');
     Route::view('/equipos/{equipo}', 'livewire.equipos.show')->name('equipos.show');
+    Route::view('/equipos/{equipo}/editar', 'livewire.equipos.editar')->name('equipos.editar');
 
     // --- Movimientos (Anuar) ---
     Route::view('/movimientos', 'livewire.movimientos.page')->name('movimientos.index');
