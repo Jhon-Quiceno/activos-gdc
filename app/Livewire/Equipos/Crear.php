@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Equipos;
 
+use App\Livewire\Equipos\Concerns\CaracteristicasPorFamilia;
 use App\Livewire\Equipos\Concerns\NormalizaIdentificadores;
 use App\Models\Asignacion;
 use App\Models\Componente;
@@ -31,6 +32,7 @@ use Livewire\Component;
  */
 class Crear extends Component
 {
+    use CaracteristicasPorFamilia;
     use NormalizaIdentificadores;
 
     // --- 1. Tipo de equipo ---
@@ -93,41 +95,7 @@ class Crear extends Component
         ['nombre' => 'Cámara', 'tiene' => false, 'marca' => '', 'serial' => ''],
     ];
 
-    // --- 4. Monitor (familia "video") ---
-    public string $tamanoPulgadas = '';
-
-    public string $conexionMonitor = '';
-
-    // --- 4. Impresión ---
-    public string $funcionesImpresora = '';
-
-    public string $tipoImpresion = '';
-
-    public string $conexionImpresora = '';
-
-    // --- 4. Digitalización ---
-    public string $tipoEscaner = '';
-
-    public string $conexionEscaner = '';
-
-    // --- 4. Energía ---
-    public string $tipoEnergia = '';
-
-    public string $capacidadVa = '';
-
-    public string $numTomas = '';
-
-    // --- 4. Conectividad ---
-    public string $numPuertos = '';
-
-    public string $administrable = '';
-
-    public string $velocidad = '';
-
-    // --- 4. Proyección ---
-    public string $lumenes = '';
-
-    public string $resolucion = '';
+    // --- 4. Demás familias: ver el trait CaracteristicasPorFamilia ---
 
     // --- 5. Responsable y ubicación ---
     public bool $asignarResponsable = false;
@@ -236,8 +204,7 @@ class Crear extends Component
         }
 
         // Características por tipo (RF-03): números enteros donde aplica.
-        $rules['numTomas'] = ['nullable', 'integer', 'min:0', 'max:100'];
-        $rules['numPuertos'] = ['nullable', 'integer', 'min:0', 'max:1000'];
+        $rules += $this->reglasCaracteristicas();
         $rules['observaciones'] = ['nullable', 'string', 'max:2000'];
 
         if ($this->asignarResponsable) {
@@ -437,54 +404,6 @@ class Crear extends Component
 
             return $equipo;
         });
-    }
-
-    /**
-     * Características propias del tipo (RF-03) para la columna JSON
-     * `equipos.caracteristicas`. Solo se guardan las de la familia elegida y
-     * con valor; el cómputo no usa esta columna (va en configuración y
-     * componentes). Devuelve null si no hay ninguna.
-     *
-     * @return array<string, string|int>|null
-     */
-    private function caracteristicas(): ?array
-    {
-        $porFamilia = [
-            'video' => [
-                'tamano_pulgadas' => $this->tamanoPulgadas,
-                'conexion' => $this->conexionMonitor,
-            ],
-            'impresion' => [
-                'funciones' => $this->funcionesImpresora,
-                'tipo_impresion' => $this->tipoImpresion,
-                'conexion' => $this->conexionImpresora,
-            ],
-            'digitalizacion' => [
-                'tipo_escaner' => $this->tipoEscaner,
-                'conexion' => $this->conexionEscaner,
-            ],
-            'energia' => [
-                'tipo' => $this->tipoEnergia,
-                'capacidad_va' => $this->capacidadVa,
-                'numero_tomas' => $this->numTomas !== '' ? (int) $this->numTomas : '',
-            ],
-            'conectividad' => [
-                'numero_puertos' => $this->numPuertos !== '' ? (int) $this->numPuertos : '',
-                'administrable' => $this->administrable,
-                'velocidad' => $this->velocidad,
-            ],
-            'proyeccion' => [
-                'lumenes' => $this->lumenes,
-                'resolucion' => $this->resolucion,
-            ],
-        ];
-
-        $valores = array_filter(
-            array_map(fn ($valor) => is_string($valor) ? trim($valor) : $valor, $porFamilia[$this->familiaSeleccionada] ?? []),
-            fn ($valor) => $valor !== '' && $valor !== null,
-        );
-
-        return $valores === [] ? null : $valores;
     }
 
     private function guardarConfiguracionComputo(Equipo $equipo): void
