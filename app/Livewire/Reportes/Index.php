@@ -2,15 +2,22 @@
 
 namespace App\Livewire\Reportes;
 
+use App\Livewire\Reportes\Definiciones\CalidadInventario;
+use App\Livewire\Reportes\Definiciones\CambiosComponentes;
+use App\Livewire\Reportes\Definiciones\DadosDeBaja;
+use App\Livewire\Reportes\Definiciones\HistorialEquipo;
 use App\Livewire\Reportes\Definiciones\InventarioGeneral;
 use App\Livewire\Reportes\Definiciones\ObsolescenciaSo;
+use App\Livewire\Reportes\Definiciones\PendientesFirma;
 use App\Livewire\Reportes\Definiciones\PorDependencia;
 use App\Livewire\Reportes\Definiciones\PorEstado;
 use App\Livewire\Reportes\Definiciones\PorFuncionario;
 use App\Livewire\Reportes\Definiciones\PorSedePiso;
 use App\Livewire\Reportes\Definiciones\PorTipoMarcaModelo;
 use App\Livewire\Reportes\Definiciones\ReporteDefinicion;
+use App\Livewire\Reportes\Definiciones\SinAntivirus;
 use App\Livewire\Reportes\Definiciones\Terceros;
+use App\Livewire\Reportes\Definiciones\Traslados;
 use App\Livewire\Reportes\Exportes\ReporteExport;
 use App\Models\Dependencia;
 use App\Models\Marca;
@@ -36,6 +43,7 @@ class Index extends Component
 
     public string $filtroEstado = '';
 
+    /** Filtro propio de cada reporte (sistema operativo, problema, motivo, acción...). */
     public string $filtroSistemaOperativo = '';
 
     public string $filtroPiso = '';
@@ -129,7 +137,14 @@ class Index extends Component
         'por_tipo_marca_modelo' => PorTipoMarcaModelo::class,
         'por_estado' => PorEstado::class,
         'terceros' => Terceros::class,
+        'dados_de_baja' => DadosDeBaja::class,
         'obsolescencia_so' => ObsolescenciaSo::class,
+        'sin_antivirus' => SinAntivirus::class,
+        'historial_equipo' => HistorialEquipo::class,
+        'cambios_componentes' => CambiosComponentes::class,
+        'traslados' => Traslados::class,
+        'pendientes_firma' => PendientesFirma::class,
+        'calidad_inventario' => CalidadInventario::class,
     ];
 
     public const ESTADOS = [
@@ -241,6 +256,8 @@ class Index extends Component
             'reportes' => self::REPORTES,
             'estados' => self::ESTADOS,
             'propiedades' => self::PROPIEDADES,
+            'etiquetaFecha' => $definicion?->etiquetaFecha() ?? 'Registrado',
+            'filtroEspecifico' => $definicion?->filtroEspecifico(),
             'sedes' => Sede::orderBy('nombre')->get(),
             'pisos' => Piso::orderBy('numero')->get(),
             'dependencias' => Dependencia::orderBy('nombre')->get(),

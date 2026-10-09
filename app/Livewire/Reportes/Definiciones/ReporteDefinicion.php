@@ -101,6 +101,18 @@ abstract class ReporteDefinicion
             ->leftJoin((new Marca)->getTable().' as mar', 'mar.id', '=', 'equipos.marca_id');
     }
 
+        /** Rótulo de los filtros de fecha ("Registrado desde/hasta", "Fecha del evento desde/hasta"). */
+    public function etiquetaFecha(): string
+    {
+        return 'Registrado';
+    }
+
+    /** Filtro propio del reporte, o null: ['etiqueta' => ..., 'todas' => ..., 'opciones' => [valor => etiqueta]]. */
+    public function filtroEspecifico(): ?array
+    {
+        return null;
+    }
+
     /** Filas listas para exportar (todas, sin paginar). */
     public function filas(array $filtros): Collection
     {

@@ -70,6 +70,14 @@
                             <option value="{{ $so->id }}">{{ $so->nombre }}</option>
                         @endforeach
                     </select>
+                @elseif ($filtroEspecifico)
+                    <label class="text-[13px] font-semibold text-ink-label">{{ __($filtroEspecifico['etiqueta']) }}</label>
+                    <select wire:model.live="filtroSistemaOperativo" class="mt-1 h-11 w-full rounded-lg border-line-input text-[14px] text-ink focus:border-primary focus:ring-primary">
+                        <option value="">{{ __($filtroEspecifico['todas']) }}</option>
+                        @foreach ($filtroEspecifico['opciones'] as $valor => $etiqueta)
+                            <option value="{{ $valor }}">{{ $etiqueta }}</option>
+                        @endforeach
+                    </select>
                 @else
                     <label class="text-[13px] font-semibold text-ink-label">{{ __('Filtro específico') }}</label>
                     <select disabled class="mt-1 h-11 w-full rounded-lg border-line-input bg-app-bg text-[14px] text-ink-muted">
@@ -152,12 +160,12 @@
                 </div>
 
                 <div>
-                    <label class="text-[13px] font-semibold text-ink-label">{{ __('Registrado desde') }}</label>
+                    <label class="text-[13px] font-semibold text-ink-label">{{ __($etiquetaFecha) }} {{ __('desde') }}</label>
                     <input type="date" wire:model.live="filtroDesde" class="mt-1 h-11 w-full rounded-lg border-line-input text-[14px] text-ink focus:border-primary focus:ring-primary">
                 </div>
 
                 <div>
-                    <label class="text-[13px] font-semibold text-ink-label">{{ __('Registrado hasta') }}</label>
+                    <label class="text-[13px] font-semibold text-ink-label">{{ __($etiquetaFecha) }} {{ __('hasta') }}</label>
                     <input type="date" wire:model.live="filtroHasta" class="mt-1 h-11 w-full rounded-lg border-line-input text-[14px] text-ink focus:border-primary focus:ring-primary">
                 </div>
             </div>
@@ -168,7 +176,7 @@
         <x-ui.table>
             <x-slot name="filters">
                 <span class="ml-auto text-[14px] text-ink-muted">
-                    {{ trans_choice(':count equipo|:count equipos', $registros->total(), ['count' => $registros->total()]) }}
+                    {{ trans_choice(':count registro|:count registros', $registros->total(), ['count' => $registros->total()]) }}
                 </span>
             </x-slot>
 
@@ -189,7 +197,7 @@
                 @empty
                     <tr>
                         <td colspan="{{ count($encabezados) }}" class="py-10 text-center text-ink-muted">
-                            {{ __('No se encontraron equipos con ese criterio.') }}
+                            {{ __('No se encontraron registros con ese criterio.') }}
                         </td>
                     </tr>
                 @endforelse
