@@ -78,6 +78,90 @@
                 @endif
             </div>
         </div>
+
+        <div x-data="{ abiertos: false }" class="mt-4">
+            <div class="flex items-center gap-4">
+                <button type="button" @click="abiertos = !abiertos" class="text-[14px] font-semibold text-primary">
+                    <span x-show="!abiertos">{{ __('Más filtros') }}</span>
+                    <span x-show="abiertos" x-cloak>{{ __('Menos filtros') }}</span>
+                </button>
+                <button type="button" wire:click="limpiarFiltros" class="text-[14px] text-ink-muted">
+                    {{ __('Limpiar filtros') }}
+                </button>
+            </div>
+
+            <div x-show="abiertos" x-cloak class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <div>
+                    <label class="text-[13px] font-semibold text-ink-label">{{ __('Piso') }}</label>
+                    <select wire:model.live="filtroPiso" class="mt-1 h-11 w-full rounded-lg border-line-input text-[14px] text-ink focus:border-primary focus:ring-primary">
+                        <option value="">{{ __('Todos') }}</option>
+                        @foreach ($pisos as $piso)
+                            <option value="{{ $piso->id }}">{{ __('Piso') }} {{ $piso->numero }}</option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <div>
+                    <label class="text-[13px] font-semibold text-ink-label">{{ __('Tipo de equipo') }}</label>
+                    <select wire:model.live="filtroTipo" class="mt-1 h-11 w-full rounded-lg border-line-input text-[14px] text-ink focus:border-primary focus:ring-primary">
+                        <option value="">{{ __('Todos') }}</option>
+                        @foreach ($tipos as $tipo)
+                            <option value="{{ $tipo->id }}">{{ $tipo->nombre }}</option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <div>
+                    <label class="text-[13px] font-semibold text-ink-label">{{ __('Marca') }}</label>
+                    <select wire:model.live="filtroMarca" class="mt-1 h-11 w-full rounded-lg border-line-input text-[14px] text-ink focus:border-primary focus:ring-primary">
+                        <option value="">{{ __('Todas') }}</option>
+                        @foreach ($marcas as $marca)
+                            <option value="{{ $marca->id }}">{{ $marca->nombre }}</option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <div>
+                    <label class="text-[13px] font-semibold text-ink-label">{{ __('Propiedad') }}</label>
+                    <select wire:model.live="filtroPropiedad" class="mt-1 h-11 w-full rounded-lg border-line-input text-[14px] text-ink focus:border-primary focus:ring-primary">
+                        <option value="">{{ __('Todas') }}</option>
+                        @foreach ($propiedades as $valor => $etiqueta)
+                            <option value="{{ $valor }}">{{ $etiqueta }}</option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <div>
+                    <label class="text-[13px] font-semibold text-ink-label">{{ __('Responsable') }}</label>
+                    <select wire:model.live="filtroPersona" class="mt-1 h-11 w-full rounded-lg border-line-input text-[14px] text-ink focus:border-primary focus:ring-primary">
+                        <option value="">{{ __('Todos') }}</option>
+                        @foreach ($personas as $persona)
+                            <option value="{{ $persona->id }}">{{ $persona->nombre }}</option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <div>
+                    <label class="text-[13px] font-semibold text-ink-label">{{ __('Vinculación') }}</label>
+                    <select wire:model.live="filtroVinculacion" class="mt-1 h-11 w-full rounded-lg border-line-input text-[14px] text-ink focus:border-primary focus:ring-primary">
+                        <option value="">{{ __('Todas') }}</option>
+                        @foreach ($vinculaciones as $vinculacion)
+                            <option value="{{ $vinculacion }}">{{ $vinculacion }}</option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <div>
+                    <label class="text-[13px] font-semibold text-ink-label">{{ __('Registrado desde') }}</label>
+                    <input type="date" wire:model.live="filtroDesde" class="mt-1 h-11 w-full rounded-lg border-line-input text-[14px] text-ink focus:border-primary focus:ring-primary">
+                </div>
+
+                <div>
+                    <label class="text-[13px] font-semibold text-ink-label">{{ __('Registrado hasta') }}</label>
+                    <input type="date" wire:model.live="filtroHasta" class="mt-1 h-11 w-full rounded-lg border-line-input text-[14px] text-ink focus:border-primary focus:ring-primary">
+                </div>
+            </div>
+        </div>
     </x-ui.card>
 
     @if ($registros)

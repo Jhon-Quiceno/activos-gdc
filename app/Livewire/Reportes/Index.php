@@ -2,24 +2,27 @@
 
 namespace App\Livewire\Reportes;
 
-use App\Models\Dependencia;
-use App\Models\Equipo;
-use App\Models\Sede;
-use App\Models\SistemaOperativo;
-use Livewire\Component;
-use Livewire\WithPagination;
 use App\Livewire\Reportes\Definiciones\InventarioGeneral;
 use App\Livewire\Reportes\Definiciones\ObsolescenciaSo;
-use App\Livewire\Reportes\Definiciones\ReporteDefinicion;
-use App\Livewire\Reportes\Exportes\ReporteExport;
-use Barryvdh\DomPDF\Facade\Pdf;
-use Maatwebsite\Excel\Facades\Excel;
 use App\Livewire\Reportes\Definiciones\PorDependencia;
 use App\Livewire\Reportes\Definiciones\PorEstado;
 use App\Livewire\Reportes\Definiciones\PorFuncionario;
 use App\Livewire\Reportes\Definiciones\PorSedePiso;
 use App\Livewire\Reportes\Definiciones\PorTipoMarcaModelo;
+use App\Livewire\Reportes\Definiciones\ReporteDefinicion;
 use App\Livewire\Reportes\Definiciones\Terceros;
+use App\Livewire\Reportes\Exportes\ReporteExport;
+use App\Models\Dependencia;
+use App\Models\Marca;
+use App\Models\Persona;
+use App\Models\Piso;
+use App\Models\Sede;
+use App\Models\SistemaOperativo;
+use App\Models\TipoEquipo;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Livewire\Component;
+use Livewire\WithPagination;
+use Maatwebsite\Excel\Facades\Excel;
 
 class Index extends Component
 {
@@ -35,11 +38,24 @@ class Index extends Component
 
     public string $filtroSistemaOperativo = '';
 
+    public string $filtroPiso = '';
+
+    public string $filtroTipo = '';
+
+    public string $filtroMarca = '';
+
+    public string $filtroPropiedad = '';
+
+    public string $filtroPersona = '';
+
+    public string $filtroVinculacion = '';
+
+    public string $filtroDesde = '';
+
+    public string $filtroHasta = '';
+
     /**
      * Catálogo de los 15 reportes del prototipo "Hoja de Vida de Equipos".
-     * Solo "obsolescencia_so" consulta datos reales por ahora; los demás
-     * dejan el patrón (título + descripción + tabla vacía) para que el
-     * bloque de Reportes los implemente uno a uno.
      */
     public const REPORTES = [
         'inventario_general' => [
@@ -104,13 +120,7 @@ class Index extends Component
         ],
     ];
 
-    public const ESTADOS = [
-        'en_servicio' => 'En servicio',
-        'sin_asignar' => 'Sin asignar',
-        'dado_de_baja' => 'Dado de baja',
-    ];
-
-        /** Reportes con datos reales: clave => clase de definición. */
+    /** Reportes con datos reales: clave => clase de definición. */
     public const DEFINICIONES = [
         'inventario_general' => InventarioGeneral::class,
         'por_dependencia' => PorDependencia::class,
@@ -122,6 +132,17 @@ class Index extends Component
         'obsolescencia_so' => ObsolescenciaSo::class,
     ];
 
+    public const ESTADOS = [
+        'en_servicio' => 'En servicio',
+        'sin_asignar' => 'Sin asignar',
+        'dado_de_baja' => 'Dado de baja',
+    ];
+
+    public const PROPIEDADES = [
+        'gobernacion' => 'Gobernación',
+        'tercero' => 'Tercero',
+    ];
+
     public function seleccionarReporte(string $clave): void
     {
         if (! array_key_exists($clave, self::REPORTES)) {
@@ -129,34 +150,28 @@ class Index extends Component
         }
 
         $this->reporteActivo = $clave;
-        $this->filtroSede = '';
-        $this->filtroDependencia = '';
-        $this->filtroEstado = '';
-        $this->filtroSistemaOperativo = '';
-        $this->resetPage();
+        $this->limpiarFiltros();
     }
 
-    public function updatingFiltroSede(): void
+    public function limpiarFiltros(): void
     {
+        $this->reset([
+            'filtroSede', 'filtroDependencia', 'filtroEstado', 'filtroSistemaOperativo',
+            'filtroPiso', 'filtroTipo', 'filtroMarca', 'filtroPropiedad',
+            'filtroPersona', 'filtroVinculacion', 'filtroDesde', 'filtroHasta',
+        ]);
         $this->resetPage();
     }
 
-    public function updatingFiltroDependencia(): void
+    /** Al cambiar cualquier filtro, volver a la página 1. */
+    public function updated(string $propiedad): void
     {
-        $this->resetPage();
+        if (str_starts_with($propiedad, 'filtro')) {
+            $this->resetPage();
+        }
     }
 
-    public function updatingFiltroEstado(): void
-    {
-        $this->resetPage();
-    }
-
-    public function updatingFiltroSistemaOperativo(): void
-    {
-        $this->resetPage();
-    }
-
-        protected function definicion(): ?ReporteDefinicion
+    protected function definicion(): ?ReporteDefinicion
     {
         $clase = self::DEFINICIONES[$this->reporteActivo] ?? null;
 
@@ -167,8 +182,16 @@ class Index extends Component
     {
         return [
             'sede' => $this->filtroSede,
+            'piso' => $this->filtroPiso,
             'dependencia' => $this->filtroDependencia,
             'estado' => $this->filtroEstado,
+            'tipo' => $this->filtroTipo,
+            'marca' => $this->filtroMarca,
+            'propiedad' => $this->filtroPropiedad,
+            'persona' => $this->filtroPersona,
+            'vinculacion' => $this->filtroVinculacion,
+            'desde' => $this->filtroDesde,
+            'hasta' => $this->filtroHasta,
             'especifico' => $this->filtroSistemaOperativo,
         ];
     }
@@ -217,8 +240,18 @@ class Index extends Component
             'columnas' => $definicion?->columnas() ?? [],
             'reportes' => self::REPORTES,
             'estados' => self::ESTADOS,
+            'propiedades' => self::PROPIEDADES,
             'sedes' => Sede::orderBy('nombre')->get(),
+            'pisos' => Piso::orderBy('numero')->get(),
             'dependencias' => Dependencia::orderBy('nombre')->get(),
+            'tipos' => TipoEquipo::orderBy('nombre')->get(),
+            'marcas' => Marca::orderBy('nombre')->get(),
+            'personas' => Persona::orderBy('nombre')->get(),
+            'vinculaciones' => Persona::query()
+                ->whereNotNull('tipo_vinculacion')
+                ->distinct()
+                ->orderBy('tipo_vinculacion')
+                ->pluck('tipo_vinculacion'),
             'sistemasOperativosObsoletos' => SistemaOperativo::query()
                 ->where('nombre', 'like', '%7%')
                 ->orWhere('nombre', 'like', '%8%')
