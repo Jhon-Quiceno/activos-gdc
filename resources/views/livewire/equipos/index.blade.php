@@ -50,7 +50,12 @@
                     onclick="window.location.href='{{ route('equipos.show', $equipo) }}'"
                     class="cursor-pointer"
                 >
-                    <td class="font-mono">{{ $equipo->serial ?? __('Pendiente') }}</td>
+                    <td class="font-mono">
+                        {{ $equipo->serial }}
+                        @if (str_starts_with($equipo->serial, 'PENDIENTE-'))
+                            <x-ui.badge variant="warning" class="ml-1">{{ __('Provisional') }}</x-ui.badge>
+                        @endif
+                    </td>
                     <td class="font-mono">{{ $equipo->codigo_activo ?? __('Sin código') }}</td>
                     <td>{{ $equipo->tipoEquipo?->nombre }}</td>
                     <td>{{ $equipo->marca?->nombre }}{{ $equipo->modelo ? ' '.$equipo->modelo : '' }}</td>

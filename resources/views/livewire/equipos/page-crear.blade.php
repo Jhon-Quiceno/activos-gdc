@@ -50,7 +50,23 @@
                 <p class="section-title">{{ __('2. Identificación') }}</p>
 
                 <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <x-ui.input name="serial" :label="__('Serial del fabricante') . ' *'" wire:model.blur="serial" required />
+                    <div>
+                        <x-ui.input
+                            name="serial"
+                            :label="__('Serial del fabricante') . ($sinSerial ? '' : ' *')"
+                            wire:model.blur="serial"
+                            :disabled="$sinSerial"
+                        />
+                        <label class="mt-2 flex items-center gap-2 text-[13px] text-ink-muted">
+                            <input type="checkbox" wire:model.live="sinSerial" class="rounded border-line-input text-primary focus:ring-primary">
+                            {{ __('El equipo no tiene serial') }}
+                        </label>
+                        @if ($sinSerial)
+                            <p class="mt-1 text-[13px] text-ink-muted">
+                                {{ __('Se guarda con un serial provisional y queda «Por verificar» hasta que lo corrijas desde Editar datos.') }}
+                            </p>
+                        @endif
+                    </div>
 
                     <div>
                         <x-ui.input
@@ -86,6 +102,8 @@
                         </label>
                     </div>
                 </div>
+
+                <x-input-error :messages="$errors->get('sinSerial')" class="mt-2" />
 
                 <p class="mt-3 text-[13px] text-ink-muted">
                     {{ __('El serial debe ser único. Si ya existe en otro equipo, el sistema lo avisa antes de guardar.') }}
@@ -502,7 +520,11 @@
                         <p class="font-semibold">{{ __('Al guardar') }}</p>
                         <ul class="mt-1 list-disc space-y-1 pl-4">
                             <li>{{ __('Se crea el evento Alta a nombre de :usuario.', ['usuario' => auth()->user()->name]) }}</li>
-                            <li>{{ __('Queda Verificado, porque se registra con serial.') }}</li>
+                            @if ($sinSerial)
+                                <li>{{ __('Queda Por verificar, porque se registra con un serial provisional.') }}</li>
+                            @else
+                                <li>{{ __('Queda Verificado, porque se registra con serial.') }}</li>
+                            @endif
                         </ul>
                     </div>
 
