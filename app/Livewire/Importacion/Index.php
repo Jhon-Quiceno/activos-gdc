@@ -2,12 +2,15 @@
 
 namespace App\Livewire\Importacion;
 
+use App\Models\Asignacion;
 use App\Models\Componente;
 use App\Models\ConfiguracionComputo;
 use App\Models\Dependencia;
 use App\Models\Equipo;
+use App\Models\Evento;
 use App\Models\Importacion;
 use App\Models\Marca;
+use App\Models\Persona;
 use App\Models\Piso;
 use App\Models\PuestoTrabajo;
 use App\Models\Sede;
@@ -15,6 +18,7 @@ use App\Models\SistemaOperativo;
 use App\Models\TipoComponente;
 use App\Models\TipoEquipo;
 use App\Services\HistorialService;
+use Closure;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -121,6 +125,9 @@ class Index extends Component
 
             foreach ($this->filas as $fila) {
                 $puesto = $this->resolverPuesto($fila['datos']);
+                // Una sola persona por fila (no una por cada equipo que contenga):
+                // un PC, su monitor y su impresora comparten el mismo responsable.
+                $persona = $this->resolverPersona($puesto, $fila['datos']);
                 foreach ($fila['equipos'] as $datos) {
                     try {
                         $equipo = Equipo::create([
@@ -150,13 +157,14 @@ class Index extends Component
                         ]), previous: $validacionModelo);
                     }
 
-                    app(HistorialService::class)->registrar(
+                    $alta = app(HistorialService::class)->registrar(
                         equipo: $equipo,
                         tipo: 'alta',
                         usuario: $usuario,
                         descripcion: 'Alta por importación del inventario 2026, fila '.$fila['numero'].'.',
                     );
 
+                    $this->crearAsignacionInicial($equipo, $puesto, $persona, $alta);
                     $this->crearComponentes($equipo, $fila['datos']);
                     $this->crearConfiguracion($equipo, $fila['datos']);
                 }
@@ -292,40 +300,170 @@ class Index extends Component
         return $resultado;
     }
 
+    /**
+     * Categorías de dispositivo reconocidas por fila, con las palabras clave que
+     * identifican su columna de presencia en el encabezado. Cubre tanto el
+     * formato "corto" (fixtures de prueba: "PC", "Monitor"...) como el real del
+     * inventario 2026 (exportación de Google Forms: "Dispositivo de
+     * procesamiento", "Dispositivo de video"...), que no tiene ninguna columna
+     * cuyo encabezado sea exactamente una de esas palabras.
+     */
+    private const CATEGORIAS = [
+        'pc' => ['pc', 'computador', 'equipo principal', 'desktop', 'portatil', 'laptop', 'procesamiento'],
+        'monitor' => ['monitor', 'pantalla', 'video'],
+        'impresora' => ['impresora', 'printer', 'impresion'],
+        'conectividad' => ['conectividad'],
+        'escaner' => ['escaner', 'scanner', 'digitalizacion'],
+        'otro' => ['otro', 'otros'],
+        'ups' => ['ups'],
+    ];
+
     private function equiposDeFila(array $fila, int $numero): array
     {
         $equipos = [];
-        foreach ([
-            'pc' => ['pc', 'computador', 'equipo principal', 'desktop', 'portatil', 'laptop'],
-            'monitor' => ['monitor', 'pantalla'],
-            'impresora' => ['impresora', 'printer'],
-            'escaner' => ['escaner', 'scanner'],
-            'ups' => ['ups'],
-        ] as $tipo => $aliases) {
-            $valor = $this->valorPorAlias($fila, $aliases);
-            if ($valor === null && $tipo !== 'pc') {
+        foreach (self::CATEGORIAS as $tipo => $palabrasClave) {
+            $presencia = $this->valorCategoria($fila, $palabrasClave);
+            $codigo = $this->valorModificador($fila, $palabrasClave, ['codigo', 'activo']);
+            $serial = $this->valorModificador($fila, $palabrasClave, ['serial']);
+            $marca = $this->valorModificador($fila, $palabrasClave, ['marca']);
+            $modelo = $this->valorModificador($fila, $palabrasClave, ['modelo']);
+
+            if ($tipo === 'pc') {
+                // Antes esto forzaba "pc" aunque la fila no tuviera ningún
+                // dato de procesamiento (461 filas reales, 49 sin ninguno):
+                // inventaba un equipo de la nada. Ahora basta cualquier dato
+                // propio de pc, sea la columna de presencia o un modificador.
+                if ($presencia === null && $codigo === null && $serial === null && $marca === null && $modelo === null) {
+                    continue;
+                }
+            } elseif ($presencia === null) {
                 continue;
             }
+
             $equipos[] = [
-                'tipo' => $tipo === 'pc' ? ($valor ?: 'pc de escritorio') : $tipo,
-                'codigo' => $this->valorPorAlias($fila, [$tipo.' codigo', $tipo.' activo', 'codigo '.$tipo, 'codigo activo']),
-                'serial' => $this->valorPorAlias($fila, [$tipo.' serial', 'serial '.$tipo, 'serial']),
-                'marca' => $this->valorPorAlias($fila, [$tipo.' marca', 'marca '.$tipo, 'marca']),
-                'modelo' => $this->valorPorAlias($fila, [$tipo.' modelo', 'modelo '.$tipo, 'modelo']),
-                'estado' => $this->valorPorAlias($fila, [$tipo.' estado', 'estado '.$tipo, 'estado funcionamiento']),
+                'tipo' => $tipo === 'pc' ? ($presencia ?: 'pc de escritorio') : ($presencia ?: $tipo),
+                'codigo' => $codigo,
+                'serial' => $serial,
+                'marca' => $marca,
+                'modelo' => $modelo,
+                // La mayoría de los formularios reales no preguntan el estado por
+                // dispositivo: hay una sola columna de estado para toda la fila.
+                'estado' => $this->valorModificador($fila, $palabrasClave, ['estado'])
+                    ?? $this->valorConTokens($fila, ['estado', 'funcionamiento']),
                 'tercero' => $this->esTercero($fila),
-                'propietario' => $this->valorPorAlias($fila, ['propietario tercero', 'propietario']),
+                'propietario' => $this->valorConTokens($fila, ['propietario']),
             ];
         }
         return $equipos;
     }
 
+    /**
+     * Columna de presencia de una categoría: su encabezado contiene alguna de
+     * las $palabrasClave pero ninguna palabra de modificador (código, marca,
+     * modelo, serial...), para no confundirla con la columna de "Marca del
+     * dispositivo de video" cuando se busca "Dispositivo de video".
+     */
+    private function valorCategoria(array $fila, array $palabrasClave): ?string
+    {
+        foreach ($fila as $clave => $valor) {
+            if ($valor === null || ! $this->contieneAlguno($clave, $palabrasClave)) {
+                continue;
+            }
+            if ($this->contieneAlguno($clave, ['codigo', 'activo', 'marca', 'modelo', 'serial', 'estado', 'sistema', 'version', 'antivirus'])) {
+                continue;
+            }
+            return $valor;
+        }
+        return null;
+    }
+
+    /**
+     * Columna de un dato propio de la categoría (código, marca, modelo o
+     * serial): su encabezado tiene a la vez alguna palabra de la categoría y
+     * alguna del modificador buscado. Limpia valores "basura" típicos de
+     * formularios ("No se ve", "N/A") que de lo contrario quedarían guardados
+     * como si fueran el dato real.
+     */
+    private function valorModificador(array $fila, array $palabrasClave, array $modificador): ?string
+    {
+        foreach ($fila as $clave => $valor) {
+            if ($valor !== null && $this->contieneAlguno($clave, $palabrasClave) && $this->contieneAlguno($clave, $modificador)) {
+                return $this->limpiarTextoLibre($valor);
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Columna identificada únicamente por un conjunto de palabras que deben
+     * estar TODAS presentes en el encabezado (p. ej. ["sistema", "operativo"]),
+     * sin importar el resto de la pregunta ("Versión Sistema operativo
+     * dispositivo de procesamiento (responda N/A si...)").
+     */
+    private function valorConTokens(array $fila, array $tokens, bool $limpiar = true): ?string
+    {
+        foreach ($fila as $clave => $valor) {
+            if ($valor !== null && $this->contieneTodos($clave, $tokens)) {
+                return $limpiar ? $this->limpiarTextoLibre($valor) : $valor;
+            }
+        }
+        return null;
+    }
+
+    private function contieneTodos(string $clave, array $tokens): bool
+    {
+        foreach ($tokens as $token) {
+            if (! str_contains($clave, $token)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private function contieneAlguno(string $clave, array $tokens): bool
+    {
+        foreach ($tokens as $token) {
+            if (str_contains($clave, $token)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Respuestas tipo "no sé qué poner aquí" de formularios con preguntas que
+     * no aplican a ese equipo (p. ej. "Serial del Teclado" cuando no se ve o
+     * el equipo no es un PC). Se tratan como vacío, no como el dato real.
+     */
+    private function limpiarTextoLibre(?string $valor): ?string
+    {
+        if ($valor === null) {
+            return null;
+        }
+        $limpio = trim($valor);
+        $basura = ['N/A', 'NA', 'NO SE VE', 'NO LEGIBLE', 'SIN DATO', 'NO APLICA', '-'];
+        return $limpio === '' || in_array(Str::upper($limpio), $basura, true) ? null : $limpio;
+    }
+
+    /**
+     * Palabras que deben estar TODAS en el encabezado para ubicar cada campo
+     * "de fila" (no por dispositivo): tolera que el formulario real pregunte
+     * "Dependencia responsable del equipo" en vez de solo "Dependencia".
+     */
+    private const TOKENS_CAMPO = [
+        'dependencia' => ['dependencia'],
+        'sede' => ['sede'],
+        'piso' => ['piso'],
+        'marca' => ['marca'],
+        'sistema operativo' => ['sistema', 'operativo'],
+    ];
+
     private function detectarEquivalencias(): array
     {
         $resultado = [];
         foreach ($this->filas as $fila) {
-            foreach (['dependencia', 'sede', 'piso', 'marca', 'sistema operativo'] as $campo) {
-                $valor = $this->valorPorAlias($fila['datos'], [$campo]);
+            foreach (self::TOKENS_CAMPO as $campo => $tokens) {
+                $valor = $this->valorConTokens($fila['datos'], $tokens);
                 if ($valor && ! isset($resultado[$campo.'|'.$valor])) {
                     $resultado[$campo.'|'.$valor] = [
                         'campo' => $campo,
@@ -369,15 +507,119 @@ class Index extends Component
         ]);
     }
 
+    /**
+     * Responsable de la fila (nombre, cédula, vinculación), igual que hace el
+     * registro manual (`Equipos\Crear::guardarUbicacionResponsable`). Sin
+     * ubicación resuelta no hay dónde asignarlo (RF-19: la asignación siempre
+     * lleva sede y piso), así que en ese caso no se crea nada.
+     */
+    private function resolverPersona(?PuestoTrabajo $puesto, array $fila): ?Persona
+    {
+        if (! $puesto) {
+            return null;
+        }
+
+        $nombre = $this->valorConTokens($fila, ['nombre', 'responsable']);
+        if (! $nombre) {
+            return null;
+        }
+
+        $cedula = $this->valorConTokens($fila, ['cedula']);
+        $cedula = $cedula ? preg_replace('/\D+/', '', $cedula) : null;
+        $datosPersona = [
+            'nombre' => $nombre,
+            'dependencia_id' => $puesto->dependencia_id,
+            'tipo_vinculacion' => $this->normalizarVinculacion($this->valorConTokens($fila, ['vinculacion'])),
+        ];
+
+        return $cedula !== null && $cedula !== ''
+            ? Persona::firstOrCreate(['cedula' => $cedula], $datosPersona)
+            : Persona::create($datosPersona);
+    }
+
+    private function crearAsignacionInicial(Equipo $equipo, ?PuestoTrabajo $puesto, ?Persona $persona, Evento $alta): void
+    {
+        if (! $puesto) {
+            return;
+        }
+
+        Asignacion::create([
+            'equipo_id' => $equipo->id,
+            'persona_id' => $persona?->id,
+            'sede_id' => $puesto->sede_id,
+            'piso_id' => $puesto->piso_id,
+            'dependencia_id' => $puesto->dependencia_id,
+            'fecha_inicio' => now(),
+            'evento_origen_id' => $alta->id,
+        ]);
+    }
+
+    /**
+     * `personas.tipo_vinculacion` es un enum estricto (planta|contratista); el
+     * formulario real trae texto libre ("Funcionario de planta", "Contratista
+     * OPS"...). Se detecta por palabra clave y, si no coincide con ninguna, se
+     * deja null en vez de reventar el guardado con un valor de enum inválido.
+     */
+    private function normalizarVinculacion(?string $valor): ?string
+    {
+        if (! $valor) {
+            return null;
+        }
+        $texto = Str::lower($valor);
+        if (Str::contains($texto, 'contratista')) {
+            return 'contratista';
+        }
+        if (Str::contains($texto, 'planta')) {
+            return 'planta';
+        }
+        return null;
+    }
+
+    /**
+     * Teclado, mouse y sonido. Dos formatos posibles de origen:
+     * - Real (Google Forms): cuatro columnas separadas por periférico
+     *   ("¿Equipo cuenta con Teclado?" SI/NO/N\A, estado, marca, serial). La
+     *   presencia la decide la primera, no si el serial vino con algo escrito
+     *   ("No se ve" en marca o serial no significa que no haya teclado).
+     * - Simple (pruebas/ejemplos): una sola columna con el serial directo
+     *   bajo el nombre del periférico ("Teclado" => "TEC-0001").
+     */
     private function crearComponentes(Equipo $equipo, array $fila): void
     {
+        // Teclado/mouse/sonido son del PC, no de cada equipo que haya en la
+        // fila: sin este filtro, el monitor o la impresora de la misma fila
+        // terminaban con su propio "mouse" pegado solo por compartir fila.
+        if ($equipo->tipoEquipo?->familia !== 'computo') {
+            return;
+        }
+
         foreach (['teclado', 'mouse', 'sonido'] as $nombre) {
-            $valor = $this->valorPorAlias($fila, [$nombre, $nombre.' serial']);
-            if (! $valor) {
-                continue;
+            // Sin limpiar: distingue "la columna no existe" (null) de "existe
+            // pero dice N\/A o NO" (valor presente, igual de concluyente).
+            $cuenta = $this->valorConTokens($fila, ['cuenta', $nombre], limpiar: false);
+            $marca = $this->valorConTokens($fila, ['marca', $nombre]);
+            $serial = $this->valorConTokens($fila, ['serial', $nombre]);
+
+            if ($cuenta !== null) {
+                if (Str::upper(trim($cuenta)) !== 'SI') {
+                    continue;
+                }
+            } else {
+                // Sin columna "cuenta con": el valor bajo el nombre simple del
+                // periférico ES el serial (formato de las pruebas/ejemplos).
+                $serial ??= $this->valorConTokens($fila, [$nombre]);
+                if ($serial === null) {
+                    continue;
+                }
             }
+
             $tipo = TipoComponente::firstOrCreate(['nombre' => ucfirst($nombre)], ['es_periferico' => true]);
-            Componente::create(['equipo_id' => $equipo->id, 'tipo_componente_id' => $tipo->id, 'serial' => $valor]);
+            Componente::create([
+                'equipo_id' => $equipo->id,
+                'tipo_componente_id' => $tipo->id,
+                'marca' => $marca,
+                'serial' => $serial,
+            ]);
         }
     }
 
@@ -391,7 +633,7 @@ class Index extends Component
 
     private function tipoId(string $valor): int
     {
-        $tipo = TipoEquipo::query()->get()->sortBy(fn ($item) => levenshtein(Str::lower($valor), Str::lower($item->nombre)))->first();
+        $tipo = $this->mejorCoincidencia(TipoEquipo::all(), $valor, fn ($item) => $item->nombre);
         return $tipo?->id ?? TipoEquipo::where('nombre', 'Otro')->value('id');
     }
 
@@ -405,7 +647,37 @@ class Index extends Component
         if (! $valor) {
             return null;
         }
-        return $modelo::query()->get()->sortBy(fn ($item) => levenshtein(Str::lower($valor), Str::lower((string) ($item->nombre ?? $item->numero))))->first();
+        return $this->mejorCoincidencia($modelo::all(), $valor, fn ($item) => $item->nombre ?? $item->numero);
+    }
+
+    /**
+     * Elige el elemento de $candidatos cuya etiqueta se parece más a $valor:
+     * primero por palabras completas en común, para que una frase larga del
+     * formulario ("Estabilizadores y UPS") no termine, por pura distancia de
+     * edición, emparejada con un catálogo sin relación ("Servidor") en vez
+     * del correcto ("UPS"). Si no comparten ninguna palabra completa, se
+     * decide por distancia de edición (cubre variantes de ortografía como
+     * "Scanner" vs "Escáner").
+     */
+    private function mejorCoincidencia(iterable $candidatos, string $valor, Closure $etiqueta): mixed
+    {
+        $palabrasValor = $this->palabras($valor);
+
+        return collect($candidatos)->sortByDesc(function ($item) use ($valor, $palabrasValor, $etiqueta) {
+            $texto = (string) $etiqueta($item);
+            $comunes = count(array_intersect($palabrasValor, $this->palabras($texto)));
+
+            return $comunes * 1000 - levenshtein(Str::lower($valor), Str::lower($texto));
+        })->first();
+    }
+
+    /** @return array<int, string> */
+    private function palabras(string $texto): array
+    {
+        return array_values(array_filter(explode(
+            ' ',
+            Str::of($texto)->ascii()->lower()->replaceMatches('/[^a-z0-9]+/', ' ')->trim()->toString()
+        )));
     }
 
     private function normalizarCodigo(?string $codigo): ?string
@@ -439,7 +711,7 @@ class Index extends Component
 
     private function valorEquivalente(string $campo, array $fila): ?string
     {
-        $valor = $this->valorPorAlias($fila, [$campo]);
+        $valor = $this->valorConTokens($fila, self::TOKENS_CAMPO[$campo] ?? [$campo]);
         if (! $valor) {
             return null;
         }
