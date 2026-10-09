@@ -1,7 +1,13 @@
 @php
+    // Es el mismo formato oficial en distinto contexto (FormatosPdf): en un
+    // traslado, «formato_baja» es el retiro de quien entrega.
     $nombres = [
-        'formato_baja' => __('Formato de baja'),
-        'formato_entrega' => __('Formato de entrega'),
+        'formato_baja' => match ($evento->tipo) {
+            'traslado_responsable' => __('Formato de retiro (quien entrega)'),
+            'diagnostico' => __('Formato de diagnóstico'),
+            default => __('Formato de baja'),
+        },
+        'formato_entrega' => __('Formato de entrega (quien recibe)'),
     ];
     $quienFirma = [
         'formato_baja' => $evento->tipo === 'traslado_responsable'
@@ -96,7 +102,7 @@
 
                         <div class="mt-3 flex flex-wrap gap-2">
                             <x-ui.button variant="secondary" size="sm" wire:click="descargarPrellenado('{{ $tipo }}')">
-                                {{ __('Descargar PDF prellenado') }}
+                                {{ __('Descargar formato para firmar') }}
                             </x-ui.button>
                             @if ($docs['firmado'])
                                 <x-ui.button variant="ghost" size="sm" wire:click="descargarDocumento({{ $docs['firmado']->id }})">

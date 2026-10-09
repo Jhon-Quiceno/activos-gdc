@@ -41,13 +41,31 @@ it('el formato de baja de un traslado lo firma quien entrega y el de entrega qui
         ->and($formatos->datos($this->traslado, 'formato_entrega')['persona']->id)->toBe($this->recibe->id);
 });
 
-it('genera los PDF en tamaño carta (RNF-13)', function () {
+it('genera los PDF en tamaño oficio, como el formato oficial en Word', function () {
     $pdf = app(FormatosPdf::class)->pdf($this->traslado, 'formato_entrega');
     $contenido = $pdf->output();
 
     expect($contenido)->toStartWith('%PDF')
-        // Carta = 612 x 792 puntos.
-        ->and($contenido)->toMatch('/MediaBox\s*\[\s*0(\.0+)? 0(\.0+)? 612(\.0+)? 792(\.0+)?\s*\]/');
+        // Oficio = 612 x 936 puntos (8,5 x 13 pulgadas).
+        ->and($contenido)->toMatch('/MediaBox\s*\[\s*0(\.0+)? 0(\.0+)? 612(\.0+)? 936(\.0+)?\s*\]/');
+});
+
+it('usa el formato oficial con el contexto de cada lado del traslado', function () {
+    $formatos = app(FormatosPdf::class);
+    $retiro = $formatos->datos($this->traslado, 'formato_baja');
+    $entrega = $formatos->datos($this->traslado, 'formato_entrega');
+
+    expect($retiro['contexto'])->toBe('retiro')
+        ->and($entrega['contexto'])->toBe('entrega');
+
+    $textoRetiro = FormatosPdf::contenido('retiro', $this->equipo, $this->traslado, $retiro['persona'], $retiro['asignacion'], null);
+    $textoEntrega = FormatosPdf::contenido('entrega', $this->equipo, $this->traslado, $entrega['persona'], $entrega['asignacion'], null);
+
+    expect($textoRetiro['diagnostico'])->toContain('Retiro del equipo por traslado')
+        ->toContain('Quien Entrega')
+        ->toContain('Motivo: Reasignación')
+        ->and($textoEntrega['diagnostico'])->toContain('Entrega del equipo al funcionario Quien Recibe')
+        ->and($textoEntrega['recomendaciones'])->not->toBe('');
 });
 
 it('la vista previa imprimible usa los mismos datos que el PDF', function () {
@@ -61,8 +79,10 @@ it('la vista previa imprimible usa los mismos datos que el PDF', function () {
 
     $this->get(route('movimientos.formato-baja', $this->traslado))
         ->assertOk()
+        ->assertSee('FORMATO DE HOJA DE VIDA')
         ->assertSee('Quien Entrega')
-        ->assertSee('Ingeniero de soporte técnico');
+        ->assertSee('Firma: Ingeniero de Soporte Técnico')
+        ->assertSee('Aprobado: funcionario responsable');
 });
 
 it('genera el formato de entrega consolidado con todos los equipos a cargo (RF-22)', function () {
@@ -87,6 +107,18 @@ it('la pantalla de responsables lista los equipos a cargo y descarga el consolid
         ->assertSee($this->equipo->serial)
         ->call('descargarConsolidado', $this->recibe->id)
         ->assertFileDownloaded();
+});
+
+it('al elegir un responsable se abre una ventana con sus equipos actuales y los que tuvo', function () {
+    Livewire::test(Index::class)
+        ->call('seleccionar', $this->entrega->id)
+        ->assertDispatched('open-modal', 'persona-detalle')
+        ->assertSee('Esta persona no tiene equipos a cargo.')
+        ->assertSee('Equipos que tuvo a cargo')
+        ->assertSee($this->equipo->serial)
+        ->assertSee('Formatos de entrega de sus equipos (PDF)')
+        ->call('cerrarPersona')
+        ->assertSet('personaSeleccionada', null);
 });
 
 it('registra una persona responsable con sus datos completos (RF-18)', function () {
