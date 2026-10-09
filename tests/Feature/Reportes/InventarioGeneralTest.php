@@ -51,3 +51,37 @@ it('enmascara la cédula', function () {
 
     expect($resultado)->toBe('****6226');
 });
+
+it('carga sin errores los reportes de inventario', function (string $clave) {
+    Equipo::factory()->create();
+
+    Livewire::test(Index::class)
+        ->call('seleccionarReporte', $clave)
+        ->assertOk();
+})->with([
+    'inventario_general',
+    'por_dependencia',
+    'por_sede_piso',
+    'por_funcionario',
+    'por_tipo_marca_modelo',
+    'por_estado',
+    'terceros',
+]);
+
+it('el reporte de terceros solo muestra equipos de terceros', function () {
+    $propio = Equipo::factory()->create(['propiedad' => 'gobernacion', 'propietario_tercero' => null]);
+    $tercero = Equipo::factory()->deTercero()->create();
+
+    Livewire::test(Index::class)
+        ->call('seleccionarReporte', 'terceros')
+        ->assertSee($tercero->serial)
+        ->assertDontSee($propio->serial);
+});
+
+it('el reporte por estado y por tipo listan equipos sin asignación', function (string $clave) {
+    $equipo = Equipo::factory()->create();
+
+    Livewire::test(Index::class)
+        ->call('seleccionarReporte', $clave)
+        ->assertSee($equipo->serial);
+})->with(['por_estado', 'por_tipo_marca_modelo']);

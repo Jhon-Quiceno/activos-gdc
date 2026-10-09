@@ -14,6 +14,12 @@ use App\Livewire\Reportes\Definiciones\ReporteDefinicion;
 use App\Livewire\Reportes\Exportes\ReporteExport;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Maatwebsite\Excel\Facades\Excel;
+use App\Livewire\Reportes\Definiciones\PorDependencia;
+use App\Livewire\Reportes\Definiciones\PorEstado;
+use App\Livewire\Reportes\Definiciones\PorFuncionario;
+use App\Livewire\Reportes\Definiciones\PorSedePiso;
+use App\Livewire\Reportes\Definiciones\PorTipoMarcaModelo;
+use App\Livewire\Reportes\Definiciones\Terceros;
 
 class Index extends Component
 {
@@ -107,6 +113,12 @@ class Index extends Component
         /** Reportes con datos reales: clave => clase de definición. */
     public const DEFINICIONES = [
         'inventario_general' => InventarioGeneral::class,
+        'por_dependencia' => PorDependencia::class,
+        'por_sede_piso' => PorSedePiso::class,
+        'por_funcionario' => PorFuncionario::class,
+        'por_tipo_marca_modelo' => PorTipoMarcaModelo::class,
+        'por_estado' => PorEstado::class,
+        'terceros' => Terceros::class,
         'obsolescencia_so' => ObsolescenciaSo::class,
     ];
 
