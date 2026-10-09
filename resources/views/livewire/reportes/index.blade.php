@@ -21,11 +21,10 @@
             </div>
 
             <div class="flex items-center gap-3">
-                {{-- TODO: el bloque de Reportes conecta estos botones con maatwebsite/excel y barryvdh/laravel-dompdf. --}}
-                <x-ui.button variant="secondary" size="sm" type="button">
+                <x-ui.button variant="secondary" size="sm" type="button" wire:click="exportarExcel">
                     {{ __('Exportar Excel') }}
                 </x-ui.button>
-                <x-ui.button variant="secondary" size="sm" type="button">
+                <x-ui.button variant="secondary" size="sm" type="button" wire:click="exportarPdf">
                     {{ __('Exportar PDF') }}
                 </x-ui.button>
             </div>
@@ -81,46 +80,40 @@
         </div>
     </x-ui.card>
 
-    @if ($reporteActivo === 'obsolescencia_so')
+    @if ($registros)
         <x-ui.table>
             <x-slot name="filters">
                 <span class="ml-auto text-[14px] text-ink-muted">
-                    {{ trans_choice(':count equipo obsoleto|:count equipos obsoletos', $equipos->total(), ['count' => $equipos->total()]) }}
+                    {{ trans_choice(':count equipo|:count equipos', $registros->total(), ['count' => $registros->total()]) }}
                 </span>
             </x-slot>
 
             <thead>
                 <tr>
-                    <th>{{ __('Serial') }}</th>
-                    <th>{{ __('Código de activo') }}</th>
-                    <th>{{ __('Tipo') }}</th>
-                    <th>{{ __('Sistema operativo') }}</th>
-                    <th>{{ __('Responsable') }}</th>
-                    <th>{{ __('Dependencia') }}</th>
+                    @foreach ($encabezados as $encabezado)
+                        <th>{{ $encabezado }}</th>
+                    @endforeach
                 </tr>
             </thead>
             <tbody>
-                @forelse ($equipos as $equipo)
-                    <tr wire:key="obsolescencia-{{ $equipo->id }}">
-                        <td class="font-mono">{{ $equipo->serial }}</td>
-                        <td>{{ $equipo->codigo_activo ?? __('Sin código de activo') }}</td>
-                        <td>{{ $equipo->tipoEquipo?->nombre }}</td>
-                        <td>{{ $equipo->configuracionComputo?->sistemaOperativo?->nombre }}</td>
-                        <td>{{ $equipo->asignacionActual?->persona?->nombre ?? __('Sin asignar') }}</td>
-                        <td>{{ $equipo->asignacionActual?->dependencia?->nombre ?? '—' }}</td>
+                @forelse ($registros as $registro)
+                    <tr wire:key="{{ $reporteActivo }}-{{ $registro->id }}">
+                        @foreach ($columnas as $valor)
+                            <td>{{ $valor($registro) }}</td>
+                        @endforeach
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="6" class="py-10 text-center text-ink-muted">
-                            {{ __('No se encontraron equipos obsoletos con ese criterio.') }}
+                        <td colspan="{{ count($encabezados) }}" class="py-10 text-center text-ink-muted">
+                            {{ __('No se encontraron equipos con ese criterio.') }}
                         </td>
                     </tr>
                 @endforelse
             </tbody>
 
-            @if ($equipos->hasPages())
+            @if ($registros->hasPages())
                 <x-slot name="pagination">
-                    {{ $equipos->links() }}
+                    {{ $registros->links() }}
                 </x-slot>
             @endif
         </x-ui.table>

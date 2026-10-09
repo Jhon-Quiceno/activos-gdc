@@ -8,6 +8,12 @@ use App\Models\Sede;
 use App\Models\SistemaOperativo;
 use Livewire\Component;
 use Livewire\WithPagination;
+use App\Livewire\Reportes\Definiciones\InventarioGeneral;
+use App\Livewire\Reportes\Definiciones\ObsolescenciaSo;
+use App\Livewire\Reportes\Definiciones\ReporteDefinicion;
+use App\Livewire\Reportes\Exportes\ReporteExport;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Maatwebsite\Excel\Facades\Excel;
 
 class Index extends Component
 {
@@ -98,6 +104,12 @@ class Index extends Component
         'dado_de_baja' => 'Dado de baja',
     ];
 
+        /** Reportes con datos reales: clave => clase de definición. */
+    public const DEFINICIONES = [
+        'inventario_general' => InventarioGeneral::class,
+        'obsolescencia_so' => ObsolescenciaSo::class,
+    ];
+
     public function seleccionarReporte(string $clave): void
     {
         if (! array_key_exists($clave, self::REPORTES)) {
@@ -132,46 +144,65 @@ class Index extends Component
         $this->resetPage();
     }
 
-    public function render()
+        protected function definicion(): ?ReporteDefinicion
     {
-        $equipos = null;
+        $clase = self::DEFINICIONES[$this->reporteActivo] ?? null;
 
-        if ($this->reporteActivo === 'obsolescencia_so') {
-            $equipos = Equipo::query()
-                ->with([
-                    'tipoEquipo',
-                    'configuracionComputo.sistemaOperativo',
-                    'asignacionActual.persona',
-                    'asignacionActual.dependencia',
-                ])
-                ->whereHas('configuracionComputo.sistemaOperativo', function ($query) {
-                    $query->where('nombre', 'like', '%7%')
-                        ->orWhere('nombre', 'like', '%8%');
-                })
-                ->when($this->filtroSistemaOperativo !== '', function ($query) {
-                    $query->whereHas('configuracionComputo.sistemaOperativo', function ($so) {
-                        $so->where('id', $this->filtroSistemaOperativo);
-                    });
-                })
-                ->when($this->filtroSede !== '', function ($query) {
-                    $query->whereHas('asignacionActual', function ($asignacion) {
-                        $asignacion->where('sede_id', $this->filtroSede);
-                    });
-                })
-                ->when($this->filtroDependencia !== '', function ($query) {
-                    $query->whereHas('asignacionActual', function ($asignacion) {
-                        $asignacion->where('dependencia_id', $this->filtroDependencia);
-                    });
-                })
-                ->when($this->filtroEstado !== '', function ($query) {
-                    $query->where('estado_ciclo_vida', $this->filtroEstado);
-                })
-                ->latest('id')
-                ->paginate(10);
+        return $clase ? new $clase : null;
+    }
+
+    protected function filtros(): array
+    {
+        return [
+            'sede' => $this->filtroSede,
+            'dependencia' => $this->filtroDependencia,
+            'estado' => $this->filtroEstado,
+            'especifico' => $this->filtroSistemaOperativo,
+        ];
+    }
+
+    public function exportarExcel()
+    {
+        $definicion = $this->definicion();
+
+        if (! $definicion) {
+            return null;
         }
 
+        return Excel::download(
+            new ReporteExport($definicion->filas($this->filtros()), array_keys($definicion->columnas())),
+            str($definicion->titulo())->slug() . '.xlsx'
+        );
+    }
+
+    public function exportarPdf()
+    {
+        $definicion = $this->definicion();
+
+        if (! $definicion) {
+            return null;
+        }
+
+        $pdf = Pdf::loadView('livewire.reportes.pdf.reporte', [
+            'titulo' => $definicion->titulo(),
+            'encabezados' => array_keys($definicion->columnas()),
+            'filas' => $definicion->filas($this->filtros()),
+        ])->setPaper('letter', 'landscape'); // RNF-13: tamaño carta
+
+        return response()->streamDownload(
+            fn () => print($pdf->output()),
+            str($definicion->titulo())->slug() . '.pdf'
+        );
+    }
+
+    public function render()
+    {
+        $definicion = $this->definicion();
+
         return view('livewire.reportes.index', [
-            'equipos' => $equipos,
+            'registros' => $definicion?->consulta($this->filtros())->paginate(10),
+            'encabezados' => $definicion ? array_keys($definicion->columnas()) : [],
+            'columnas' => $definicion?->columnas() ?? [],
             'reportes' => self::REPORTES,
             'estados' => self::ESTADOS,
             'sedes' => Sede::orderBy('nombre')->get(),

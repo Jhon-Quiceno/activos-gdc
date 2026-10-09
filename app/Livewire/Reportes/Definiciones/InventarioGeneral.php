@@ -1,13 +1,13 @@
 <?php
 
-namespace App\Livewire\Reportes;
+namespace App\Livewire\Reportes\Definiciones;
 
 use App\Models\Equipo;
 use Illuminate\Database\Eloquent\Builder;
 
-class InventarioGeneral extends ReporteBase
+class InventarioGeneral extends ReporteDefinicion
 {
-    protected function titulo(): string
+    public function titulo(): string
     {
         return 'Inventario general';
     }
@@ -24,7 +24,7 @@ class InventarioGeneral extends ReporteBase
         ]);
     }
 
-    protected function columnas(): array
+    public function columnas(): array
     {
         return [
             'Serial'           => fn ($e) => $e->serial,
@@ -38,7 +38,7 @@ class InventarioGeneral extends ReporteBase
             'Funcionamiento'   => fn ($e) => $e->estado_funcionamiento,
             'Verificación'     => fn ($e) => $e->verificacion,
             'Sede'             => fn ($e) => $e->asignacionActual?->sede?->nombre,
-            'Piso'             => fn ($e) => $e->asignacionActual?->piso?->nombre,
+            'Piso'             => fn ($e) => $e->asignacionActual?->piso?->numero,
             'Dependencia'      => fn ($e) => $e->asignacionActual?->dependencia?->nombre,
             'Responsable'      => fn ($e) => $e->asignacionActual?->persona?->nombre,
             'Cédula'           => fn ($e) => $this->enmascararCedula($e->asignacionActual?->persona?->cedula),
