@@ -191,10 +191,10 @@ class Index extends Component
         foreach ($this->filas as $fila) {
             foreach ($fila['equipos'] as $equipo) {
                 if (! $equipo['codigo']) {
-                    $advertencias[] = ['fila' => $fila['numero'], 'tipo' => 'sin_codigo', 'detalle' => __('Equipo sin código de activo.')];
+                    $advertencias[] = ['fila' => $fila['numero'], 'valor' => $equipo['tipo'], 'tipo' => 'sin_codigo', 'detalle' => __('Equipo sin código de activo.')];
                 }
                 if (! $equipo['serial']) {
-                    $advertencias[] = ['fila' => $fila['numero'], 'tipo' => 'sin_serial', 'detalle' => __('Equipo sin serial; queda pendiente de verificar.')];
+                    $advertencias[] = ['fila' => $fila['numero'], 'valor' => $equipo['tipo'], 'tipo' => 'sin_serial', 'detalle' => __('Equipo sin serial; queda pendiente de verificar.')];
                 }
                 if ($equipo['codigo']) {
                     $codigo = $this->normalizarCodigo($equipo['codigo']);
@@ -204,7 +204,7 @@ class Index extends Component
                     $repetidoEnLote = $codigo && ($conteoEnLote[$codigo] ?? 0) > 1;
                     $repetidoEnBase = $codigo && Equipo::where('codigo_activo', $codigo)->exists();
                     if ($repetidoEnLote || $repetidoEnBase) {
-                        $advertencias[] = ['fila' => $fila['numero'], 'tipo' => 'repetido', 'detalle' => __('Código de activo ya registrado.')];
+                        $advertencias[] = ['fila' => $fila['numero'], 'valor' => $codigo, 'tipo' => 'repetido', 'detalle' => __('Código de activo ya registrado.')];
                     }
                 }
             }
