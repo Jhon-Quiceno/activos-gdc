@@ -1,28 +1,86 @@
+{{-- Vista de App\Livewire\Qr\Index: impresión de etiquetas QR por lotes. --}}
+@php
+    $claseFiltro = 'h-10 rounded-lg border-line-input text-[13px] text-ink focus:border-primary focus:ring-primary';
+@endphp
+
 <div class="space-y-6">
-    <x-ui.card class="text-center">
-        <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary">
-            <svg class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 013.75 9.375v-4.5zM3.75 15.375c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5a1.125 1.125 0 01-1.125-1.125v-4.5zM13.5 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0113.5 9.375v-4.5z" />
-                <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 13.5h.008v.008H13.5V13.5zM13.5 19.5h.008v.008H13.5V19.5zM19.5 13.5h.008v.008H19.5V13.5zM19.5 19.5h.008v.008H19.5V19.5zM16.5 16.5h.008v.008h-.008V16.5z" />
-            </svg>
-        </div>
-
-        <p class="mx-auto mt-4 max-w-md text-[14px] text-ink-muted">
-            {{ __('Aquí vas a poder generar e imprimir las etiquetas QR de cada equipo.') }}
-        </p>
-
-        <span class="mt-4 inline-flex items-center gap-1.5 rounded-full bg-neutral-bg px-3 py-1 text-[13px] font-semibold text-neutral-text">
-            {{ __('Próximamente') }}
-        </span>
-    </x-ui.card>
-
-    {{-- Vista fantasma de la futura grilla de etiquetas QR --}}
-    <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 nav:grid-cols-6" aria-hidden="true">
-        @for ($i = 0; $i < 6; $i++)
-            <x-ui.card class="flex flex-col items-center gap-2 opacity-50">
-                <div class="h-16 w-16 rounded bg-line"></div>
-                <div class="h-2.5 w-14 rounded bg-line"></div>
-            </x-ui.card>
-        @endfor
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <x-ui.kpi-card :value="$sinEtiqueta" :label="__('Equipos sin etiqueta impresa')" accent="warning" />
+        <x-ui.card class="sm:col-span-2">
+            <p class="text-[14px] text-ink">
+                {{ __('Cada equipo tiene su código QR desde que se registra. Elige los equipos y abre la hoja de etiquetas para imprimirlas; queda registrado quién las imprimió y cuándo.') }}
+            </p>
+            <div class="mt-3 flex flex-wrap items-center gap-2">
+                <x-ui.button variant="primary" :href="$urlImprimir" target="_blank" :disabled="empty($seleccionados)">
+                    {{ trans_choice('Imprimir :count etiqueta|Imprimir :count etiquetas', count($seleccionados), ['count' => count($seleccionados)]) }}
+                </x-ui.button>
+                <x-ui.button variant="secondary" size="sm" wire:click="seleccionarFiltrados">
+                    {{ __('Seleccionar todos los filtrados') }}
+                </x-ui.button>
+                @if (! empty($seleccionados))
+                    <x-ui.button variant="ghost" size="sm" wire:click="limpiarSeleccion">{{ __('Quitar selección') }}</x-ui.button>
+                @endif
+            </div>
+            @if (count($seleccionados) >= \App\Livewire\Qr\Etiquetas::MAXIMO)
+                <p class="mt-2 text-[13px] text-warning-text">{{ __('Una hoja admite hasta :max etiquetas; imprime el resto en otra tanda.', ['max' => \App\Livewire\Qr\Etiquetas::MAXIMO]) }}</p>
+            @endif
+        </x-ui.card>
     </div>
+
+    <x-ui.table>
+        <x-slot name="filters">
+            @include('livewire.equipos.partials.filtros')
+
+            <div class="flex w-full flex-wrap items-center gap-2">
+                <select wire:model.live="etiqueta" class="{{ $claseFiltro }}" aria-label="{{ __('Etiqueta') }}">
+                    <option value="">{{ __('Etiqueta: todas') }}</option>
+                    <option value="sin">{{ __('Sin etiqueta impresa') }}</option>
+                    <option value="con">{{ __('Con etiqueta impresa') }}</option>
+                </select>
+            </div>
+        </x-slot>
+
+        <thead>
+            <tr>
+                <th class="w-10"><span class="sr-only">{{ __('Elegir') }}</span></th>
+                <th>{{ __('Serial') }}</th>
+                <th>{{ __('Código de activo') }}</th>
+                <th>{{ __('Tipo') }}</th>
+                <th>{{ __('Responsable') }}</th>
+                <th>{{ __('Sede') }}</th>
+                <th>{{ __('Etiqueta') }}</th>
+            </tr>
+        </thead>
+        <tbody>
+            @forelse ($equipos as $equipo)
+                <tr wire:key="qr-equipo-{{ $equipo->id }}">
+                    <td>
+                        <input type="checkbox" value="{{ $equipo->id }}" wire:model.live="seleccionados" class="rounded border-line-input text-primary focus:ring-primary" aria-label="{{ __('Elegir :serial', ['serial' => $equipo->serial]) }}">
+                    </td>
+                    <td class="font-mono"><a href="{{ route('equipos.show', $equipo) }}" class="hover:text-primary hover:underline">{{ $equipo->serial }}</a></td>
+                    <td class="font-mono">{{ $equipo->codigo_activo ?? __('Sin código') }}</td>
+                    <td>{{ $equipo->tipoEquipo?->nombre }}</td>
+                    <td>{!! $equipo->asignacionActual?->persona ? e($equipo->asignacionActual->persona->nombre) : '<span class="text-ink-muted">—</span>' !!}</td>
+                    <td>{!! $equipo->asignacionActual?->sede ? e($equipo->asignacionActual->sede->nombre) : '<span class="text-ink-muted">—</span>' !!}</td>
+                    <td>
+                        @if ($equipo->etiquetas_qr_count > 0)
+                            <x-ui.badge variant="success">{{ trans_choice('Impresa :count vez|Impresa :count veces', $equipo->etiquetas_qr_count, ['count' => $equipo->etiquetas_qr_count]) }}</x-ui.badge>
+                        @else
+                            <x-ui.badge variant="warning">{{ __('Sin imprimir') }}</x-ui.badge>
+                        @endif
+                    </td>
+                </tr>
+            @empty
+                <tr>
+                    <td colspan="7" class="py-10 text-center text-ink-muted">{{ __('No se encontraron equipos con esa búsqueda y filtros.') }}</td>
+                </tr>
+            @endforelse
+        </tbody>
+
+        @if ($equipos->hasPages())
+            <x-slot name="pagination">
+                {{ $equipos->links() }}
+            </x-slot>
+        @endif
+    </x-ui.table>
 </div>

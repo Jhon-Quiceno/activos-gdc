@@ -4,6 +4,7 @@ namespace App\Livewire\Movimientos;
 
 use App\Livewire\Movimientos\Soporte\FormatosPdf;
 use App\Livewire\Movimientos\Soporte\GestorAsignaciones;
+use App\Models\Asignacion;
 use App\Models\Dependencia;
 use App\Models\Equipo;
 use App\Models\Persona;
@@ -53,9 +54,20 @@ class Index extends Component
         $this->resetPage();
     }
 
+    /**
+     * Abre la ventana emergente con la información de la persona, sin salir de
+     * la página ni perder la posición en el listado.
+     */
     public function seleccionar(int $personaId): void
     {
-        $this->personaSeleccionada = $this->personaSeleccionada === $personaId ? null : $personaId;
+        $this->personaSeleccionada = $personaId;
+        $this->dispatch('open-modal', 'persona-detalle');
+    }
+
+    public function cerrarPersona(): void
+    {
+        $this->personaSeleccionada = null;
+        $this->dispatch('close-modal', 'persona-detalle');
     }
 
     protected function rules(): array
@@ -96,13 +108,15 @@ class Index extends Component
     }
 
     /**
-     * RF-22: formato de entrega consolidado con todos los equipos a cargo.
+     * RF-22: formatos de entrega de todos los equipos a cargo de la persona. En
+     * la Dirección TIC no existe un «formato consolidado»: sale el formato
+     * oficial en contexto «entrega», una hoja por equipo, en un solo PDF.
      */
     public function descargarConsolidado(int $personaId, FormatosPdf $formatos)
     {
         $persona = Persona::findOrFail($personaId);
         $pdf = $formatos->pdfConsolidado($persona);
-        $nombre = 'formato-entrega-consolidado-'.str($persona->nombre)->slug().'.pdf';
+        $nombre = 'formatos-entrega-'.str($persona->nombre)->slug().'.pdf';
 
         return response()->streamDownload(fn () => print ($pdf->output()), $nombre, ['Content-Type' => 'application/pdf']);
     }
@@ -131,6 +145,16 @@ class Index extends Component
             'personas' => $personas,
             'seleccionada' => $seleccionada,
             'equiposACargo' => $seleccionada ? $asignaciones->equiposACargo($seleccionada) : collect(),
+            // Equipos que tuvo a cargo y ya no (asignaciones cerradas), lo más reciente primero.
+            'equiposAnteriores' => $seleccionada
+                ? Asignacion::query()
+                    ->where('persona_id', $seleccionada->id)
+                    ->whereNotNull('fecha_fin')
+                    ->with('equipo.tipoEquipo')
+                    ->orderByDesc('fecha_fin')
+                    ->limit(20)
+                    ->get()
+                : collect(),
             'sinAsignar' => Equipo::where('estado_ciclo_vida', 'sin_asignar')->count(),
             'dependencias' => Dependencia::orderBy('nombre')->get(),
         ]);

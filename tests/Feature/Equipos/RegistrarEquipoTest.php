@@ -86,6 +86,17 @@ class RegistrarEquipoTest extends TestCase
         ]);
     }
 
+    public function test_al_elegir_el_tipo_la_seccion_se_resume_en_una_linea(): void
+    {
+        Livewire::actingAs($this->usuario)
+            ->test(Crear::class)
+            ->assertDontSee('Cambiar')
+            ->call('seleccionarTipo', $this->monitor->id)
+            ->assertSet('tipoEquipoId', $this->monitor->id)
+            ->assertSee('Cambiar')
+            ->assertSee('Monitor');
+    }
+
     public function test_registra_el_equipo_con_evento_de_alta_a_nombre_del_usuario(): void
     {
         $this->formularioValido()->call('guardar')->assertHasNoErrors();
