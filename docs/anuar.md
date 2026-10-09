@@ -23,6 +23,20 @@ RF-18, RF-19, RF-20, RF-21, RF-22, RF-24, RF-25, RF-28, RF-29, RF-30.
 
 Consulta el detalle completo de cada uno en el [Análisis de requerimientos](./analisis-requerimientos.md), secciones 5.4 a 5.6.
 
+## Estado al cierre de la Fase 1 (revisado por Jhon, 2026-10-08)
+
+| Días | Tarea | Estado |
+|---|---|---|
+| 1–2 | Plantillas PDF | ✅ Hecho (`FormatosPdf`, partials de entrega y baja). |
+| 3–4 | Responsables y traslado | ✅ Hecho (`GestorAsignaciones`, `TrasladoForm`), genera los dos PDF. |
+| 5–6 | Subida de firmados | ✅ Hecho (`GestorFirmas`, `DocumentosEvento`), "Pendiente de firma" y documento único funcionando. |
+| 7–8 | Diagnóstico, baja, bloqueo RN-10 | ✅ Hecho (`DiagnosticoForm`, `BajaForm`). ⚠️ **RF-22 (formato de entrega consolidado por funcionario)**: el método `GestorAsignaciones::equiposACargo()` existe, pero no encontré pantalla ni PDF consolidado que lo use — revisar si quedó pendiente o si cambiaste de enfoque. |
+| 9–10 | Pruebas | ✅ En verde. Fusionada hoy (PR #6) con 4 correcciones de condición de carrera que encontró una revisión de código: `GestorAsignaciones::asignar()` sin lock (RN-04, dos traslados simultáneos podían dejar dos asignaciones abiertas), el chequeo de RN-10 corría antes de abrir la transacción (el lock no protegía nada), `GestorFirmas::subirFirmado()` sin re-chequeo bloqueado, y `bajaEnTramite()` no veía una baja en trámite originada desde un diagnóstico. |
+
+**Hallazgos documentados sin corregir** (en el body de PR #6, no bloqueantes): `TrasladoForm` no limpia `dependenciaId` al marcar bodega; `DocumentosEvento::descargarPrellenado()` no valida el tipo de documento contra el evento; `ComponenteForm` no pasa por `RegistroMovimientos` como los demás movimientos; `ReglasMovimiento::estaDadoDeBaja()` no tiene callers (3 pantallas reimplementan el chequeo en memoria).
+
+**Para Anuar, si sigue en Fase 1:** cerrar RF-22 (o confirmar que no aplica) y revisar los hallazgos sin corregir arriba.
+
 ## Depende de / conecta con
 
 - **`HistorialService` y la hoja de vida de Juan José** — los botones de traslado, diagnóstico y baja viven en la vista de hoja de vida que construye Juan José; Anuar implementa la lógica detrás de esos botones.

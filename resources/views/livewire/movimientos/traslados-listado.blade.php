@@ -20,6 +20,12 @@
                 >
             </div>
 
+            <select wire:model.live="estado" class="h-11 w-48 rounded-lg border-line-input text-[14px] text-ink focus:border-primary focus:ring-primary" aria-label="{{ __('Estado') }}">
+                <option value="">{{ __('Todos los estados') }}</option>
+                <option value="en_servicio">{{ __('En servicio') }}</option>
+                <option value="sin_asignar">{{ __('Sin asignar (bodega)') }}</option>
+            </select>
+
             <span class="ml-auto text-[14px] text-ink-muted">
                 {{ trans_choice(':count equipo|:count equipos', $equipos->total(), ['count' => $equipos->total()]) }}
             </span>

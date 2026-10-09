@@ -25,6 +25,23 @@ RF-01, RF-02, RF-03, RF-04, RF-07, RF-09, RF-10, RF-11, RF-12, RF-14, RF-15.
 
 Consulta el detalle completo de cada uno en el [Análisis de requerimientos](./analisis-requerimientos.md), secciones 5.1 a 5.3.
 
+> **Agregado fuera del plan original: RF-33 · Exportar la hoja de vida a PDF.**
+> RF-33 estaba en la **Fase 2** (análisis, sección 13; plan, sección 6 «Qué queda fuera de estas dos semanas»). Se **adelantó a la Fase 1** con autorización de Jhon el **7 de octubre de 2026** y lo implementó Juan José: botón «Exportar hoja de vida (PDF)» en la hoja de vida, que descarga un PDF tamaño carta sin firma con la ficha, el responsable y la ubicación (cédula enmascarada, RN-12), el software, los componentes actuales y el historial completo. Código: `App\Livewire\Equipos\HojaDeVida::exportarPdf()` y `resources/views/livewire/equipos/pdf/hoja-de-vida.blade.php`.
+
+## Estado al cierre de la Fase 1 (revisado por Jhon, 2026-10-08)
+
+| Días | Tarea | Estado |
+|---|---|---|
+| 1–2 | Listado y búsqueda | ✅ Hecho (ya estaba antes del plan). |
+| 3–4 | Registro de equipo | ✅ Hecho y fusionado (PR #3). Incluye RN-02/RN-03 (serial y código únicos, duplicado con justificación), características por tipo (RF-03) y figura del tercero (RF-04). ⚠️ **Edición de equipo**: no se implementó — solo existe creación (`Crear.php`), no hay pantalla de editar. No estaba en tus RF formales (RF-01 a RF-04 no la exigen), pero la tabla de tareas sí la mencionaba; a decidir si hace falta para cerrar Fase 1. |
+| 5–6 | Hoja de vida | ✅ Hecho y fusionado (PR #4): ficha, componentes, responsable, ubicación, historial cronológico, botones de acción hacia Movimientos. |
+| 7–8 | Cambio de componente | ✅ Funciona (RF-14/RF-15), pero terminó implementado dentro del bloque de **Movimientos** (`app/Livewire/Movimientos/ComponenteForm.php`), no en `app/Livewire/Equipos` como decía el plan original. Ya tiene el bloqueo de concurrencia (dos retiros simultáneos del mismo componente) corregido. |
+| 9–10 | Pruebas | ✅ En verde. Además se corrigieron hoy 6 hallazgos de una revisión de código real sobre RN-03 (excepción cruda que daba 500, condición de carrera, código "0" que se saltaba la validación, índice faltante en la BD). |
+
+RF-33 (export a PDF, adelantado de Fase 2): ✅ hecho y fusionado (PR #5), incluye ahora también características/figura/observaciones en el PDF.
+
+**Para Juan José, si sigue en Fase 1:** decidir si hace falta edición de equipo; el resto de su bloque está cerrado.
+
 ## Depende de / conecta con
 
 - **El modelo de datos y `HistorialService` de Jhon** — ya deben existir antes del día 1; no se crean migraciones propias (ver norma 2 más abajo).

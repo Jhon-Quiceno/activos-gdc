@@ -2,20 +2,28 @@
 
 namespace App\Livewire\Movimientos;
 
-use App\Models\Asignacion;
+use App\Livewire\Movimientos\Soporte\RegistroMovimientos;
+use App\Livewire\Movimientos\Soporte\ReglasMovimiento;
 use App\Models\Dependencia;
 use App\Models\Equipo;
 use App\Models\Persona;
 use App\Models\Piso;
 use App\Models\Sede;
-use App\Services\HistorialService;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Livewire\Component;
 
 /**
- * Pantalla "Traslado o cambio de responsable". Cierra la asignación abierta
- * del equipo (fecha_fin = hoy) y abre una nueva: con un nuevo responsable, o
- * sin responsable si el equipo se envía a bodega.
+ * Pantalla "Traslado o cambio de responsable" (CU-05, RF-18 a RF-21).
+ *
+ * El nuevo responsable se elige de las personas ya registradas o se crea en el
+ * momento con sus datos completos (nombre, cédula, cargo, dependencia y
+ * vinculación). También se puede dejar el equipo sin asignar (bodega).
+ *
+ * Al guardar, la lógica de RegistroMovimientos::trasladar() cierra la
+ * asignación anterior, abre la nueva, crea el evento «Pendiente de firma» y
+ * genera los dos formatos; la pantalla muestra entonces el panel para
+ * descargarlos y subir los firmados.
  */
 class TrasladoForm extends Component
 {
@@ -23,7 +31,21 @@ class TrasladoForm extends Component
 
     public bool $bodega = false;
 
-    public string $nuevoResponsable = '';
+    /** 'existente' | 'nueva' */
+    public string $modoResponsable = 'existente';
+
+    public string $buscarPersona = '';
+
+    public ?int $personaId = null;
+
+    // Datos de la persona nueva (RF-18).
+    public string $nombre = '';
+
+    public string $cedula = '';
+
+    public string $cargo = '';
+
+    public ?string $tipoVinculacion = null;
 
     public ?int $sedeId = null;
 
@@ -34,6 +56,9 @@ class TrasladoForm extends Component
     public string $fecha = '';
 
     public string $motivo = '';
+
+    /** Evento creado al guardar; mientras sea null se muestra el formulario. */
+    public ?int $eventoId = null;
 
     public function mount(Equipo $equipo): void
     {
@@ -46,99 +71,140 @@ class TrasladoForm extends Component
             'asignacionActual.dependencia',
         ]);
 
-        // Prellenamos sede/piso con la ubicación actual: si el usuario marca
-        // "bodega" estos campos quedan ocultos pero igual viajan a la BD,
-        // porque asignaciones.sede_id/piso_id no son nulables (el equipo
-        // sigue físicamente en algún lado aunque no tenga responsable).
+        // Prellenamos la ubicación con la actual: asignaciones.sede_id/piso_id no
+        // son nulables porque el equipo sigue físicamente en algún lado aunque
+        // quede sin responsable.
         $this->sedeId = $this->equipo->asignacionActual?->sede_id;
         $this->pisoId = $this->equipo->asignacionActual?->piso_id;
+        $this->dependenciaId = $this->equipo->asignacionActual?->dependencia_id;
         $this->fecha = now()->toDateString();
+    }
+
+    public function updatedPersonaId($valor): void
+    {
+        // Al elegir una persona, su dependencia es la sugerencia natural.
+        $persona = $valor ? Persona::find($valor) : null;
+        if ($persona?->dependencia_id) {
+            $this->dependenciaId = $persona->dependencia_id;
+        }
+    }
+
+    public function elegirPersona(int $id): void
+    {
+        $this->personaId = $id;
+        $this->buscarPersona = '';
+        $this->updatedPersonaId($id);
     }
 
     protected function rules(): array
     {
+        $rules = [
+            'sedeId' => ['required', 'exists:sedes,id'],
+            'pisoId' => ['required', 'exists:pisos,id'],
+            // RN-13: la fecha del evento no puede ser futura.
+            'fecha' => ['required', 'date', 'before_or_equal:today'],
+            'motivo' => ['required', 'string', 'max:1000'],
+        ];
+
         if ($this->bodega) {
-            return [
-                'sedeId' => ['required', 'exists:sedes,id'],
-                'pisoId' => ['required', 'exists:pisos,id'],
+            return $rules + ['dependenciaId' => ['nullable', 'exists:dependencias,id']];
+        }
+
+        $rules['dependenciaId'] = ['required', 'exists:dependencias,id'];
+
+        if ($this->modoResponsable === 'nueva') {
+            return $rules + [
+                'nombre' => ['required', 'string', 'max:255'],
+                // Solo dígitos (sección 8.2) y sin duplicar personas.
+                'cedula' => ['required', 'digits_between:5,12', Rule::unique('personas', 'cedula')],
+                'cargo' => ['required', 'string', 'max:255'],
+                'tipoVinculacion' => ['required', 'in:planta,contratista'],
             ];
         }
 
-        return [
-            'nuevoResponsable' => ['required', 'string', 'max:255'],
-            'sedeId' => ['required', 'exists:sedes,id'],
-            'pisoId' => ['required', 'exists:pisos,id'],
-            'dependenciaId' => ['required', 'exists:dependencias,id'],
-            'fecha' => ['required', 'date'],
-            'motivo' => ['required', 'string'],
+        return $rules + [
+            'personaId' => ['required', Rule::exists('personas', 'id')->where('activo', true)],
         ];
     }
 
-    public function guardar(): void
+    protected function validationAttributes(): array
     {
+        return [
+            'sedeId' => __('sede'),
+            'pisoId' => __('piso'),
+            'dependenciaId' => __('dependencia'),
+            'personaId' => __('nuevo responsable'),
+            'tipoVinculacion' => __('tipo de vinculación'),
+        ];
+    }
+
+    public function guardar(RegistroMovimientos $movimientos): void
+    {
+        ReglasMovimiento::asegurarQueAdmiteEventos($this->equipo);
         $this->validate();
 
-        DB::transaction(function () {
-            $asignacionActual = $this->equipo->asignacionActual;
+        if (! $this->bodega && $this->modoResponsable === 'existente'
+            && $this->equipo->asignacionActual?->persona_id === $this->personaId
+            && $this->equipo->asignacionActual?->sede_id === $this->sedeId
+            && $this->equipo->asignacionActual?->piso_id === $this->pisoId
+            && $this->equipo->asignacionActual?->dependencia_id === $this->dependenciaId) {
+            $this->addError('personaId', __('El equipo ya está asignado a esa persona en esa ubicación.'));
 
-            if ($asignacionActual) {
-                $asignacionActual->fecha_fin = now();
-                $asignacionActual->save();
+            return;
+        }
+
+        $evento = DB::transaction(function () use ($movimientos) {
+            $persona = null;
+
+            if (! $this->bodega) {
+                $persona = $this->modoResponsable === 'nueva'
+                    ? Persona::create([
+                        'nombre' => trim($this->nombre),
+                        'cedula' => $this->cedula,
+                        'cargo' => trim($this->cargo),
+                        'dependencia_id' => $this->dependenciaId,
+                        'tipo_vinculacion' => $this->tipoVinculacion,
+                        'activo' => true,
+                    ])
+                    : Persona::findOrFail($this->personaId);
             }
 
-            if ($this->bodega) {
-                Asignacion::create([
-                    'equipo_id' => $this->equipo->id,
-                    'persona_id' => null,
-                    'sede_id' => $this->sedeId,
-                    'piso_id' => $this->pisoId,
-                    'dependencia_id' => null,
-                    'fecha_inicio' => now(),
-                ]);
-
-                $this->equipo->estado_ciclo_vida = 'sin_asignar';
-                $this->equipo->save();
-
-                $descripcion = __('Traslado a bodega (sin responsable asignado).');
-            } else {
-                $persona = Persona::create([
-                    'nombre' => $this->nuevoResponsable,
-                    'dependencia_id' => $this->dependenciaId,
-                ]);
-
-                Asignacion::create([
-                    'equipo_id' => $this->equipo->id,
-                    'persona_id' => $persona->id,
-                    'sede_id' => $this->sedeId,
-                    'piso_id' => $this->pisoId,
-                    'dependencia_id' => $this->dependenciaId,
-                    'fecha_inicio' => $this->fecha,
-                ]);
-
-                $this->equipo->estado_ciclo_vida = 'en_servicio';
-                $this->equipo->save();
-
-                $descripcion = __('Traslado a :responsable.', ['responsable' => $persona->nombre]);
-            }
-
-            app(HistorialService::class)->registrar(
-                equipo: $this->equipo,
-                tipo: 'traslado_responsable',
-                usuario: auth()->user(),
-                datos: ['estado_firma' => 'pendiente_de_firma'],
-                descripcion: $descripcion,
-            );
+            return $movimientos->trasladar($this->equipo, auth()->user(), [
+                'persona' => $persona,
+                'sede_id' => $this->sedeId,
+                'piso_id' => $this->pisoId,
+                'dependencia_id' => $this->dependenciaId,
+                'fecha' => $this->fecha,
+                'motivo' => $this->motivo,
+            ]);
         });
 
-        $this->redirect(route('equipos.show', $this->equipo), navigate: true);
+        $this->eventoId = $evento->id;
+        $this->equipo->refresh()->load(['asignacionActual.persona', 'asignacionActual.sede', 'asignacionActual.piso', 'asignacionActual.dependencia']);
     }
 
     public function render()
     {
+        $termino = trim($this->buscarPersona);
+        $digitos = preg_replace('/\D/', '', $termino);
+
         return view('livewire.movimientos.traslado-form', [
             'sedes' => Sede::orderBy('nombre')->get(),
             'pisos' => Piso::orderBy('numero')->get(),
             'dependencias' => Dependencia::orderBy('nombre')->get(),
+            'personaElegida' => $this->personaId ? Persona::with('dependencia')->find($this->personaId) : null,
+            'coincidencias' => mb_strlen($termino) >= 2
+                ? Persona::query()
+                    ->with('dependencia')
+                    ->where('activo', true)
+                    ->where(fn ($q) => $q->where('nombre', 'like', "%{$termino}%")
+                        ->when($digitos !== '', fn ($q) => $q->orWhere('cedula', 'like', "%{$digitos}%")))
+                    ->orderBy('nombre')
+                    ->limit(8)
+                    ->get()
+                : collect(),
+            'dadoDeBaja' => $this->equipo->estado_ciclo_vida === 'dado_de_baja',
+            'bajaEnTramite' => ReglasMovimiento::bajaEnTramite($this->equipo),
         ]);
     }
 }

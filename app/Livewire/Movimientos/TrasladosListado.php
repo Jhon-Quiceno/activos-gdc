@@ -22,7 +22,16 @@ class TrasladosListado extends Component
     #[Url(as: 'q')]
     public string $busqueda = '';
 
+    /** RF-21: '' = todos, 'en_servicio' o 'sin_asignar' (equipos en bodega). */
+    #[Url(as: 'estado')]
+    public string $estado = '';
+
     public function updatingBusqueda(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatingEstado(): void
     {
         $this->resetPage();
     }
@@ -35,6 +44,7 @@ class TrasladosListado extends Component
         $equipos = Equipo::query()
             ->with(['tipoEquipo', 'marca', 'asignacionActual.persona', 'asignacionActual.sede', 'asignacionActual.dependencia'])
             ->where('estado_ciclo_vida', '!=', 'dado_de_baja')
+            ->when(in_array($this->estado, ['en_servicio', 'sin_asignar'], true), fn ($q) => $q->where('estado_ciclo_vida', $this->estado))
             ->when($termino !== '', function ($query) use ($termino, $normalizado) {
                 $query->where(function ($q) use ($termino, $normalizado) {
                     $q->whereRaw("REPLACE(REPLACE(serial, ' ', ''), '-', '') LIKE ?", ["%{$normalizado}%"])

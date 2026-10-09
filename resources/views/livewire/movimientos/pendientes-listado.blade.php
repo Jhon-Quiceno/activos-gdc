@@ -8,9 +8,22 @@
         'actualizacion_datos' => __('Actualización de datos'),
         'anulacion_aclaracion' => __('Anulación / aclaración'),
     ];
+    $formatoLabels = [
+        'formato_baja' => __('Formato de baja'),
+        'formato_entrega' => __('Formato de entrega'),
+    ];
 @endphp
 
 <div class="space-y-6">
+    @if ($eventoSeleccionado)
+        <div>
+            <div class="mb-2 flex justify-end">
+                <x-ui.button variant="ghost" size="sm" wire:click="cerrarPanel">{{ __('Cerrar panel de firmas') }}</x-ui.button>
+            </div>
+            <livewire:movimientos.documentos-evento :evento-id="$eventoSeleccionado" :key="'docs-pendiente-'.$eventoSeleccionado" />
+        </div>
+    @endif
+
     <x-ui.table>
         <x-slot name="filters">
             <div>
@@ -19,6 +32,7 @@
                     <option value="">{{ __('Todos los tipos') }}</option>
                     <option value="alta">{{ __('Alta') }}</option>
                     <option value="traslado_responsable">{{ __('Traslado') }}</option>
+                    <option value="diagnostico">{{ __('Diagnóstico') }}</option>
                     <option value="baja">{{ __('Baja') }}</option>
                 </select>
             </div>
@@ -45,11 +59,14 @@
                 <th>{{ __('Registrado por') }}</th>
                 <th>{{ __('Fecha') }}</th>
                 <th>{{ __('Pendiente') }}</th>
+                <th></th>
             </tr>
         </thead>
         <tbody>
             @forelse ($eventos as $evento)
                 @php
+                    $firmados = $evento->documentos->pluck('tipo')->all();
+                    $faltan = array_values(array_diff($firmas->requeridos($evento), $firmados));
                     $dias = (int) $evento->fecha->diffInDays(now());
                     $equipoEtiqueta = $evento->equipo?->codigo_activo ?: $evento->equipo?->serial;
                 @endphp
@@ -67,7 +84,7 @@
                         {{ $equipoEtiqueta ?? __('Sin identificar') }}
                     </td>
                     <td>
-                        {{ $evento->tipo === 'baja' ? __('Formato de baja') : __('Formato de entrega') }}
+                        {{ collect($faltan)->map(fn ($t) => $formatoLabels[$t] ?? $t)->implode(' + ') ?: '—' }}
                     </td>
                     <td>
                         {{ $evento->equipo?->asignacionActual?->persona?->nombre ?? '—' }}
@@ -83,10 +100,15 @@
                             {{ trans_choice(':count día|:count días', $dias, ['count' => $dias]) }}
                         </x-ui.badge>
                     </td>
+                    <td class="text-right" onclick="event.stopPropagation()">
+                        <x-ui.button variant="primary" size="sm" class="whitespace-nowrap" wire:click="gestionar({{ $evento->id }})">
+                            {{ $eventoSeleccionado === $evento->id ? __('Ocultar') : __('Subir firmados') }}
+                        </x-ui.button>
+                    </td>
                 </tr>
             @empty
                 <tr>
-                    <td colspan="7" class="py-10 text-center text-ink-muted">
+                    <td colspan="8" class="py-10 text-center text-ink-muted">
                         {{ __('No hay movimientos pendientes de firma con ese filtro.') }}
                     </td>
                 </tr>

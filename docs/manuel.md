@@ -23,6 +23,18 @@ RF-08, RF-43, RF-44, RF-45, RF-46, RF-48, RF-50.
 
 Consulta el detalle completo en el [Análisis de requerimientos](./analisis-requerimientos.md), sección 5.9 (usuarios y administración) y sección 5.10 (códigos QR y etiquetas). Presta especial atención a las reglas RN-17, RN-18 y RN-19 sobre el comportamiento del QR.
 
+## Estado al cierre de la Fase 1 (revisado por Jhon, 2026-10-08)
+
+| Días | Tarea | Estado |
+|---|---|---|
+| 1–2 | Usuarios | ✅ Hecho (`UsuariosPanel.php`): crear, editar, desactivar, perfiles. ⚠️ **RF-44 parcial**: se guarda `debe_cambiar_contrasena`, pero no hay ningún middleware que lo use para forzar el cambio al iniciar sesión — hoy el flag no tiene ningún efecto. |
+| 3–4 | Listas administrables | ✅ Hecho (`ListasPanel.php`), 8 catálogos editables. |
+| 5–6 | QR: generación, ruta corta, apertura | ❌ No hecho. El UUID (`qr_uuid`) se genera solo al crear el equipo, pero el paquete `simplesoftwareio/simple-qrcode` (ya instalado) no se usa en ningún lado: no hay imagen de QR, no existe la ruta `/e/{uuid}` en `routes/web.php`, no hay flujo de "pedir sesión → abrir hoja de vida". El espacio para esto ya está reservado en la hoja de vida de Juan José (`hoja-de-vida.blade.php`, el bloque "Etiqueta QR"), con un comentario explicando el contrato esperado. |
+| 7–8 | Etiqueta imprimible | ❌ No hecho (depende de lo anterior). |
+| 9–10 | Auditoría, cédula enmascarada | ❌ No hecho. El modelo `Auditoria` existe, está bien hecho e inmutable, y `User` ya tiene la relación (`hasMany`) — pero **no hay un solo `Auditoria::create()` en todo el código**: no se registra ningún login, cambio ni consulta de cédula. Cédula enmascarada: solo está confirmada en los PDF de Equipos y Movimientos (RN-12); no verifiqué listados/pantallas de Admin ni QR, así que no asumas que está cubierta ahí. |
+
+**Para Manuel, si sigue en Fase 1:** junto con Alex, es el bloque más atrasado. Prioridad sugerida: (1) middleware de cambio de contraseña obligatorio (rápido, cierra un hueco de seguridad); (2) conectar `Auditoria::create()` en los puntos clave (login, cambios, consulta/exportación de cédula) — es requisito de cumplimiento (Ley 1581); (3) QR real + ruta `/e/{uuid}`; (4) etiqueta imprimible.
+
 ## Depende de / conecta con
 
 - **Breeze de Jhon** — la autenticación base (Laravel Breeze con stack Livewire) ya está instalada; Manuel construye la gestión de usuarios y perfiles sobre ella.

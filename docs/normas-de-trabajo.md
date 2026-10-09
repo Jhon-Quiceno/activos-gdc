@@ -50,6 +50,75 @@ git push -u origin feature/equipos-busqueda
 
 Si la tarea tarda más de dos días, no se acumula todo en una sola rama: se abre un PR más chico con lo que ya está listo y se continúa en una rama nueva para lo que falta.
 
+### Mantenerte al día con `develop`
+
+Jhon integra `develop` seguido (migraciones nuevas, componentes compartidos, fixes). Si no actualizás tu rama, trabajás sobre una base vieja y el día que abras el PR vas a tener conflictos grandes. Usamos **rebase** para esto (no `git merge`), por dos razones: mantiene el historial de commits lineal y fácil de leer, y es la misma estrategia que ya usa este repo para integrar PRs a `main` (GitHub tiene deshabilitados los merge commits).
+
+**Antes de empezar a trabajar cada día**, actualizá tu rama contra `develop`:
+
+```bash
+# 1. Traé lo nuevo de GitHub (no modifica tu rama todavía)
+git fetch origin
+
+# 2. Pará sobre tu rama de trabajo
+git checkout feature/equipos-busqueda
+
+# 3. Reacomodá tus commits encima de lo último de develop
+git rebase origin/develop
+```
+
+Si no hay conflictos, listo: seguís trabajando. Si tu rama ya estaba pusheada a GitHub, el rebase reescribe tus commits (cambian de hash), así que el push normal va a fallar — usá **force-with-lease**, nunca `--force` a secas:
+
+```bash
+git push --force-with-lease origin feature/equipos-busqueda
+```
+
+`--force-with-lease` se niega a sobrescribir si alguien más subió algo a esa rama que vos no tenés — `--force` no se fija en eso y puede borrar trabajo ajeno. Como cada rama `feature/*` es de una sola persona, en la práctica siempre va a andar, pero el hábito evita un desastre el día que no sea así.
+
+**Si el rebase encuentra conflictos**, Git para y te dice qué archivos chocan:
+
+```bash
+# Git te avisa algo como:
+# CONFLICT (content): Merge conflict in app/Livewire/Equipos/Index.php
+
+# 1. Abrí el archivo, vas a ver marcas como estas:
+#    <<<<<<< HEAD
+#    (tu código)
+#    =======
+#    (el código de develop)
+#    >>>>>>> origin/develop
+# Dejá el código correcto (puede ser el tuyo, el de develop, o una mezcla de los dos) y borrá las tres marcas.
+
+# 2. Marcá el archivo como resuelto
+git add app/Livewire/Equipos/Index.php
+
+# 3. Seguí con el rebase (repetí 1-3 si hay más de un commit con conflictos)
+git rebase --continue
+```
+
+**Si te vas por las ramas y querés cancelar todo y volver a como estaba antes de empezar el rebase:**
+
+```bash
+git rebase --abort
+```
+
+Esto es 100% seguro, te deja exactamente donde estabas antes del paso 3. Úsalo sin miedo si te perdés a mitad del rebase.
+
+### Problemas comunes
+
+| Mensaje / síntoma | Qué hacer |
+|---|---|
+| `Your branch and 'origin/develop' have diverged` | Tu rama está desactualizada: hacé el rebase de arriba. |
+| `CONFLICT (content): Merge conflict in <archivo>` | Resolvé el archivo a mano (ver arriba), `git add`, `git rebase --continue`. |
+| `! [rejected] ... (non-fast-forward)` al hacer `git push` | Acabás de rebasar: usá `git push --force-with-lease`, no un push normal. |
+| Te perdiste a mitad de un rebase | `git rebase --abort` y arrancá de nuevo con calma. |
+| Borraste algo que no querías o quedó todo raro | **No sigas tocando nada.** `git status` y `git log --oneline -10`, pegalo en el grupo y pedí ayuda antes de forzar cualquier cosa. |
+
+**Reglas de oro:**
+- Rebase y `--force-with-lease` **solo en tu propia rama `feature/*`**. Nunca en `develop` ni en `main`.
+- Nunca una rama que esté usando otra persona al mismo tiempo (acá no debería pasar: cada rama es de un solo dueño).
+- Ante la duda, preguntá antes de forzar un push. Un push mal hecho se arregla; code perdido sin backup, no siempre.
+
 ## 2. Migraciones
 
 - **Solo Jhon (el líder) crea migraciones.** Nadie más agrega, modifica o elimina una migración, aunque sea un campo pequeño.

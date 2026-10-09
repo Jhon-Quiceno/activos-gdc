@@ -9,6 +9,24 @@ Versión 1.2 · Octubre de 2026
 
 ---
 
+## 0. Estado real al cierre (revisado por Jhon, 2026-10-08)
+
+Repaso completo de todo lo fusionado a `develop` hasta hoy, cruzado contra los 35 RF esenciales del [Análisis de requerimientos](./analisis-requerimientos.md). Detalle día por día y RF por RF en el documento de cada persona (enlaces en la sección 4). `develop` está sincronizada local y remota, sin PR abiertas.
+
+| Bloque | Responsable | Estado | Lo que falta |
+|---|---|---|---|
+| Equipos | Juan José | ✅ Completo | Decidir si hace falta edición de equipo (no estaba en los RF formales). |
+| Movimientos | Anuar | ✅ Completo | RF-22 (formato de entrega consolidado por persona) sin confirmar; 4 hallazgos menores documentados sin corregir en PR #6. |
+| Importación | Juan Camilo | ✅ Completo | RF-39: umbral de equivalencias para sede/dependencia antes de cargar el inventario real. |
+| Reportes | Alex | ❌ **El más atrasado** | Casi todo el bloque: solo 1 de 15 reportes del catálogo tiene datos reales, cero exportación a Excel/PDF. |
+| Administración y QR | Manuel | ❌ **El segundo más atrasado** | Usuarios y listas listos; QR (generación, ruta corta, etiqueta) y auditoría (RF-46) sin empezar; falta el middleware de cambio de contraseña obligatorio (RF-44). |
+
+**Correcciones hechas hoy que no estaban en el plan original:** 6 hallazgos de RN-03 en `Equipo` (excepción cruda, condición de carrera, índice faltante), 4 condiciones de carrera en Movimientos (RN-04, RN-10), y el bug de Importación que dejaba pasar un código de activo repetido contra la base sin aviso claro. Todo con tests nuevos que reproducen cada caso.
+
+**Para cerrar la Fase 1 de verdad, en orden de impacto:** (1) Reportes — bloque de Alex, prácticamente desde cero; (2) QR y auditoría — bloque de Manuel; (3) los puntos menores de Movimientos e Importación arriba.
+
+---
+
 ## 1. La idea en una página
 
 Dos semanas solo alcanzan si nadie espera a nadie. Por eso el plan tiene tres reglas:
@@ -56,14 +74,14 @@ Esta es la lista que desbloquea a todos. Si algo de aquí no está, ese bloque e
 
 ## 3. Calendario general
 
-| Días | Meta del equipo | Hito para Jhon |
-|---|---|---|
-| Día 1 | Todos corren el proyecto y abren su primer PR. | Ningún bloqueo de Docker al final del día. |
-| Días 2–4 | Cada bloque construye su parte principal con datos de prueba. | Día 4: registrar un equipo y verlo en su hoja de vida. |
-| Día 5 | Primera integración en `develop` y revisión de la semana. | Demo interna: equipo → traslado → PDF. |
-| Días 6–8 | Completar bloques y conectar: importación real, QR en la hoja de vida, reportes con datos importados. | Día 8: inventario 2026 cargado en el ambiente de pruebas. |
-| Día 9 | Congelar funciones. Pruebas cruzadas: cada uno prueba el bloque de otro. | Lista de errores priorizada. |
-| Día 10 | Corrección de errores, README y manual corto, demo al jefe. | Versión v1.0 etiquetada en `main`. |
+| Días | Meta del equipo | Hito para Jhon | Estado |
+|---|---|---|---|
+| Día 1 | Todos corren el proyecto y abren su primer PR. | Ningún bloqueo de Docker al final del día. | ✅ |
+| Días 2–4 | Cada bloque construye su parte principal con datos de prueba. | Día 4: registrar un equipo y verlo en su hoja de vida. | ✅ |
+| Día 5 | Primera integración en `develop` y revisión de la semana. | Demo interna: equipo → traslado → PDF. | ✅ |
+| Días 6–8 | Completar bloques y conectar: importación real, QR en la hoja de vida, reportes con datos importados. | Día 8: inventario 2026 cargado en el ambiente de pruebas. | ⚠️ Importación lista; **QR y Reportes sin conectar** (ver sección 0). |
+| Día 9 | Congelar funciones. Pruebas cruzadas: cada uno prueba el bloque de otro. | Lista de errores priorizada. | ✅ Hecho hoy — ver sección 0 para la lista de hallazgos y correcciones. |
+| Día 10 | Corrección de errores, README y manual corto, demo al jefe. | Versión v1.0 etiquetada en `main`. | ❌ Pendiente: todavía no se etiquetó `main`; Reportes y QR faltan antes de la demo completa. |
 
 ---
 
@@ -112,7 +130,7 @@ Se anota como Fase 2, salvo que sobre tiempo el día 9:
 - Puestos de trabajo y traslado del puesto completo (RF-05), fotografías (RF-06), tipos de evento configurables (RF-13).
 - Historial por componente y destino de lo retirado (RF-16, RF-17), paz y salvo (RF-23).
 - Tablero de inicio (RF-36), etiquetas QR por lotes y reimpresión (RF-49, RF-51), cargas posteriores de Excel (RF-42).
-- Hoja de vida exportable a PDF (RF-33) y reportes de obsolescencia y antivirus.
+- ~~Hoja de vida exportable a PDF (RF-33)~~ — **se adelantó a la Fase 1** el 7 de octubre (ver sección 0 y `docs/juan-jose.md`). ~~Reporte de obsolescencia por sistema operativo~~ — **ya hecho** (el único de los 15 del catálogo con datos reales). Reporte de antivirus sigue pendiente.
 
 ### Riesgo principal
 
