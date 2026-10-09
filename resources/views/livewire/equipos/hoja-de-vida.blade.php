@@ -217,24 +217,8 @@
                 @endif
             </x-ui.card>
 
-            {{--
-                Espacio reservado para la etiqueta QR (RF-08, RF-48; bloque de Manuel).
-                Contrato propuesto: reemplazar esta tarjeta por un componente del bloque
-                QR que reciba el equipo, p. ej. <livewire:qr.etiqueta-equipo :equipo="$equipo" />,
-                y que use solo $equipo->qr_uuid para armar el enlace corto /e/{uuid}
-                (RN-17, RN-19), con el botón «Imprimir etiqueta QR».
-            --}}
-            <x-ui.card>
-                <p class="section-title">{{ __('Etiqueta QR') }}</p>
-                <div class="mt-3 flex items-center gap-4">
-                    <div class="flex h-24 w-24 shrink-0 items-center justify-center rounded-lg border-2 border-dashed border-line text-[13px] font-semibold text-ink-muted">
-                        QR
-                    </div>
-                    <p class="text-[13px] text-ink-muted">
-                        {{ __('Aquí se mostrará el código QR del equipo y la opción para imprimir su etiqueta.') }}
-                    </p>
-                </div>
-            </x-ui.card>
+            {{-- Etiqueta QR del equipo (RF-08, RF-48): componente del bloque QR. --}}
+            <livewire:qr.etiqueta-equipo :equipo="$equipo" :key="'qr-'.$equipo->id" />
         </div>
 
         <x-ui.card :padding="false">
@@ -296,8 +280,23 @@
             Mismo marcado y clases que <x-ui.timeline>, pero con el detalle de cada
             evento y la acción de corrección, que ese componente compartido no admite.
         --}}
+        @php
+            // Aclaraciones enlazadas a su evento (valores.aclara_evento_id): se
+            // muestran debajo del evento que corrigen en vez de sueltas. Las
+            // anteriores a este cambio no traen el enlace y siguen apareciendo solas.
+            $idsEventos = $equipo->eventos->pluck('id')->flip();
+            $aclaracionesPorEvento = $equipo->eventos
+                ->filter(fn ($e) => $e->tipo === 'anulacion_aclaracion'
+                    && $e->evento_anulado_id === null
+                    && isset($e->valores['aclara_evento_id'], $idsEventos[$e->valores['aclara_evento_id']]))
+                ->sortBy('id')
+                ->groupBy(fn ($e) => $e->valores['aclara_evento_id']);
+            $idsAnidados = $aclaracionesPorEvento->flatten()->pluck('id')->flip();
+        @endphp
+
         <div class="mt-4">
             @forelse($equipo->eventos as $evento)
+                @continue(isset($idsAnidados[$evento->id]))
                 @php
                     $anulacion = $evento->anulaciones->first();
                     $detalleCambio = $evento->cambioComponente;
@@ -326,11 +325,18 @@
                             </div>
                         </div>
 
-                        @if($this->admiteCorreccion($evento))
-                            <x-ui.button variant="ghost" size="sm" wire:click="abrirCorreccion({{ $evento->id }})">
-                                {{ $this->puedeAnularse($evento) ? __('Anular / aclarar') : __('Aclarar') }}
-                            </x-ui.button>
-                        @endif
+                        <div class="flex flex-wrap items-center gap-1">
+                            @if(\App\Livewire\Equipos\HojaDeVida::tieneFormatos($evento))
+                                <x-ui.button variant="ghost" size="sm" wire:click="verFormatos({{ $evento->id }})">
+                                    {{ __('Formatos y firmas') }}
+                                </x-ui.button>
+                            @endif
+                            @if($this->admiteCorreccion($evento))
+                                <x-ui.button variant="ghost" size="sm" wire:click="abrirCorreccion({{ $evento->id }})">
+                                    {{ $this->puedeAnularse($evento) ? __('Anular / aclarar') : __('Aclarar') }}
+                                </x-ui.button>
+                            @endif
+                        </div>
                     </div>
 
                     @if($evento->descripcion)
@@ -398,6 +404,20 @@
                     @if($evento->usuario)
                         <p class="mt-1 text-[13px] text-ink-muted">{{ __('Por') }} {{ $evento->usuario->name }}</p>
                     @endif
+
+                    @foreach($aclaracionesPorEvento->get($evento->id, []) as $aclaracion)
+                        <div class="mt-2 rounded-lg border-l-4 border-info-text bg-info-bg px-3 py-2 text-[13px]" wire:key="aclaracion-{{ $aclaracion->id }}">
+                            <p class="font-semibold text-info-text">{{ __('Aclaración') }}</p>
+                            <p class="text-ink">{{ $aclaracion->valores['texto'] ?? $aclaracion->descripcion }}</p>
+                            <p class="mt-1 text-ink-muted">
+                                {{ __(':usuario · :fecha · evento #:id', [
+                                    'usuario' => $aclaracion->usuario?->name ?? '—',
+                                    'fecha' => optional($aclaracion->fecha)->translatedFormat('d M Y, H:i'),
+                                    'id' => $aclaracion->id,
+                                ]) }}
+                            </p>
+                        </div>
+                    @endforeach
                 </div>
             @empty
                 <p class="text-[14px] text-ink-muted">{{ __('Sin eventos registrados.') }}</p>
@@ -405,6 +425,21 @@
         </div>
     </x-ui.card>
 
+    {{--
+        Las ventanas se «teletransportan» al <body>: el <main> del layout tiene una
+        transformación (animación de entrada) y, dentro de un elemento transformado,
+        position:fixed queda atado a él en vez de a la pantalla.
+    --}}
+    @teleport('body')
+    {{-- Formatos para firmar y documentos firmados del evento (panel de Movimientos). --}}
+    <x-ui.modal name="formatos-evento" :title="__('Formatos y firmas')">
+        @if($eventoFormatosId)
+            <livewire:movimientos.documentos-evento :evento-id="$eventoFormatosId" :key="'docs-hoja-'.$eventoFormatosId" />
+        @endif
+    </x-ui.modal>
+    @endteleport
+
+    @teleport('body')
     <x-ui.modal name="corregir-evento" :title="__('Corregir evento')">
         @if($eventoSeleccionado)
             <p class="text-[14px] text-ink-muted">
@@ -414,6 +449,15 @@
                     'fecha' => optional($eventoSeleccionado->fecha)->translatedFormat('d M Y, H:i'),
                 ]) }}
             </p>
+
+            {{-- Los eventos son inmutables (RF-12, RN-06): nunca se editan ni se borran. --}}
+            <div class="mt-3 rounded-lg border border-line px-3 py-2 text-[13px] text-ink-muted">
+                <p>{{ __('Los eventos del historial no se pueden editar ni borrar. Para corregir uno:') }}</p>
+                <ul class="mt-1 list-disc space-y-0.5 pl-4">
+                    <li><span class="font-semibold text-ink">{{ __('Aclarar') }}</span>: {{ __('el evento sigue valiendo, pero queda debajo una nota con la corrección (por ejemplo, el motivo correcto de un traslado).') }}</li>
+                    <li><span class="font-semibold text-ink">{{ __('Anular') }}</span>: {{ __('el evento queda tachado y sin efecto. Solo para eventos que no cambiaron datos del equipo, como un diagnóstico.') }}</li>
+                </ul>
+            </div>
 
             <div class="mt-4">
                 @if($this->puedeAnularse($eventoSeleccionado))
@@ -438,7 +482,7 @@
                 @if($modo === 'anulacion')
                     {{ __('El evento quedará marcado como anulado. No se borra: sigue en el historial.') }}
                 @else
-                    {{ __('Se agrega una nota de corrección al historial. El evento original no cambia.') }}
+                    {{ __('La nota queda debajo de este evento en el historial. El evento original no cambia.') }}
                 @endif
             </p>
 
@@ -464,4 +508,5 @@
             </x-ui.button>
         </x-slot>
     </x-ui.modal>
+    @endteleport
 </div>

@@ -38,6 +38,10 @@ class HojaDeVida extends Component
     #[Locked]
     public ?int $eventoSeleccionadoId = null;
 
+    /** Evento cuyos formatos y firmas se muestran en la ventana emergente. */
+    #[Locked]
+    public ?int $eventoFormatosId = null;
+
     /** 'anulacion' o 'aclaracion'. */
     public string $modo = 'aclaracion';
 
@@ -62,6 +66,31 @@ class HojaDeVida extends Component
     public function mount(Equipo $equipo): void
     {
         $this->equipo = $equipo;
+    }
+
+    /**
+     * Abre la ventana con los formatos del evento (descargar para firmar y subir
+     * firmados), el mismo panel de Movimientos, sin salir de la hoja de vida.
+     */
+    public function verFormatos(int $eventoId): void
+    {
+        $evento = $this->eventoDelEquipo($eventoId);
+
+        if (! self::tieneFormatos($evento)) {
+            return;
+        }
+
+        $this->eventoFormatosId = $evento->id;
+        $this->dispatch('open-modal', 'formatos-evento');
+    }
+
+    /**
+     * Traslados y bajas siempre llevan formatos; un diagnóstico, solo si se pidió.
+     */
+    public static function tieneFormatos(Evento $evento): bool
+    {
+        return in_array($evento->tipo, ['traslado_responsable', 'baja'], true)
+            || ($evento->tipo === 'diagnostico' && $evento->estado_firma !== 'no_aplica');
     }
 
     public function abrirCorreccion(int $eventoId): void
@@ -119,8 +148,14 @@ class HojaDeVida extends Component
                     'tipo' => $tipo,
                     'texto' => trim($this->justificacion),
                 ]),
-            // Solo la anulación enlaza el evento: una aclaración no lo deja sin
-            // efecto (otros módulos tratan cualquier enlace como anulación).
+            // Solo la anulación enlaza evento_anulado_id: una aclaración no deja
+            // el evento sin efecto (otros módulos tratan cualquier enlace como
+            // anulación). La aclaración guarda su vínculo en `valores`, para
+            // mostrarla debajo del evento que corrige.
+            datos: $anula ? [] : ['valores' => [
+                'aclara_evento_id' => $evento->id,
+                'texto' => trim($this->justificacion),
+            ]],
             eventoAnulado: $anula ? $evento : null,
         );
 
