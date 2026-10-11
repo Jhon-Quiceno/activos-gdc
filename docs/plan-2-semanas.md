@@ -9,21 +9,22 @@ Versión 1.2 · Octubre de 2026
 
 ---
 
-## 0. Estado real al cierre (revisado por Jhon, 2026-10-08)
+## 0. Estado real al cierre (revisado por Jhon, 2026-10-11)
 
-Repaso completo de todo lo fusionado a `develop` hasta hoy, cruzado contra los 35 RF esenciales del [Análisis de requerimientos](./analisis-requerimientos.md). Detalle día por día y RF por RF en el documento de cada persona (enlaces en la sección 4). `develop` está sincronizada local y remota, sin PR abiertas.
+Repaso completo de todo lo fusionado a `develop` hasta hoy, cruzado contra los 35 RF esenciales del [Análisis de requerimientos](./analisis-requerimientos.md). Detalle día por día y RF por RF en el documento de cada persona (enlaces en la sección 4). `develop` está sincronizada local y remota, sin PR abiertas propias (quedan dos PR de Juan José sin fusionar, ver abajo).
 
 | Bloque | Responsable | Estado | Lo que falta |
 |---|---|---|---|
-| Equipos | Juan José | ✅ Completo | Decidir si hace falta edición de equipo (no estaba en los RF formales). |
+| Equipos | Juan José | ✅ Completo (núcleo) | Edición de equipo, QR real y filtros avanzados ya están implementados en PR #9 y #10, **todavía sin fusionar** — pendiente de revisión. El registro ya soporta serial provisional (RN-02) desde el 9 de octubre. |
 | Movimientos | Anuar | ✅ Completo | RF-22 (formato de entrega consolidado por persona) sin confirmar; 4 hallazgos menores documentados sin corregir en PR #6. |
-| Importación | Juan Camilo | ✅ Completo | RF-39: umbral de equivalencias para sede/dependencia antes de cargar el inventario real. |
-| Reportes | Alex | ❌ **El más atrasado** | Casi todo el bloque: solo 1 de 15 reportes del catálogo tiene datos reales, cero exportación a Excel/PDF. |
-| Administración y QR | Manuel | ❌ **El segundo más atrasado** | Usuarios y listas listos; QR (generación, ruta corta, etiqueta) y auditoría (RF-46) sin empezar; falta el middleware de cambio de contraseña obligatorio (RF-44). |
+| Importación | Juan Camilo | ✅ Completo por ahora | Se corrigió un bug real: el Excel 2026 es una exportación de Google Forms con encabezados que no coincidían con los que esperaba el importador (se perdían monitores, impresoras, conectividad y digitalización en silencio). **Pendiente**: el archivo real trae 14 códigos de activo duplicados dentro de sí mismo que bloquean la confirmación — se va a mejorar el Excel y reintentar la carga completa después. |
+| Reportes | Alex | ✅ Completo | Reporte de calidad del inventario (RF-37) y los 4 reportes de movimientos (bajas, traslados, cambios de componentes, pendientes de firma) ya tienen datos reales y exportación a Excel/PDF. RN-12 (cédula enmascarada) verificado. |
+| Administración | Manuel | ✅ Completo | Middleware de cambio de contraseña obligatorio (RF-44) y bitácora de auditoría (RF-46, login + cambios sobre equipos) ya conectados. |
+| QR | Juan José (vía PR #10) | ⚠️ Implementado, sin fusionar | Generación, ruta corta y etiqueta QR están en el PR #10 junto con la edición de equipo; falta revisarlo y fusionarlo. |
 
-**Correcciones hechas hoy que no estaban en el plan original:** 6 hallazgos de RN-03 en `Equipo` (excepción cruda, condición de carrera, índice faltante), 4 condiciones de carrera en Movimientos (RN-04, RN-10), y el bug de Importación que dejaba pasar un código de activo repetido contra la base sin aviso claro. Todo con tests nuevos que reproducen cada caso.
+**Correcciones hechas que no estaban en el plan original:** 6 hallazgos de RN-03 en `Equipo` (excepción cruda, condición de carrera, índice faltante), 4 condiciones de carrera en Movimientos (RN-04, RN-10), el bug de Importación que dejaba pasar un código de activo repetido contra la base sin aviso claro, y la reescritura del emparejamiento de columnas de Importación para el formato real del Excel 2026. Todo con tests nuevos que reproducen cada caso.
 
-**Para cerrar la Fase 1 de verdad, en orden de impacto:** (1) Reportes — bloque de Alex, prácticamente desde cero; (2) QR y auditoría — bloque de Manuel; (3) los puntos menores de Movimientos e Importación arriba.
+**Para cerrar la Fase 1 por completo:** revisar y fusionar los PR #9 y #10 de Juan José (edición de equipo, QR y filtros); mejorar el Excel del inventario 2026 (códigos de activo duplicados) y reintentar la carga completa.
 
 ---
 
@@ -79,21 +80,19 @@ Esta es la lista que desbloquea a todos. Si algo de aquí no está, ese bloque e
 | Día 1 | Todos corren el proyecto y abren su primer PR. | Ningún bloqueo de Docker al final del día. | ✅ |
 | Días 2–4 | Cada bloque construye su parte principal con datos de prueba. | Día 4: registrar un equipo y verlo en su hoja de vida. | ✅ |
 | Día 5 | Primera integración en `develop` y revisión de la semana. | Demo interna: equipo → traslado → PDF. | ✅ |
-| Días 6–8 | Completar bloques y conectar: importación real, QR en la hoja de vida, reportes con datos importados. | Día 8: inventario 2026 cargado en el ambiente de pruebas. | ⚠️ Importación lista; **QR y Reportes sin conectar** (ver sección 0). |
-| Día 9 | Congelar funciones. Pruebas cruzadas: cada uno prueba el bloque de otro. | Lista de errores priorizada. | ✅ Hecho hoy — ver sección 0 para la lista de hallazgos y correcciones. |
-| Día 10 | Corrección de errores, README y manual corto, demo al jefe. | Versión v1.0 etiquetada en `main`. | ❌ Pendiente: todavía no se etiquetó `main`; Reportes y QR faltan antes de la demo completa. |
+| Días 6–8 | Completar bloques y conectar: importación real, QR en la hoja de vida, reportes con datos importados. | Día 8: inventario 2026 cargado en el ambiente de pruebas. | ✅ Reportes y Administración completos. QR implementado en PR #10, sin fusionar. Importación lista, a la espera de un Excel corregido para la carga completa. |
+| Día 9 | Congelar funciones. Pruebas cruzadas: cada uno prueba el bloque de otro. | Lista de errores priorizada. | ✅ Hecho — ver sección 0 para la lista de hallazgos y correcciones. |
+| Día 10 | Corrección de errores, README y manual corto, demo al jefe. | Versión v1.0 etiquetada en `main`. | ⚠️ Pendiente: fusionar PR #9/#10 (Juan José), corregir y recargar el inventario 2026, etiquetar `main`. |
 
 ---
 
 ## 4. Tareas por persona
 
-Cada bloque tiene su propio documento autocontenido con el detalle día a día, requerimientos y dependencias:
+Cada bloque tiene su propio documento autocontenido con el detalle día a día, requerimientos y dependencias. Los de Alex (Reportes) y Manuel (Administración) se retiraron el 11 de octubre al quedar sus bloques completos (ver sección 0):
 
 - [Juan José — Núcleo 1: Equipos y hoja de vida](./juan-jose.md)
 - [Anuar — Núcleo 2: Movimientos y formatos](./anuar.md)
 - [Juan Camilo — Carga del inventario](./juan-camilo.md)
-- [Alex — Reportes](./alex.md)
-- [Manuel — Administración y QR](./manuel.md)
 
 ### 4.6 Jhon — durante las dos semanas
 
@@ -130,7 +129,7 @@ Se anota como Fase 2, salvo que sobre tiempo el día 9:
 - Puestos de trabajo y traslado del puesto completo (RF-05), fotografías (RF-06), tipos de evento configurables (RF-13).
 - Historial por componente y destino de lo retirado (RF-16, RF-17), paz y salvo (RF-23).
 - Tablero de inicio (RF-36), etiquetas QR por lotes y reimpresión (RF-49, RF-51), cargas posteriores de Excel (RF-42).
-- ~~Hoja de vida exportable a PDF (RF-33)~~ — **se adelantó a la Fase 1** el 7 de octubre (ver sección 0 y `docs/juan-jose.md`). ~~Reporte de obsolescencia por sistema operativo~~ — **ya hecho** (el único de los 15 del catálogo con datos reales). Reporte de antivirus sigue pendiente.
+- ~~Hoja de vida exportable a PDF (RF-33)~~ — **se adelantó a la Fase 1** el 7 de octubre (ver sección 0 y `docs/juan-jose.md`). ~~Reporte de obsolescencia por sistema operativo~~, ~~reporte de calidad del inventario~~, ~~reportes de movimientos~~ y ~~reporte de antivirus~~ — **ya hechos**, el catálogo de reportes quedó completo el 11 de octubre.
 
 ### Riesgo principal
 
@@ -138,4 +137,4 @@ El bloque de Juan José es del que dependen casi todos. Si el día 4 no se puede
 
 ---
 
-**Ver también:** [Análisis de requerimientos](./analisis-requerimientos.md) · [Normas de trabajo](./normas-de-trabajo.md)
+**Ver también:** [Análisis de requerimientos](./analisis-requerimientos.md) · [Plan de la Fase 2](./plan-fase2.md) · [Normas de trabajo](./normas-de-trabajo.md)
