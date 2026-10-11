@@ -5,14 +5,20 @@ use Illuminate\Support\Facades\Route;
 Route::view('/', 'welcome');
 
 Route::view('dashboard', 'dashboard')
-    ->middleware(['auth', 'verified'])
+    ->middleware(['auth', 'verified', 'cambiar.contrasena'])
     ->name('dashboard');
 
 Route::view('profile', 'profile')
-    ->middleware(['auth'])
+    ->middleware(['auth', 'cambiar.contrasena'])
     ->name('profile');
 
-Route::middleware(['auth'])->group(function () {
+// RF-44: fuera del middleware cambiar.contrasena a propósito, para no entrar
+// en un redirect infinito mientras el usuario todavía no la cambió.
+Route::view('cambiar-contrasena', 'livewire.admin.cambiar-contrasena')
+    ->middleware(['auth'])
+    ->name('password.obligatoria');
+
+Route::middleware(['auth', 'cambiar.contrasena'])->group(function () {
     // --- Equipos (Juan José) ---
     Route::view('/equipos', 'livewire.equipos.page')->name('equipos.index');
     Route::view('/equipos/crear', 'livewire.equipos.crear')->name('equipos.crear');

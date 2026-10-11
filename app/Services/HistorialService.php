@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Auditoria;
 use App\Models\Equipo;
 use App\Models\Evento;
 use App\Models\User;
@@ -58,7 +59,7 @@ class HistorialService
         ?string $descripcion = null,
         ?Evento $eventoAnulado = null,
     ): Evento {
-        return Evento::create(array_merge([
+        $evento = Evento::create(array_merge([
             'equipo_id' => $equipo->id,
             'tipo' => $tipo,
             'fecha' => Date::now(),
@@ -66,5 +67,17 @@ class HistorialService
             'usuario_id' => $usuario->id,
             'evento_anulado_id' => $eventoAnulado?->id,
         ], $datos));
+
+        // RF-46 (Ley 1581): todo cambio sobre un equipo queda también en la
+        // bitácora de auditoría, además de en su hoja de vida.
+        Auditoria::create([
+            'usuario_id' => $usuario->id,
+            'accion' => $tipo,
+            'entidad' => 'Equipo',
+            'entidad_id' => $equipo->id,
+            'ip' => request()?->ip(),
+        ]);
+
+        return $evento;
     }
 }
