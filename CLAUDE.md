@@ -113,7 +113,8 @@ colores, tamaños ni íconos que no estén ya en `tailwind.config.js` o en los c
 - `docs/analisis-requerimientos.md` — requerimientos, modelo de dominio, reglas de negocio.
 - `docs/plan-2-semanas.md` — plan de trabajo de la Fase 1.
 - `docs/normas-de-trabajo.md` — reglas de ramas/carpetas/eventos en detalle.
-- `docs/juan-jose.md`, `docs/anuar.md`, `docs/juan-camilo.md`, `docs/alex.md`,
-  `docs/manuel.md` — tareas específicas de cada integrante.
+- `docs/juan-jose.md`, `docs/anuar.md`, `docs/juan-camilo.md` — tareas
+  específicas de cada integrante (los de Alex y Manuel se retiraron al
+  quedar sus bloques completos, ver `docs/plan-2-semanas.md` sección 0).
 - `odd/tasks/bootstrap-hoja-vida-equipos.md` — historial del bootstrap inicial del
   proyecto (qué se construyó, decisiones tomadas, problemas de entorno encontrados).
