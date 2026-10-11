@@ -172,6 +172,28 @@ it('una fila sin serial principal queda pendiente de verificar en vez de bloquea
         ->and($equipo->serial)->toStartWith('PENDIENTE-2-');
 });
 
+it('cada advertencia trae un "valor" para la columna del mismo nombre en la vista previa', function () {
+    $filas = [
+        filaBase(['PC Serial' => '', 'Monitor' => '', 'Impresora' => '']),
+        filaBase(['PC Serial' => 'PC-SN-0099', 'PC Codigo' => 'I1-030050', 'Monitor' => '', 'Impresora' => '']),
+    ];
+    $archivo = csvInventario($this->encabezados, $filas);
+
+    // RF-40: la vista (index.blade.php) renderiza $advertencia['valor'] para
+    // cada fila de esta tabla; sin la clave, la pantalla revienta con un
+    // "Undefined array key" apenas hay una advertencia que mostrar.
+    Equipo::factory()->create(['codigo_activo' => 'I1-030050']);
+
+    $advertencias = Livewire::actingAs($this->usuario)->test(Index::class)
+        ->set('archivo', $archivo)
+        ->instance()->advertenciasPorFila();
+
+    $porTipo = collect($advertencias)->groupBy('tipo');
+
+    expect($porTipo->get('sin_serial', collect())->pluck('valor'))->each->not->toBeNull()
+        ->and($porTipo->get('repetido', collect())->pluck('valor'))->toContain('I1-030050');
+});
+
 it('detecta un codigo de activo duplicado entre dos equipos del mismo lote antes de confirmar (RN-03, RF-40)', function () {
     $filas = [
         filaBase(['PC Serial' => 'PC-SN-0010', 'PC Codigo' => 'I1-030001', 'Monitor' => '', 'Impresora' => '']),
