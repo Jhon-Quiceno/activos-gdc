@@ -59,7 +59,10 @@ class CalidadInventario extends ReporteDefinicion
     private function condicion(Builder $q, string $clave): void
     {
         match ($clave) {
-            'sin_serial' => $q->where(fn ($x) => $x->whereNull('equipos.serial')->orWhere('equipos.serial', '')),
+            // El serial nunca es null/vacío (NOT NULL en BD): un equipo "sin
+            // serial" real es uno con el provisional que generan el registro
+            // manual y la importación (RN-02) cuando no se pudo tomar uno.
+            'sin_serial' => $q->where('equipos.serial', 'like', 'PENDIENTE-%'),
             'sin_codigo' => $q->where(fn ($x) => $x->whereNull('equipos.codigo_activo')->orWhere('equipos.codigo_activo', '')),
             'sin_responsable' => $q->where('equipos.estado_ciclo_vida', '!=', 'dado_de_baja')
                 ->whereDoesntHave('asignacionActual', fn ($a) => $a->whereNotNull('persona_id')),
@@ -84,7 +87,7 @@ class CalidadInventario extends ReporteDefinicion
     {
         $lista = [];
 
-        if (blank($e->serial)) {
+        if (str_starts_with((string) $e->serial, 'PENDIENTE-')) {
             $lista[] = self::INDICADORES['sin_serial'];
         }
         if (blank($e->codigo_activo)) {

@@ -162,6 +162,19 @@ it('calidad señala solo los equipos sin código de activo', function () {
         ->assertDontSee($conCodigo->serial);
 });
 
+it('calidad señala los equipos con serial provisional, no con el serial en blanco (nunca lo está)', function () {
+    // El serial es NOT NULL en la base: un equipo "sin serial" real es el que
+    // quedó con el provisional PENDIENTE-... del registro o la importación.
+    $provisional = Equipo::factory()->create(['serial' => 'PENDIENTE-REG-000123']);
+    $conSerial = Equipo::factory()->create(['serial' => 'SN-0001']);
+
+    Livewire::test(Index::class)
+        ->call('seleccionarReporte', 'calidad_inventario')
+        ->set('filtroSistemaOperativo', 'sin_serial')
+        ->assertSee($provisional->serial)
+        ->assertDontSee($conSerial->serial);
+});
+
 it('calidad señala los equipos pendientes de verificar', function () {
     $pendiente = Equipo::factory()->create(['verificacion' => 'pendiente_de_verificar']);
     $verificado = Equipo::factory()->create(['verificacion' => 'verificado']);
