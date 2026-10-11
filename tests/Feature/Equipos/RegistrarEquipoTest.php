@@ -161,6 +161,49 @@ class RegistrarEquipoTest extends TestCase
         $this->assertNull(Equipo::sole()->codigo_activo);
     }
 
+    /**
+     * RN-02: el serial es obligatorio salvo que se marque que el equipo no
+     * tiene uno; en ese caso se guarda con un serial provisional y queda
+     * "pendiente de verificar" en vez de "verificado".
+     */
+    public function test_el_serial_es_obligatorio_salvo_que_no_tenga(): void
+    {
+        $this->formularioValido(['serial' => ''])
+            ->call('guardar')
+            ->assertHasErrors(['serial' => 'required']);
+
+        $this->formularioValido(['serial' => '', 'sinSerial' => true])
+            ->call('guardar')
+            ->assertHasNoErrors();
+
+        $equipo = Equipo::sole();
+        $this->assertStringStartsWith('PENDIENTE-REG-', $equipo->serial);
+        $this->assertSame('pendiente_de_verificar', $equipo->verificacion);
+    }
+
+    public function test_no_permite_marcar_sin_serial_y_sin_codigo_a_la_vez(): void
+    {
+        $this->formularioValido([
+            'serial' => '',
+            'sinSerial' => true,
+            'codigoActivo' => '',
+            'sinCodigoActivo' => true,
+        ])->call('guardar')->assertHasErrors(['sinSerial']);
+
+        $this->assertSame(0, Equipo::count());
+    }
+
+    public function test_dos_equipos_con_serial_provisional_no_chocan_entre_si(): void
+    {
+        $this->formularioValido(['serial' => '', 'sinSerial' => true, 'codigoActivo' => 'I1-024147'])
+            ->call('guardar')->assertHasNoErrors();
+
+        $this->formularioValido(['serial' => '', 'sinSerial' => true, 'codigoActivo' => 'I1-024148'])
+            ->call('guardar')->assertHasNoErrors();
+
+        $this->assertSame(2, Equipo::distinct('serial')->count('serial'));
+    }
+
     public function test_un_codigo_de_activo_repetido_exige_justificacion(): void
     {
         $this->crearEquipoExistente('OTRO-1', 'I1-024147');

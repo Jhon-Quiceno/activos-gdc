@@ -41,6 +41,14 @@ class Crear extends Component
     // --- 2. Identificación ---
     public string $serial = '';
 
+    /**
+     * RN-02: el inventario 2026 trae equipos sin serial legible. En vez de exigir
+     * una migración para permitir serial nulo, se guarda uno provisional
+     * (`PENDIENTE-REG-######`) y el equipo nace "pendiente de verificar"; al
+     * confirmar el serial real se corrige luego desde "Editar datos".
+     */
+    public bool $sinSerial = false;
+
     public string $codigoActivo = '';
 
     public bool $sinCodigoActivo = false;
@@ -203,8 +211,14 @@ class Crear extends Component
     {
         $rules = [
             'tipoEquipoId' => ['required', 'exists:tipos_equipo,id'],
-            // RN-02: obligatorio y único en todo el inventario, incluidos los dados de baja.
-            'serial' => ['required', 'string', 'max:255', $this->noRepetidoEnOtroEquipo('serial')],
+            // RN-02: obligatorio y único en todo el inventario, incluidos los dados de baja,
+            // salvo que se marque que el equipo no tiene serial (se genera uno provisional).
+            'serial' => [
+                $this->sinSerial ? 'nullable' : 'required',
+                'string',
+                'max:255',
+                $this->noRepetidoEnOtroEquipo('serial'),
+            ],
             // RN-03: obligatorio salvo que se marque que el equipo no tiene código.
             // Puede repetirse, pero entonces se exige justificación (abajo).
             'codigoActivo' => [
@@ -213,6 +227,8 @@ class Crear extends Component
                 'max:255',
                 'regex:'.self::PATRON_CODIGO_ACTIVO,
             ],
+            // Un equipo tiene que quedar identificable por al menos una de las dos vías.
+            'sinSerial' => [$this->noAmbosSinIdentificar()],
             'codigoActivoJustificacion' => [
                 $this->equipoConMismoCodigo() ? 'required' : 'nullable',
                 'string',
@@ -252,6 +268,7 @@ class Crear extends Component
     protected function messages(): array
     {
         return [
+            'serial.required' => __('Escribe el serial o marca «El equipo no tiene serial».'),
             'codigoActivo.required' => __('Escribe el código de activo o marca «El equipo no tiene código de activo».'),
             'codigoActivo.regex' => __('El código de activo debe tener el formato I1-###### (por ejemplo, I1-024147).'),
             'codigoActivoJustificacion.required' => __('Este código de activo ya está en otro equipo: escribe por qué se repite (RN-03).'),
@@ -293,6 +310,33 @@ class Crear extends Component
         }
 
         return Equipo::with('tipoEquipo')->where('codigo_activo', $this->codigoActivo)->first();
+    }
+
+    /**
+     * RN-02: serial provisional cuando el equipo no trae uno legible, con el
+     * mismo formato que ya usa la importación del inventario 2026. Se reintenta
+     * por si choca por azar con uno ya existente (el serial es único).
+     */
+    private function serialProvisional(): string
+    {
+        do {
+            $candidato = 'PENDIENTE-REG-'.str_pad((string) random_int(1, 999999), 6, '0', STR_PAD_LEFT);
+        } while (Equipo::where('serial', $candidato)->exists());
+
+        return $candidato;
+    }
+
+    /**
+     * Un equipo necesita al menos un identificador: no se puede marcar a la vez
+     * «no tiene serial» y «no tiene código de activo».
+     */
+    private function noAmbosSinIdentificar(): Closure
+    {
+        return function (string $attribute, mixed $value, Closure $fail): void {
+            if ($this->sinSerial && $this->sinCodigoActivo) {
+                $fail(__('El equipo debe tener al menos serial o código de activo: no se pueden marcar las dos casillas a la vez.'));
+            }
+        };
     }
 
     /**
@@ -343,6 +387,14 @@ class Crear extends Component
         }
     }
 
+    public function updatedSinSerial(): void
+    {
+        if ($this->sinSerial) {
+            $this->serial = '';
+            $this->resetValidation(['serial']);
+        }
+    }
+
     public function updatedResponsableCedula(): void
     {
         $this->responsableCedula = $this->normalizarCedula($this->responsableCedula);
@@ -374,7 +426,7 @@ class Crear extends Component
         // cada campo, pero se repite por si se guarda sin haber salido de él).
         // Si se marcó "no tiene código", el input queda vacío/deshabilitado en la
         // vista, pero igual podría traer texto residual; nos aseguramos de que viaje null.
-        $this->serial = $this->normalizarSerial($this->serial);
+        $this->serial = $this->sinSerial ? '' : $this->normalizarSerial($this->serial);
         $this->codigoActivo = $this->sinCodigoActivo ? '' : $this->normalizarCodigoActivo($this->codigoActivo);
         $this->responsableCedula = $this->normalizarCedula($this->responsableCedula);
 
@@ -401,7 +453,7 @@ class Crear extends Component
             $justificacion = trim($this->codigoActivoJustificacion);
 
             $equipo = Equipo::create([
-                'serial' => $this->serial,
+                'serial' => $this->sinSerial ? $this->serialProvisional() : $this->serial,
                 'codigo_activo' => $this->codigoActivo !== '' ? $this->codigoActivo : null,
                 // Solo se guarda si el código realmente se repite (RN-03).
                 'codigo_activo_justificacion' => $this->equipoConMismoCodigo() && $justificacion !== '' ? $justificacion : null,
@@ -417,9 +469,9 @@ class Crear extends Component
                 // RN: sin responsable asignado el equipo queda "sin_asignar" (bodega);
                 // con responsable queda "en_servicio".
                 'estado_ciclo_vida' => $this->asignarResponsable ? 'en_servicio' : 'sin_asignar',
-                // El serial es obligatorio en este formulario, así que el equipo
-                // siempre nace verificado (ver resumen de la pantalla).
-                'verificacion' => 'verificado',
+                // RN-02: con serial provisional el equipo nace "pendiente de
+                // verificar"; en el resto de los casos nace verificado (ver resumen).
+                'verificacion' => $this->sinSerial ? 'pendiente_de_verificar' : 'verificado',
             ]);
 
             if ($this->familiaSeleccionada === 'computo') {
