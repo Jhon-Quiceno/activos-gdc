@@ -163,6 +163,7 @@ La carpeta `docs/` contiene:
 
 - [`analisis-requerimientos.md`](docs/analisis-requerimientos.md) — requerimientos, modelo de dominio y reglas de negocio.
 - [`plan-2-semanas.md`](docs/plan-2-semanas.md) — plan de trabajo de la Fase 1.
+- [`plan-fase2.md`](docs/plan-fase2.md) — qué sigue después de la Fase 1.
 - [`normas-de-trabajo.md`](docs/normas-de-trabajo.md) — reglas de ramas, migraciones, carpetas y eventos para trabajar en equipo sin pisarse.
 - `juan-jose.md`, `anuar.md`, `juan-camilo.md` — tareas específicas de cada integrante del equipo (los de Alex y Manuel se retiraron al quedar sus bloques completos).
 

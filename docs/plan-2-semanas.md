@@ -137,4 +137,4 @@ El bloque de Juan José es del que dependen casi todos. Si el día 4 no se puede
 
 ---
 
-**Ver también:** [Análisis de requerimientos](./analisis-requerimientos.md) · [Normas de trabajo](./normas-de-trabajo.md)
+**Ver también:** [Análisis de requerimientos](./analisis-requerimientos.md) · [Plan de la Fase 2](./plan-fase2.md) · [Normas de trabajo](./normas-de-trabajo.md)
