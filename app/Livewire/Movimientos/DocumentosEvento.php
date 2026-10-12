@@ -80,21 +80,19 @@ class DocumentosEvento extends Component
     }
 
     /**
-     * Descarga el formato prellenado. Si por algún motivo no quedó guardado
-     * (eventos anteriores a este bloque), se genera en el momento.
+     * Descarga el formato para firmar. Se genera siempre en el momento con el
+     * formato oficial vigente y los datos del evento (que no cambian: los eventos
+     * son inmutables), para que también los eventos registrados antes del cambio
+     * al formato oficial salgan con él. La copia guardada al registrar el evento
+     * se conserva como constancia de lo que se imprimió entonces.
      */
-    public function descargarPrellenado(string $tipo, GestorFirmas $firmas, FormatosPdf $formatos)
+    public function descargarPrellenado(string $tipo, FormatosPdf $formatos)
     {
         $evento = $this->evento();
         abort_unless(in_array($tipo, ['formato_entrega', 'formato_baja'], true), 404);
 
-        $generado = $firmas->estado($evento)[$tipo]['generado'] ?? null;
-        $nombre = FormatosPdf::nombreArchivo($evento->equipo, $tipo, FormatosPdf::consecutivo($evento, $tipo));
-
-        if ($generado) {
-            return $firmas->descargar($generado, $nombre);
-        }
-
+        $datos = $formatos->datos($evento, $tipo);
+        $nombre = FormatosPdf::nombreArchivo($evento->equipo, $tipo, $datos['consecutivo'], $datos['contexto']);
         $pdf = $formatos->pdf($evento, $tipo);
 
         return response()->streamDownload(fn () => print ($pdf->output()), $nombre, ['Content-Type' => 'application/pdf']);

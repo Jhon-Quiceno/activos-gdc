@@ -54,5 +54,5 @@ it('las pantallas muestran el panel de firmas de una baja en trámite', function
     $this->get(route('movimientos.baja', $this->equipo))
         ->assertOk()
         ->assertSee('Baja pendiente de firma')
-        ->assertSee('Descargar PDF prellenado');
+        ->assertSee('Descargar formato para firmar');
 });
