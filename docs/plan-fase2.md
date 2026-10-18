@@ -51,7 +51,7 @@ Cada uno pasa su bloque a los campos nuevos **antes** de construir algo nuevo. L
 | `equipo->modelo` (texto) | `modelo_id` | `$equipo->modeloEquipo` |
 | `equipo->propietario_tercero` | `proveedor_tercero_id` | `$equipo->proveedorTercero` |
 | `asignacion->sede_id`, `asignacion->sede` | `piso_id` | `$asignacion->piso->sede` |
-| Selects sueltos de sede, piso y dependencia | Selectores compartidos | `<x-ui.ubicacion-select>`, `<x-ui.dependencia-select>` |
+| Selects sueltos de sede, piso y dependencia | Selectores compartidos | `<x-ui.ubicacion-select>` (al elegir la sede solo muestra sus pisos y dependencias) y `<x-ui.dependencia-select>` |
 | Filtrar por una sola dependencia | Filtrar por la rama completa | `Dependencia::idsDeRama($id)` |
 | Comparar textos de dependencia «a ojo» | Tabla de equivalencias | `DependenciaEquivalencia::resolver($texto)` |
 | Mostrar `sede->direccion` | Dirección visible | `$sede->direccionVisible()` (Casa Refugio, RN-28) |

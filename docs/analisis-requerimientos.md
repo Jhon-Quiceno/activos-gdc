@@ -183,7 +183,7 @@ Hasta v3, el modelo se construyó con las 53 columnas del inventario de marzo de
 | ID | Requerimiento | Prioridad |
 |---|---|---|
 | RF-18 | Registrar la persona responsable con tipo y número de documento, nombres, apellidos, correo institucional, cargo oficial (código, denominación, grado, encargo), dependencia real, jefe inmediato, planta, tipo de vinculación (planta, contratista, pasante) y provisión. **(mod. v4)** | E |
-| RF-19 | Registrar la ubicación como sede → piso de esa sede → dependencia del árbol oficial, proponiendo las dependencias que el PAMP ubica en ese piso. **(mod. v4)** | E |
+| RF-19 | Registrar la ubicación como sede → piso de esa sede → dependencia: al elegir la sede solo se ofrecen sus pisos y las dependencias que funcionan en ella (y en el piso, si ya se eligió), según el PAMP; un enlace «Ver todas las dependencias» abre la lista completa para los casos que el PAMP no cubre. **(mod. v4)** | E |
 | RF-20 | Traslado o cambio de responsable con los dos formatos firmados (o documento único). | E |
 | RF-21 | Equipo sin responsable (bodega) como estado válido. | E |
 | RF-22 | Consultar los equipos a cargo de una persona y su formato de entrega consolidado. | E |
@@ -440,6 +440,7 @@ El reparto de la Fase 2 está en [plan-fase2.md](./plan-fase2.md).
 | 9 | ¿El traslado sigue con dos documentos o uno? | Ambos | (Igual que en v3.) |
 | 10 | ¿Vista pública reducida al escanear el QR? | Solo con sesión | (Igual que en v3.) |
 | 11 | Funciones de la Dirección TICS y del Almacén General en el Decreto 608 (págs. 334 a 353). | No leídas: la herramienta solo extrajo las 80 primeras páginas de 639 | Podrían asignar responsabilidades del inventario y de la baja. |
+| 12 | ¿En qué sede y piso funcionan las 11 dependencias que el PAMP no ubica (Secretaría General, Dirección Departamental de Regalías, Dirección Departamental de Proyectos, Dirección de Ciencia, Tecnología e Innovación, Dirección Administrativa y Financiera de Infraestructura, Dirección Técnica y Administrativa de Infraestructura, Dirección Administrativa de Inspección, Vigilancia y Control (Salud), Planeación en Salud, Bienestar y Capacitación, y Financiera y Administrativa de Educación)? | Sin ubicación: solo se eligen con «Ver todas las dependencias» | Se completan en `ubicaciones_dependencia` y aparecen al filtrar por sede. |
 
 ### Próximos pasos
 

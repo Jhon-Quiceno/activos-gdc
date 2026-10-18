@@ -153,7 +153,7 @@ Solo se describen las columnas nuevas o con reglas. El resto está documentado e
 
 - La sede pertenece a un municipio, y el piso a una sede (`unique(sede_id, numero)`). La asignación de un equipo guarda solo `piso_id`, porque el piso ya determina la sede, así que no hay forma de guardar un piso que no exista en esa sede.
 - `direccion_reservada = true` en la Casa Refugio: su dirección no se muestra en listados, reportes ni etiquetas. Es un refugio para mujeres víctimas de violencia.
-- `ubicaciones_dependencia` dice qué dependencias funcionan en cada piso. Al trasladar, el formulario propone esos pisos, pero no prohíbe otros: el PAMP es una foto de 2026 y las oficinas se mueven.
+- `ubicaciones_dependencia` dice qué dependencias funcionan en cada piso. `x-ui.ubicacion-select` la usa como filtro: al elegir la sede solo muestra sus pisos y sus dependencias (y al elegir el piso, solo las de ese piso). Como el PAMP es una foto de 2026 y no ubica 11 dependencias, el enlace «Ver todas las dependencias» abre la lista completa; la validación del servidor no lo prohíbe.
 
 ### 4.3 `cargos` y `personas`
 
@@ -512,6 +512,7 @@ grep -rnE "cedula|propietario_tercero|->cargo\b|'cargo'|->modelo\b|'modelo'|sede
 | 5 | Tenencia (propia o arrendada) de Morindó, Victoria Char, Places Mall y Suricentro, y si Suricentro sigue en uso. | `por_confirmar`. |
 | 6 | ¿Pensiones depende de Gestión Administrativa (planta) o de Hacienda (PAMP)? ¿Biblioparque de Cultura? ¿Grupo Anticontrabando de Rentas? | Los de la sección 5.2. |
 | 7 | Funciones de la Dirección TICS y del Almacén General en el Decreto 608: están en las páginas 334 a 353 y la herramienta de lectura solo extrajo las 80 primeras de 639. | Pendiente de leer el PDF completo. |
+| 8 | Dónde funcionan las 11 dependencias que el PAMP no ubica: Secretaría General, Dirección Departamental de Regalías, Dirección Departamental de Proyectos, Dirección de Ciencia, Tecnología e Innovación, Dirección Administrativa y Financiera de Infraestructura, Dirección Técnica y Administrativa de Infraestructura, Dirección Administrativa de Inspección, Vigilancia y Control (Salud), Planeación en Salud, Bienestar y Capacitación, y Financiera y Administrativa de Educación. | Sin fila en `ubicaciones_dependencia`. |
 
 ---
 

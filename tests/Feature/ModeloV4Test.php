@@ -22,6 +22,7 @@ use Database\Seeders\CatalogosSeeder;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Blade;
+use Illuminate\Support\Str;
 use Illuminate\Support\ViewErrorBag;
 use Illuminate\Validation\ValidationException;
 
@@ -301,13 +302,26 @@ describe('componentes y rutas compartidas', function () {
             ->toContain('Buscar dependencia');
     });
 
-    it('el selector de ubicación ofrece los pisos de cada sede y las dependencias del piso', function () {
+    it('el selector de ubicación filtra pisos y dependencias por la sede, con salida a la lista completa', function () {
         $html = Blade::render('<x-ui.ubicacion-select sede="sedeId" piso="pisoId" dependencia="dependenciaId" />');
 
-        expect($html)->toContain('Places Mall')
-            ->toContain('Local 44')
-            ->toContain('En este piso')
+        $placesMall = Sede::where('nombre', 'Places Mall')->firstOrFail();
+        $localPlacesMall = $placesMall->pisos->first();
+        $rentas = dependencia('Dirección de Rentas');
+        $tics = dependencia('Dirección de Tecnología, Informática y Comunicaciones (TICS)');
+
+        // Los mapas que usa el filtro: Rentas está en Places Mall; la Dirección TICS, no.
+        // @js() lo escribe como cadena JavaScript escapada: primero se desescapa, luego se lee el JSON.
+        $porSede = json_decode(json_decode('"'.Str::betweenFirst($html, 'porSede: JSON.parse(\'', '\')').'"'), true);
+
+        expect($porSede[(string) $placesMall->id])->toContain((string) $rentas->id)
+            ->not->toContain((string) $tics->id)
+            ->and($html)->toContain('Local 44')
+            ->toContain('Ver todas las dependencias')
+            ->toContain('Elige primero la sede')
             ->not->toContain('Calle 27 No. 3-28');
+
+        expect($localPlacesMall->dependencias->pluck('id'))->toContain($rentas->id);
     });
 
     it('la ruta de levantamientos responde con sesión iniciada', function () {

@@ -14,7 +14,7 @@ Llevas el bloque central: la ficha del equipo y su hoja de vida. En esta fase la
 - `Equipo::garantiaPorVencer()`, `Equipo::vidaUtilSuperada()`, `$equipo->valoracionVigente`, `$equipo->valoraciones`.
 - **`ValoracionActivo::registrar($equipo, $usuario, $datos)`**: crea la valoración y su evento `valoracion`, calcula total, importancia y riesgo, deja no vigente la anterior y aplica RN-22 a RN-25. Tu pantalla solo arma `$datos` y muestra los errores de validación.
 - Textos de las escalas para el formulario: `ValoracionActivo::ESCALA_CONFIDENCIALIDAD`, `ESCALA_INTEGRIDAD`, `ESCALA_DISPONIBILIDAD`, `CLASIFICACIONES_DATOS`, `CONTROLES_MONITOREO`.
-- Selectores `<x-ui.dependencia-select>` y `<x-ui.ubicacion-select>`, y `Dependencia::idsDeRama($id)`.
+- Selectores `<x-ui.dependencia-select>` y `<x-ui.ubicacion-select sede="sedeId" piso="pisoId" dependencia="dependenciaId" />`: este último, al elegir la sede, solo muestra sus pisos y sus dependencias (con «Ver todas las dependencias» como salida). Úsalo en el registro y la edición del equipo en lugar de los tres selects actuales. También `Dependencia::idsDeRama($id)`.
 
 ## Tareas por día
 
