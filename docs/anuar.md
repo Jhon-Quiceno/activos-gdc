@@ -10,7 +10,7 @@ Sigues con los procesos que generan papel firmado. Primero pasas responsables y 
 ## Lo que ya te dejó Jhon
 
 - `personas` con `tipo_documento`, `numero_documento`, `nombres`, `apellidos`, `correo_institucional`, `cargo_id` (catálogo del Decreto 607), `grado`, `encargo`, `jefe_inmediato_id`, `planta`, `tipo_provision`, `numero_contrato` y `fecha_fin_vinculacion`. Constantes `Persona::TIPOS_DOCUMENTO`, `VINCULACIONES` y `PROVISIONES`; ayudas `nombreCompleto()` y `cargoTexto()`.
-- `<x-ui.ubicacion-select sede="sedeId" piso="pisoId" dependencia="dependenciaId" />`: el piso solo ofrece los de la sede, y la dependencia propone primero las que funcionan en ese piso.
+- `<x-ui.ubicacion-select sede="sedeId" piso="pisoId" dependencia="dependenciaId" />`: al elegir la sede solo muestra sus pisos y sus dependencias (al elegir el piso, solo las de ese piso), con el enlace «Ver todas las dependencias» para los casos que el PAMP no cubre. Al editar, si la dependencia guardada no está en la sede, abre la lista completa sola.
 - `Sede::direccionVisible()`: nunca devuelve la dirección de la Casa Refugio (RN-28).
 - `LevantamientoActivos` (tabla `levantamientos_activos`), la ruta `/levantamientos`, el menú y la pantalla de arranque `app/Livewire/Levantamientos/Index.php`.
 - `ValoracionActivo::registrar(..., levantamiento: $levantamiento)` enlaza la valoración con el levantamiento.
