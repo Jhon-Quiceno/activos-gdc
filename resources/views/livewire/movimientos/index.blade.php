@@ -60,34 +60,28 @@
         </x-ui.card>
     @endif
 
-    @if ($seleccionada)
-        <x-ui.card>
-            <div class="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                    <p class="section-title">{{ $seleccionada->nombre }}</p>
-                    <p class="mt-1 text-[13px] text-ink-muted">
-                        {{ __('C.C.') }} {{ Cedula::enmascarar($seleccionada->cedula) }}
-                        · {{ $seleccionada->cargo ?? __('Sin cargo') }}
-                        · {{ $seleccionada->dependencia?->nombre ?? __('Sin dependencia') }}
-                        · {{ $vinculaciones[$seleccionada->tipo_vinculacion] ?? __('Sin vinculación') }}
-                    </p>
-                </div>
-                <div class="flex flex-wrap gap-2">
-                    <x-ui.button variant="primary" size="sm" wire:click="descargarConsolidado({{ $seleccionada->id }})" :disabled="$equiposACargo->isEmpty()">
-                        {{ __('Formato de entrega consolidado (PDF)') }}
-                    </x-ui.button>
-                    <x-ui.button variant="ghost" size="sm" wire:click="$set('personaSeleccionada', null)">{{ __('Cerrar') }}</x-ui.button>
-                </div>
-            </div>
+    {{--
+        Ventana emergente con la información de la persona elegida en el listado.
+        Va «teletransportada» al <body> porque el <main> del layout tiene una
+        transformación y, dentro de él, position:fixed no cubre la pantalla.
+    --}}
+    @teleport('body')
+    <x-ui.modal name="persona-detalle" :title="$seleccionada?->nombre ?? __('Responsable')" :show="$seleccionada !== null">
+        @if ($seleccionada)
+            <x-ui.definition-list :items="[
+                __('Cédula') => Cedula::enmascarar($seleccionada->cedula),
+                __('Cargo') => $seleccionada->cargo ?? __('Sin cargo'),
+                __('Dependencia') => $seleccionada->dependencia?->nombre ?? __('Sin dependencia'),
+                __('Vinculación') => $vinculaciones[$seleccionada->tipo_vinculacion] ?? __('Sin vinculación'),
+                __('Equipos a cargo') => $equiposACargo->count(),
+            ]" />
 
-            <div class="mt-4 overflow-x-auto">
-                <table class="w-full text-left text-[14px]">
+            <p class="section-title mt-5">{{ __('Equipos a cargo') }}</p>
+            <div class="mt-2 overflow-x-auto">
+                <table class="w-full text-left text-[13px]">
                     <thead>
-                        <tr class="border-b border-line text-[13px] text-ink-label">
-                            <th class="py-2 pr-3 font-semibold">{{ __('Serial') }}</th>
-                            <th class="py-2 pr-3 font-semibold">{{ __('Código de activo') }}</th>
-                            <th class="py-2 pr-3 font-semibold">{{ __('Tipo') }}</th>
-                            <th class="py-2 pr-3 font-semibold">{{ __('Marca y modelo') }}</th>
+                        <tr class="border-b border-line text-ink-label">
+                            <th class="py-2 pr-3 font-semibold">{{ __('Equipo') }}</th>
                             <th class="py-2 pr-3 font-semibold">{{ __('Ubicación') }}</th>
                             <th class="py-2"></th>
                         </tr>
@@ -95,29 +89,58 @@
                     <tbody class="divide-y divide-line">
                         @forelse ($equiposACargo as $equipo)
                             <tr wire:key="a-cargo-{{ $equipo->id }}">
-                                <td class="py-2 pr-3 font-mono">{{ $equipo->serial }}</td>
-                                <td class="py-2 pr-3 font-mono">{{ $equipo->codigo_activo ?? __('Sin código') }}</td>
-                                <td class="py-2 pr-3">{{ $equipo->tipoEquipo?->nombre }}</td>
-                                <td class="py-2 pr-3">{{ $equipo->marca?->nombre }}{{ $equipo->modelo ? ' '.$equipo->modelo : '' }}</td>
+                                <td class="py-2 pr-3">
+                                    <span class="font-semibold text-ink">{{ $equipo->tipoEquipo?->nombre }}</span>
+                                    · {{ $equipo->marca?->nombre }}{{ $equipo->modelo ? ' '.$equipo->modelo : '' }}
+                                    <span class="block font-mono text-ink-muted">{{ $equipo->serial }} · {{ $equipo->codigo_activo ?? __('Sin código') }}</span>
+                                </td>
                                 <td class="py-2 pr-3">
                                     {{ $equipo->asignacionActual?->sede?->nombre ?? '—' }}@if($equipo->asignacionActual?->piso) · {{ __('Piso :numero', ['numero' => $equipo->asignacionActual->piso->numero]) }}@endif
                                 </td>
-                                <td class="py-2 text-right">
-                                    <a href="{{ route('equipos.show', $equipo) }}" class="text-[13px] font-semibold text-primary hover:underline">{{ __('Hoja de vida') }}</a>
+                                <td class="whitespace-nowrap py-2 text-right">
+                                    <a href="{{ route('equipos.show', $equipo) }}" class="font-semibold text-primary hover:underline">{{ __('Hoja de vida') }}</a>
                                     <span class="text-ink-muted">·</span>
-                                    <a href="{{ route('movimientos.traslado', $equipo) }}" class="text-[13px] font-semibold text-primary hover:underline">{{ __('Trasladar') }}</a>
+                                    <a href="{{ route('movimientos.traslado', $equipo) }}" class="font-semibold text-primary hover:underline">{{ __('Trasladar') }}</a>
                                 </td>
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="6" class="py-6 text-center text-ink-muted">{{ __('Esta persona no tiene equipos a cargo.') }}</td>
+                                <td colspan="3" class="py-4 text-center text-ink-muted">{{ __('Esta persona no tiene equipos a cargo.') }}</td>
                             </tr>
                         @endforelse
                     </tbody>
                 </table>
             </div>
-        </x-ui.card>
-    @endif
+
+            @if ($equiposAnteriores->isNotEmpty())
+                <p class="section-title mt-5">{{ __('Equipos que tuvo a cargo') }}</p>
+                <ul class="mt-2 divide-y divide-line text-[13px]">
+                    @foreach ($equiposAnteriores as $anterior)
+                        <li class="flex flex-wrap items-center justify-between gap-2 py-2" wire:key="anterior-{{ $anterior->id }}">
+                            <span>
+                                <span class="font-semibold text-ink">{{ $anterior->equipo?->tipoEquipo?->nombre }}</span>
+                                <span class="font-mono text-ink-muted">{{ $anterior->equipo?->serial }}</span>
+                            </span>
+                            <span class="text-ink-muted">
+                                {{ optional($anterior->fecha_inicio)->format('d/m/Y') }} – {{ optional($anterior->fecha_fin)->format('d/m/Y') }}
+                                · <a href="{{ route('equipos.show', $anterior->equipo_id) }}" class="font-semibold text-primary hover:underline">{{ __('Hoja de vida') }}</a>
+                            </span>
+                        </li>
+                    @endforeach
+                </ul>
+            @endif
+        @endif
+
+        <x-slot name="footer">
+            <x-ui.button variant="secondary" wire:click="cerrarPersona">{{ __('Cerrar') }}</x-ui.button>
+            @if ($seleccionada)
+                <x-ui.button variant="primary" wire:click="descargarConsolidado({{ $seleccionada->id }})" :disabled="$equiposACargo->isEmpty()">
+                    {{ __('Formatos de entrega de sus equipos (PDF)') }}
+                </x-ui.button>
+            @endif
+        </x-slot>
+    </x-ui.modal>
+    @endteleport
 
     <x-ui.table>
         <x-slot name="filters">

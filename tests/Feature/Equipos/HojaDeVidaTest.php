@@ -150,6 +150,32 @@ class HojaDeVidaTest extends TestCase
             ->assertSee('No soporta Windows 11');
     }
 
+    public function test_la_aclaracion_se_enlaza_y_aparece_debajo_del_evento_que_corrige(): void
+    {
+        $equipo = $this->crearEquipo();
+        $traslado = $this->registrar($equipo, 'traslado_responsable', 'Traslado de A a B. Motivo: error');
+        $this->registrar($equipo, 'diagnostico', 'Revision posterior');
+
+        $componente = Livewire::actingAs($this->usuario)
+            ->test(HojaDeVida::class, ['equipo' => $equipo])
+            ->call('abrirCorreccion', $traslado->id)
+            ->set('justificacion', 'El motivo correcto es cambio de puesto.')
+            ->call('registrarCorreccion')
+            ->assertHasNoErrors();
+
+        $aclaracion = Evento::where('tipo', 'anulacion_aclaracion')->sole();
+        $this->assertSame($traslado->id, $aclaracion->valores['aclara_evento_id']);
+        $this->assertSame('El motivo correcto es cambio de puesto.', $aclaracion->valores['texto']);
+
+        // La nota se ve justo después del traslado, no como un evento suelto arriba
+        // del todo. (Textos sin tildes: la respuesta de Livewire va codificada en JSON.)
+        $componente->assertSeeInOrder([
+            'Revision posterior',
+            'Traslado de A a B',
+            'El motivo correcto es cambio de puesto.',
+        ]);
+    }
+
     public function test_anular_un_diagnostico_registra_un_evento_nuevo_sin_tocar_el_original(): void
     {
         $equipo = $this->crearEquipo();
