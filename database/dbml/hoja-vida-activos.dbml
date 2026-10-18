@@ -4,9 +4,9 @@
 // ---------------------------------------------------------------------
 // Fuentes oficiales: Manual GT-M4 (activos de información, 28/09/2023),
 // Formato FOR.01 inventario de activos v00, Programa Anual de
-// Mantenimiento Preventivo (vigencia 2026), Decretos 607, 608 y 609 de
-// 2023 (planta, manual de funciones, organigrama) y plantas de personal
-// Central (mar-2026) y Educación (may-2026).
+// Mantenimiento Preventivo 2026 (solo como fuente de sedes, pisos y
+// dependencias: el mantenimiento sigue fuera del alcance), Decretos 607,
+// 608 y 609 de 2023 y plantas de personal Central y Educación.
 //
 // Cómo verlo: pegar todo este archivo en https://dbdiagram.io/d
 // Documentación completa: docs/base-de-datos.md
@@ -44,12 +44,6 @@ Enum tipo_dependencia {
 Enum planta_personal {
   central
   educacion
-}
-
-Enum nivel_impacto {
-  alto
-  medio
-  bajo
 }
 
 Enum tenencia_sede {
@@ -139,7 +133,7 @@ Enum forma_ingreso {
 
 Enum estado_funcionamiento {
   bueno
-  regular [note: 'Funciona, requiere mantenimiento']
+  regular [note: 'Funciona con fallas menores']
   malo [note: 'Requiere cambio de componentes']
   no_funcional [note: 'Requiere ser dado de baja']
 }
@@ -188,7 +182,6 @@ Enum tipo_evento {
   alta
   traslado_responsable
   cambio_componente
-  mantenimiento [note: 'Nuevo en v4 (PAMP)']
   diagnostico
   valoracion [note: 'Nuevo en v4 (GT-M4): reclasificación CID']
   baja
@@ -214,18 +207,6 @@ Enum destino_retirado {
   descarte
 }
 
-Enum tipo_mantenimiento {
-  preventivo
-  correctivo
-}
-
-Enum estado_plan {
-  borrador
-  aprobado
-  en_ejecucion
-  cerrado
-}
-
 Enum estado_levantamiento {
   en_curso
   pendiente_de_firma
@@ -235,7 +216,6 @@ Enum estado_levantamiento {
 Enum tipo_documento_adjunto {
   formato_entrega
   formato_baja
-  formato_mantenimiento
   acta_aceptacion_activos
   foto
   otro
@@ -274,7 +254,6 @@ Table dependencias {
   sigla varchar(20)
   proceso_id bigint [ref: > procesos.id, note: 'Proceso al que pertenece (GT-M4 4.2.1)']
   planta planta_personal [not null, default: 'central']
-  impacto_mantenimiento nivel_impacto [note: 'Impacto asignado en el PAMP']
   acto_administrativo varchar(60) [note: 'Ej.: "Decreto 609 de 2023"']
   activa boolean [not null, default: true]
   created_at timestamp
@@ -450,7 +429,7 @@ Table proveedores {
   correo varchar(120)
   created_at timestamp
   updated_at timestamp
-  Note: 'Quien vendió, donó o presta el equipo, y outsourcing de mantenimiento.'
+  Note: 'Quien vendió, donó o presta el equipo.'
 }
 
 // ---------------------------------------------------------------------
@@ -649,62 +628,7 @@ Table etiquetas_qr {
 }
 
 // ---------------------------------------------------------------------
-// 5. MANTENIMIENTO PREVENTIVO (Programa Anual de Mantenimiento, PAMP)
-// ---------------------------------------------------------------------
-
-Table planes_mantenimiento {
-  id bigint [pk, increment]
-  vigencia smallint [not null, unique, note: 'Año: 2026']
-  codigo varchar(30)
-  version varchar(10)
-  fecha_documento date
-  objetivo text
-  alcance text
-  horas_por_dispositivo decimal(4,2) [not null, default: 2.5, note: 'Parámetro del PAMP']
-  estado estado_plan [not null, default: 'borrador']
-  usuario_id bigint [not null, ref: > users.id]
-  created_at timestamp
-  updated_at timestamp
-}
-
-Table programaciones_mantenimiento {
-  id bigint [pk, increment]
-  plan_id bigint [not null, ref: > planes_mantenimiento.id]
-  dependencia_id bigint [not null, ref: > dependencias.id]
-  sede_id bigint [not null, ref: > sedes.id]
-  mes tinyint [not null, note: '1 a 12. Si una dependencia va en dos meses, son dos filas']
-  impacto nivel_impacto [not null]
-  responsable varchar(120) [not null, default: 'Director TIC o a quien este designe']
-  equipo_ejecutor varchar(200) [note: 'Ingenieros, técnicos, pasantes de soporte']
-  personas_asignadas tinyint [note: 'El PAMP proyecta 5 personas por actividad']
-  equipos_estimados smallint
-  impresoras_estimadas smallint
-  observaciones text
-  created_at timestamp
-  updated_at timestamp
-
-  indexes {
-    (plan_id, dependencia_id, sede_id, mes) [unique]
-  }
-}
-
-Table mantenimientos {
-  id bigint [pk, increment]
-  evento_id bigint [not null, unique, ref: - eventos.id]
-  tipo tipo_mantenimiento [not null]
-  programacion_id bigint [ref: > programaciones_mantenimiento.id, note: 'Null en correctivos']
-  actividades json [not null, note: 'Checklist: inspeccion, limpieza, actualizacion, revision']
-  hallazgos text
-  insumos text
-  duracion_minutos smallint
-  estado_resultante estado_funcionamiento [not null]
-  ejecutor_proveedor_id bigint [ref: > proveedores.id, note: 'Si lo hizo un tercero (outsourcing)']
-  created_at timestamp
-  Note: 'Extiende Evento. Si el mantenimiento cambia una pieza, se registra además un cambio_componente.'
-}
-
-// ---------------------------------------------------------------------
-// 6. LEVANTAMIENTO Y ACEPTACIÓN DE ACTIVOS (GT-M4 4.1)
+// 5. LEVANTAMIENTO Y ACEPTACIÓN DE ACTIVOS (GT-M4 4.1)
 // ---------------------------------------------------------------------
 
 Table levantamientos_activos {
@@ -726,7 +650,7 @@ Table levantamientos_activos {
 }
 
 // ---------------------------------------------------------------------
-// 7. SISTEMA: usuarios, auditoría, importación
+// 6. SISTEMA: usuarios, auditoría, importación
 // ---------------------------------------------------------------------
 
 Table users {

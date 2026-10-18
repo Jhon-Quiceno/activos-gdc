@@ -1,7 +1,7 @@
 # Base de datos — Modelo v4
 
 **Sistema de Hoja de Vida de Activos Tecnológicos · Gobernación de Córdoba · Dirección TIC**
-Versión 4.0 · 17 de octubre de 2026 · Jhon (líder) · Rama `docs/reestructuracion-fuentes-oficiales`
+Versión 4.1 · 17 de octubre de 2026 · sin mantenimiento · Jhon (líder) · Rama `docs/reestructuracion-fuentes-oficiales`
 
 > Este documento es la referencia del modelo de datos. Acompaña al [Análisis de requerimientos v4](./analisis-requerimientos.md).
 > Los dos archivos fuente están en [database/dbml/](../database/dbml/):
@@ -25,31 +25,89 @@ Para revisarlo en el diagrama, conviene agrupar las tablas por los siete bloques
 
 ---
 
-## 2. Qué cambió frente al modelo v3 y por qué
+## 2. Comparación: modelo actual (v3) frente al modelo nuevo (v4)
 
-El modelo v3 salió de las 53 columnas del inventario 2026 (Microsoft Forms). Por decisión del profesor responsable, ese Excel **ya no define la estructura**: solo se usará después para cargar datos. El modelo v4 se construye con las fuentes oficiales de la Gobernación.
+El **modelo actual (v3)** es el que corre hoy en `develop`: 22 tablas propias, más las de Laravel y la de `spatie/laravel-activitylog`. Salió de las 53 columnas del inventario 2026 (Microsoft Forms). Por decisión del profesor responsable, ese Excel **ya no define la estructura**: solo se usará después para cargar datos. El **modelo nuevo (v4)** se construye con las fuentes oficiales de la Gobernación.
 
-| # | Cambio | Fuente oficial | Tablas |
-|---|---|---|---|
-| 1 | Las dependencias pasan de una lista plana a un **árbol jerárquico** (Despacho → Secretaría → Dirección → Área) con los nombres oficiales. | Decreto 609 de 2023 (organigrama), planta Central | `dependencias`, `dependencia_equivalencias` |
-| 2 | Aparecen los **procesos del SIG** y cada dependencia y equipo se asocia a un proceso. | Formato FOR.01 (hoja «Datos»), GT-M4 4.2.1 | `procesos` |
-| 3 | Las sedes llevan **dirección, municipio, tipo y tenencia**, y **cada sede tiene sus propios pisos**. En v3 eran 11 sedes inventadas con pisos 1 a 8 para todas. | Programa Anual de Mantenimiento (PAMP) 2026 | `sedes`, `pisos`, `municipios` |
-| 4 | Se registra **en qué sede y piso funciona cada dependencia**. | Tablas «Palacio NAIN» y «Sedes EXTERNAS» del PAMP | `ubicaciones_dependencia` |
-| 5 | La persona deja de tener el cargo como texto libre: usa el **catálogo oficial de empleos** (código, denominación, nivel y grado), su **jefe inmediato** y su **tipo de provisión**. | Decreto 607 de 2023, plantas Central y Educación | `cargos`, `personas` |
-| 6 | Se agrega la **valoración del activo** del manual GT-M4: datos personales, infraestructura crítica, continuidad del negocio, propietario, custodio y calificación CID de 1 a 4 con nivel de importancia. Es histórica. | Manual GT-M4, formato FOR.01 | `valoraciones_activo` |
-| 7 | La ficha del equipo suma los **datos de adquisición** (forma de ingreso, fecha, valor, proveedor, contrato, factura, garantía, vida útil), un **consecutivo de activo** y un **modelo** normalizado. | FOR.01 («ID ACTIVO», «Descripción»), prácticas de hoja de vida | `equipos`, `modelos`, `proveedores` |
-| 8 | Entra el **mantenimiento preventivo**: plan anual, programación por dependencia y mes, y registro de cada mantenimiento como evento. En v3 estaba fuera del alcance (RN-08). | Programa Anual de Mantenimiento Preventivo, vigencia 2026 | `planes_mantenimiento`, `programaciones_mantenimiento`, `mantenimientos` |
-| 9 | Se formaliza el **levantamiento por proceso con acta de aceptación firmada**. | GT-M4 4.1 c) y 4.1.2 | `levantamientos_activos` |
-| 10 | La configuración de cómputo agrega **ofimática, licencias, dominio, IP y MAC**; el sistema operativo trae su **fecha de fin de soporte**. | FOR.01 (activos «Sistemas operativos», «Office», «Antivirus») | `configuraciones_computo`, `sistemas_operativos` |
-| 11 | Nuevos tipos de evento: `mantenimiento` y `valoracion`. | PAMP, GT-M4 | `eventos` |
+> **El mantenimiento preventivo y correctivo sigue fuera del alcance**, igual que en v3 (RN-08). El Programa Anual de Mantenimiento (PAMP) se usa solo como fuente oficial de sedes, pisos y de qué dependencia funciona en cada piso.
 
-**Lo que no cambia:** el equipo sigue identificado por serial y código de activo. El QR sigue usando un UUID permanente. Los eventos siguen siendo inmutables y solo se escriben con `HistorialService::registrar()`. La asignación abierta sigue siendo la ubicación y el responsable actuales. Componentes, cambios de componente, diagnósticos, documentos, etiquetas QR, usuarios y auditoría se conservan casi igual.
+### 2.1 Resumen en cifras
+
+| | Modelo actual (v3) | Modelo nuevo (v4) |
+|---|---|---|
+| Fuente del diseño | Inventario 2026 (Excel de Forms) | GT-M4, FOR.01, Decretos 607/608/609, plantas de personal, PAMP (solo ubicaciones) |
+| Tablas propias | 22 | 31 (9 nuevas, 17 modificadas, 5 iguales, 0 eliminadas) |
+| Relaciones (llaves foráneas) | 31 | 57 |
+| Dependencias | 15, lista plana, nombres inventados | 78 en árbol, nombres del Decreto 609, con tabla de equivalencias |
+| Sedes | 11 inventadas («Sede Alcaldía Mayor», «Edificio San Jerónimo»…) | 11 reales con dirección y municipio (10 confirmadas en el PAMP + Suricentro por confirmar) |
+| Pisos | 8 globales (1 a 8 para todas las sedes) | Propios de cada sede |
+| Cargo del responsable | Texto libre | Catálogo oficial del Decreto 607 (21 empleos con código y nivel) + grado |
+| Tipos de equipo | 12 | 23, clasificados en hardware o soporte (GT-M4) |
+| Valoración del activo (GT-M4) | No existe | Datos personales, criticidad, propietario, custodio, CID 1 a 4 e importancia, con historial |
+| Datos de adquisición y garantía | No existen | Forma de ingreso, fecha, valor, proveedor, contrato, factura, garantía, vida útil |
+| Levantamiento con acta firmada | No existe | Por dependencia y proceso (GT-M4 4.1) |
+| Tipos de evento | 7 | 8 (+ `valoracion`) |
+| Mantenimiento | Fuera del alcance | **Fuera del alcance** (sin cambio) |
+
+### 2.2 Tabla por tabla
+
+| Tabla | Estado en v4 | Qué cambia frente a v3 |
+|---|---|---|
+| `sedes` | Modificada | + `direccion`, `barrio`, `municipio_id`, `tipo`, `tenencia`, `direccion_reservada`, `activa`. |
+| `pisos` | Modificada | + `sede_id` y `nombre`. El único pasa de `numero` a `(sede_id, numero)`: cada sede tiene sus pisos. |
+| `dependencias` | Modificada | + `padre_id` (árbol), `tipo`, `nombre_corto`, `sigla`, `proceso_id`, `planta`, `acto_administrativo`, `activa`. El único pasa de `nombre` a `(padre_id, nombre)`. |
+| `tipos_equipo` | Modificada | `familia` pasa de 7 a 10 valores (+ `seguridad_electronica`, `climatizacion`, `telefonia`; `proyeccion` → `proyeccion_audio`). + `tipo_activo`, `usa_configuracion_computo`, `vida_util_meses`, `activo`. |
+| `marcas` | Igual | — |
+| `sistemas_operativos` | Modificada | + `fin_soporte` (reporte de obsolescencia). |
+| `motivos_baja` | Igual | Solo cambian los valores del seeder. |
+| `tipos_componente` | Modificada | + `obligatorio_en_computo`. |
+| `puestos_trabajo` | Modificada | `nombre_o_codigo` → `codigo` (único). Se quita `sede_id`: la da el piso. |
+| `personas` | Modificada | `nombre` → `nombres` + `apellidos`; `cedula` (opcional) → `tipo_documento` + `numero_documento` (obligatorio y único); `cargo` (texto) → `cargo_id` + `grado` + `encargo`; `tipo_vinculacion` obligatorio y + `pasante`; + `correo_institucional`, `jefe_inmediato_id`, `planta`, `tipo_provision`, `numero_contrato`, `fecha_fin_vinculacion`; `activo` → `activa`. |
+| `users` | Modificada | + `persona_id`. |
+| `importaciones` | Modificada | + `tipo` (equipos, personas, valoraciones). |
+| `equipos` | Modificada | + `numero_activo`, `descripcion`, `proceso_id`, `forma_ingreso`, `fecha_adquisicion`, `valor_adquisicion`, `proveedor_id`, `numero_contrato`, `numero_factura`, `fecha_fin_garantia`, `vida_util_meses`. `modelo` (texto) → `modelo_id`; `propietario_tercero` (texto) → `proveedor_tercero_id`; `figura_tercero` + `arrendamiento`; `estado_funcionamiento` de texto a lista (`bueno`, `regular`, `malo`, `no_funcional`); `estado_ciclo_vida` arranca en `sin_asignar` hasta la primera asignación. |
+| `configuraciones_computo` | Modificada | `licencia` → `licencia_so`; + `ofimatica`, `licencia_ofimatica`, `dominio`, `direccion_ip`, `direccion_mac`. |
+| `componentes` | Modificada | + `modelo`; `estado` de texto a la misma lista del equipo. |
+| `asignaciones` | Modificada | Se quita `sede_id` (la da el piso); + `puesto_trabajo_id`. |
+| `eventos` | Modificada | `tipo` + `valoracion`; + `es_historico` (altas de carga inicial). |
+| `cambios_componente` | Modificada | + `equipo_destino_id` cuando lo retirado va a otro equipo. |
+| `diagnosticos` | Igual | — |
+| `documentos` | Modificada | `tipo` + `acta_aceptacion_activos`. |
+| `etiquetas_qr` | Igual | — |
+| `auditorias` | Igual | — |
+| `procesos` | **Nueva** | 17 procesos del SIG (FOR.01). |
+| `dependencia_equivalencias` | **Nueva** | Variantes de texto → dependencia oficial (RF-39), incluidos los nombres anteriores al Decreto 609. |
+| `municipios` | **Nueva** | 30 municipios de Córdoba (DIVIPOLA). |
+| `ubicaciones_dependencia` | **Nueva** | Qué dependencia funciona en qué piso (PAMP). |
+| `cargos` | **Nueva** | Nomenclatura de empleos del Decreto 607. |
+| `modelos` | **Nueva** | Modelo por marca y tipo, en vez de texto libre. |
+| `proveedores` | **Nueva** | Quien vende, dona o presta equipos (y dueño de los equipos de terceros). |
+| `valoraciones_activo` | **Nueva** | Valoración GT-M4, histórica, una vigente por equipo. |
+| `levantamientos_activos` | **Nueva** | Levantamiento por dependencia y proceso con acta de aceptación. |
+| `activity_log` | Igual (paquete) | No se toca. |
+
+### 2.3 Columnas que desaparecen (y a dónde pasan)
+
+| Columna v3 | Pasa a |
+|---|---|
+| `equipos.modelo` | `equipos.modelo_id` → `modelos` |
+| `equipos.propietario_tercero` | `equipos.proveedor_tercero_id` → `proveedores` |
+| `personas.nombre` | `personas.nombres` + `personas.apellidos` |
+| `personas.cedula` | `personas.tipo_documento` + `personas.numero_documento` |
+| `personas.cargo` | `personas.cargo_id` → `cargos` + `personas.grado` |
+| `configuraciones_computo.licencia` | `configuraciones_computo.licencia_so` |
+| `asignaciones.sede_id`, `puestos_trabajo.sede_id` | Se deducen de `piso_id` → `pisos.sede_id` |
+| `puestos_trabajo.nombre_o_codigo` | `puestos_trabajo.codigo` |
+
+### 2.4 Lo que no cambia
+
+El equipo sigue identificado por serial (con serial provisional, RN-02) y código de activo (índice no único con justificación, RN-03). El QR sigue usando un UUID permanente. Los eventos siguen siendo inmutables y solo se escriben con `HistorialService::registrar()`. La asignación abierta sigue siendo la ubicación y el responsable actuales. Diagnósticos, documentos, etiquetas QR, usuarios (perfiles y cambio de contraseña) y auditoría se conservan.
 
 ---
 
 ## 3. Bloques del modelo
 
-34 tablas en 7 bloques, 34 enums y 64 llaves foráneas.
+31 tablas en 6 bloques, 29 enums y 57 llaves foráneas.
 
 | Bloque | Tablas | Para qué |
 |---|---|---|
@@ -57,9 +115,8 @@ El modelo v3 salió de las 53 columnas del inventario 2026 (Microsoft Forms). Po
 | 2. Catálogos del activo | `tipos_equipo`, `marcas`, `modelos`, `sistemas_operativos`, `tipos_componente`, `motivos_baja`, `proveedores` | Listas cerradas: nada de texto libre (RN-11). |
 | 3. Equipo y hoja de vida | `equipos`, `valoraciones_activo`, `configuraciones_computo`, `componentes`, `puestos_trabajo`, `asignaciones` | La ficha y su estado actual. |
 | 4. Eventos | `eventos`, `cambios_componente`, `diagnosticos`, `documentos`, `etiquetas_qr` | El historial inmutable y sus soportes. |
-| 5. Mantenimiento | `planes_mantenimiento`, `programaciones_mantenimiento`, `mantenimientos` | El PAMP y su ejecución. |
-| 6. Levantamiento | `levantamientos_activos` | Matriz por proceso y acta de aceptación (GT-M4). |
-| 7. Sistema | `users`, `auditorias`, `importaciones` | Acceso, trazabilidad y cargas desde Excel. |
+| 5. Levantamiento | `levantamientos_activos` | Matriz por proceso y acta de aceptación (GT-M4). |
+| 6. Sistema | `users`, `auditorias`, `importaciones` | Acceso, trazabilidad y cargas desde Excel. |
 
 ```
 procesos ─┬─< dependencias (árbol: padre_id) ─< ubicaciones_dependencia >─ pisos >─ sedes >─ municipios
@@ -67,13 +124,12 @@ procesos ─┬─< dependencias (árbol: padre_id) ─< ubicaciones_dependencia
           │        └─< personas >─ cargos            (personas.jefe_inmediato_id → personas)
           │
           └─< equipos ─┬─< asignaciones >─ personas / pisos / dependencias / puestos_trabajo
-                       ├─< valoraciones_activo (una vigente)
+                       ├─< valoraciones_activo (una vigente) >─ levantamientos_activos
                        ├── configuraciones_computo (1 a 1)
                        ├─< componentes
                        ├─< etiquetas_qr
-                       └─< eventos ─┬── cambios_componente | diagnosticos | mantenimientos (1 a 1)
+                       └─< eventos ─┬── cambios_componente | diagnosticos (1 a 1)
                                     └─< documentos
-planes_mantenimiento ─< programaciones_mantenimiento ─< mantenimientos
 ```
 
 ---
@@ -91,7 +147,6 @@ Solo se describen las columnas nuevas o con reglas. El resto está documentado e
 | `nombre` | varchar(160) | Nombre oficial del Decreto 609. Único dentro del mismo padre. |
 | `proceso_id` | FK → procesos | Proceso del SIG al que pertenece. |
 | `planta` | enum | `central` o `educacion`. Las áreas de la Secretaría de Educación son `educacion`. |
-| `impacto_mantenimiento` | enum | `alto`, `medio`, `bajo`, según el PAMP. Prioriza la programación. |
 | `activa` | boolean | Una dependencia suprimida se desactiva, nunca se borra, porque el historial la referencia. |
 
 `dependencia_equivalencias` guarda cada variante de texto que llega en un Excel («DIRECION DE SISTEMAS», «Sec Educación», «Dirección técnica de sistemas») y la dependencia oficial a la que corresponde. Es la tabla editable que exige RF-39.
@@ -142,12 +197,6 @@ Solo se describen las columnas nuevas o con reglas. El resto está documentado e
 | `controles_monitoreo` | Cámaras, sensor de humo, de temperatura, de humedad, o «No se cuenta con control» | Hoja «Datos» del FOR.01 |
 
 Reglas: una sola valoración `vigente` por equipo; una reclasificación crea una fila nueva con un evento `valoracion` y marca la anterior como no vigente. `total`, `importancia` y `requiere_gestion_riesgo` se calculan, nunca se digitan (en MySQL, `total` puede ser columna generada; los otros dos los calcula el modelo de Eloquent). No aplica a equipos de tipo `soporte`, que según GT-M4 «no tienen clasificación de la información».
-
-### 4.6 Mantenimiento
-
-- `planes_mantenimiento`: uno por vigencia. Guarda objetivo, alcance y el parámetro de horas por dispositivo (2,5 h en el PAMP).
-- `programaciones_mantenimiento`: una fila por dependencia, sede y mes. Si una dependencia se atiende en dos meses (como las áreas de Educación, en mayo y junio), son dos filas.
-- `mantenimientos`: extiende `eventos` 1 a 1. Guarda el checklist de actividades (inspección, limpieza, actualización, revisión), hallazgos, insumos, duración y estado resultante. Si el mantenimiento cambia una pieza, el cambio se registra además como `cambio_componente` (RN-07 sigue vigente).
 
 ---
 
@@ -331,15 +380,9 @@ Suricentro aparece en la hoja «Datos» del FOR.01, pero no en el PAMP 2026. Las
 | Laboratorio · 1 | Laboratorio de Salud Pública | 10 / 0 |
 | CRUE · 1 | CRUE | 13 / 7 |
 
-Totales del PAMP: Palacio de Naín 332 equipos y 38 impresoras; sedes externas 175 equipos y 26 impresoras. Son conteos estimados del plan, no inventario: sirven de meta para la carga y la verificación.
+Totales del PAMP: Palacio de Naín 332 equipos y 38 impresoras; sedes externas 175 equipos y 26 impresoras. Son conteos estimados, no inventario: sirven solo para comparar contra lo cargado y lo verificado. Del PAMP se toman únicamente sedes, pisos y ubicaciones; su programación de mantenimiento no entra al sistema.
 
-### 5.6 Impacto por dependencia (PAMP 2026)
-
-- **Alto:** Atención al Ciudadano, SAC Educación, Contabilidad, Tesorería, Secretaría de Hacienda, Presupuesto, Despacho del Gobernador, Oficina Asesora Jurídica, Nómina Educación, Despacho del Secretario de Educación, Dirección TIC, Nómina Administrativa, Secretaría de Infraestructura, Contratación, Nómina Central, RETHUS, Oficina de Pasaportes, Despacho de Salud, Dirección de Rentas, Laboratorio de Salud Pública, CRUE.
-- **Bajo:** Seguridad y Salud en el Trabajo, Ley 550, Seguridad Alimentaria (PAE), Fondo Territorial de Pensiones, Víctimas, Gestión Documental, Oficina de Asesores, Vivienda, Calidad Educativa, Cobertura, Inspección y Vigilancia (Educación), Gestión del Riesgo, Escalafón, Discapacidad, Archivo (Fondo Acumulado), Grupo Anticontrabando, Salud y Riesgos Laborales, RETHUS antiguo, Promoción Social, Archivos de Educación, Biblioparque, Casa de la Mujer.
-- **Medio:** todas las demás.
-
-### 5.7 Cargos (Decreto 607 de 2023)
+### 5.6 Cargos (Decreto 607 de 2023)
 
 | Código | Denominación | Nivel |
 |---|---|---|
@@ -369,7 +412,7 @@ Totales del PAMP: Palacio de Naín 332 equipos y 38 impresoras; sedes externas 1
 
 El texto escaneado del art. 19 del Decreto 607 le asigna el código 430 al Auxiliar de Servicios Generales; la planta de Educación usa 470, igual que el art. 15. Se toma **470**.
 
-### 5.8 Tipos de equipo
+### 5.7 Tipos de equipo
 
 | Tipo | Familia | Tipo de activo | Configuración de cómputo |
 |---|---|---|---|
@@ -399,7 +442,7 @@ El texto escaneado del art. 19 del Decreto 607 le asigna el código 430 al Auxil
 
 Sale de los activos de ejemplo del FOR.01 (NAS, videograbadores, control de acceso, equipos de comunicación, servidores, recurso audiovisual) y de la tabla 2 del GT-M4 (soporte: UPS, aire acondicionado, planta eléctrica).
 
-### 5.9 Otros catálogos
+### 5.8 Otros catálogos
 
 - **Tipos de componente:** RAM*, Disco*, Procesador*, Tarjeta de red, Tarjeta de video, Fuente de poder, Teclado, Mouse, Sonido, Cámara web (* `obligatorio_en_computo`).
 - **Sistemas operativos (fin de soporte):** Windows 7 (2020-01-14), Windows 8.1 (2023-01-10), Windows 10 Home/Pro (2025-10-14), Windows 11 Home/Pro (null), Windows Server 2016/2019/2022, Linux, N/A.
@@ -414,13 +457,13 @@ Las migraciones solo las crea el líder (normas de trabajo). Como el proyecto to
 
 | Paso | Qué | Impacto en código |
 |---|---|---|
-| 1 | Nuevas: `procesos`, `municipios`, `cargos`, `modelos`, `proveedores`, `dependencia_equivalencias`, `ubicaciones_dependencia`, `valoraciones_activo`, `levantamientos_activos`, `planes_mantenimiento`, `programaciones_mantenimiento`, `mantenimientos`. | Modelos y seeders nuevos. |
-| 2 | `dependencias` + `padre_id`, `tipo`, `proceso_id`, `planta`, `impacto_mantenimiento`, `activa`; se quita `unique(nombre)` y se pone `unique(padre_id, nombre)`. | Selectores de dependencia en árbol (Movimientos, Reportes, Admin). |
+| 1 | Nuevas: `procesos`, `municipios`, `cargos`, `modelos`, `proveedores`, `dependencia_equivalencias`, `ubicaciones_dependencia`, `valoraciones_activo`, `levantamientos_activos`. | Modelos y seeders nuevos. |
+| 2 | `dependencias` + `padre_id`, `tipo`, `nombre_corto`, `sigla`, `proceso_id`, `planta`, `acto_administrativo`, `activa`; se quita `unique(nombre)` y se pone `unique(padre_id, nombre)`. | Selectores de dependencia en árbol (Movimientos, Reportes, Admin). |
 | 3 | `sedes` + dirección, municipio, tipo, tenencia; `pisos` + `sede_id` (`unique(sede_id, numero)`). | Selector sede → piso dependiente. |
 | 4 | `asignaciones` y `puestos_trabajo`: se quita `sede_id` (lo da el piso). | `GestorAsignaciones`, reportes por sede (join por piso). |
 | 5 | `personas`: `nombre` → `nombres` + `apellidos`, `cedula` → `tipo_documento` + `numero_documento` (único), `cargo` → `cargo_id`, + grado, jefe, planta, provisión, fechas. | Formularios de persona, enmascaramiento (RN-12), formatos PDF. |
 | 6 | `equipos`: + numero_activo, modelo_id, descripción, proceso, datos de adquisición; `propietario_tercero` → `proveedor_tercero_id`; `estado_funcionamiento` a enum. | Registro y edición de equipo, hoja de vida, PDF. |
-| 7 | `eventos.tipo` + `mantenimiento`, `valoracion`; + `es_historico`. `documentos.tipo` + `formato_mantenimiento`, `acta_aceptacion_activos`. | `HistorialService::registrar()` acepta los dos tipos nuevos. |
+| 7 | `eventos.tipo` + `valoracion`; + `es_historico`. `documentos.tipo` + `acta_aceptacion_activos`. `cambios_componente` + `equipo_destino_id`. | `HistorialService::registrar()` acepta el tipo nuevo. |
 | 8 | `configuraciones_computo` + ofimática, licencias, dominio, IP, MAC; `sistemas_operativos` + `fin_soporte`. | Formulario de cómputo, reporte de obsolescencia. |
 | 9 | `users` + `persona_id`; `importaciones` + `tipo`. | Admin de usuarios, importador. |
 | 10 | Reescribir `CatalogosSeeder` con los valores de la sección 5 y ajustar `EquiposDemoSeeder`. | Todas las pruebas que asumen sedes o dependencias inventadas. |
@@ -432,7 +475,7 @@ Las migraciones solo las crea el líder (normas de trabajo). Como el proyecto to
 1. Una sola asignación abierta y una sola valoración vigente por equipo (MySQL no tiene índice único parcial).
 2. `dependencias.padre_id` sin ciclos.
 3. `configuraciones_computo` solo para tipos con `usa_configuracion_computo = true`, y `valoraciones_activo` solo para `tipo_activo = hardware`.
-4. El evento 1 a 1 (`cambios_componente`, `diagnosticos`, `mantenimientos`) debe tener el `tipo` que le corresponde.
+4. El evento 1 a 1 (`cambios_componente`, `diagnosticos`) debe tener el `tipo` que le corresponde.
 5. `proveedor_tercero_id` es obligatorio si `propiedad = tercero`.
 6. `total`, `importancia` y `requiere_gestion_riesgo` siempre calculados.
 7. La dirección de una sede con `direccion_reservada` nunca sale en vistas, exportaciones ni PDF.
@@ -443,14 +486,13 @@ Las migraciones solo las crea el líder (normas de trabajo). Como el proyecto to
 
 | # | Pregunta | Supuesto del modelo |
 |---|---|---|
-| 1 | ¿Entra el mantenimiento preventivo al alcance? El análisis v3 lo excluía; el PAMP oficial lo incluye. | Sí: tablas creadas y módulo en la Fase 2. |
-| 2 | ¿Los equipos de las 166 instituciones educativas entran al sistema? | No en la carga inicial; el enum `tipo_sede` ya lo prevé. |
-| 3 | ¿Se registran solo hardware y soporte, o también software, servicios e información (los otros tipos del GT-M4)? | Solo hardware y soporte: es una hoja de vida de equipos. |
-| 4 | ¿Propietario y custodio se guardan como cargo (texto, como dice el GT-M4) o como persona? | Cargo en la valoración y persona en el acta del levantamiento. |
-| 5 | Tipo (estratégico, misional, apoyo) de cada proceso según el mapa del SIG. | El de la tabla 5.1. |
-| 6 | Tenencia (propia o arrendada) de Morindó, Victoria Char, Places Mall y Suricentro, y si Suricentro sigue en uso. | `por_confirmar`. |
-| 7 | ¿Pensiones depende de Gestión Administrativa (planta) o de Hacienda (PAMP)? ¿Biblioparque de Cultura? ¿Grupo Anticontrabando de Rentas? | Los de la sección 5.2. |
-| 8 | Funciones de la Dirección TICS y del Almacén General en el Decreto 608: están en las páginas 334 a 353 y la herramienta de lectura solo extrajo las 80 primeras de 639. | Pendiente de leer el PDF completo. |
+| 1 | ¿Los equipos de las 166 instituciones educativas entran al sistema? | No en la carga inicial; el enum `tipo_sede` ya lo prevé. |
+| 2 | ¿Se registran solo hardware y soporte, o también software, servicios e información (los otros tipos del GT-M4)? | Solo hardware y soporte: es una hoja de vida de equipos. |
+| 3 | ¿Propietario y custodio se guardan como cargo (texto, como dice el GT-M4) o como persona? | Cargo en la valoración y persona en el acta del levantamiento. |
+| 4 | Tipo (estratégico, misional, apoyo) de cada proceso según el mapa del SIG. | El de la tabla 5.1. |
+| 5 | Tenencia (propia o arrendada) de Morindó, Victoria Char, Places Mall y Suricentro, y si Suricentro sigue en uso. | `por_confirmar`. |
+| 6 | ¿Pensiones depende de Gestión Administrativa (planta) o de Hacienda (PAMP)? ¿Biblioparque de Cultura? ¿Grupo Anticontrabando de Rentas? | Los de la sección 5.2. |
+| 7 | Funciones de la Dirección TICS y del Almacén General en el Decreto 608: están en las páginas 334 a 353 y la herramienta de lectura solo extrajo las 80 primeras de 639. | Pendiente de leer el PDF completo. |
 
 ---
 
@@ -463,9 +505,9 @@ Las migraciones solo las crea el líder (normas de trabajo). Como el proyecto to
 // ---------------------------------------------------------------------
 // Fuentes oficiales: Manual GT-M4 (activos de información, 28/09/2023),
 // Formato FOR.01 inventario de activos v00, Programa Anual de
-// Mantenimiento Preventivo (vigencia 2026), Decretos 607, 608 y 609 de
-// 2023 (planta, manual de funciones, organigrama) y plantas de personal
-// Central (mar-2026) y Educación (may-2026).
+// Mantenimiento Preventivo 2026 (solo como fuente de sedes, pisos y
+// dependencias: el mantenimiento sigue fuera del alcance), Decretos 607,
+// 608 y 609 de 2023 y plantas de personal Central y Educación.
 //
 // Cómo verlo: pegar todo este archivo en https://dbdiagram.io/d
 // Documentación completa: docs/base-de-datos.md
@@ -503,12 +545,6 @@ Enum tipo_dependencia {
 Enum planta_personal {
   central
   educacion
-}
-
-Enum nivel_impacto {
-  alto
-  medio
-  bajo
 }
 
 Enum tenencia_sede {
@@ -598,7 +634,7 @@ Enum forma_ingreso {
 
 Enum estado_funcionamiento {
   bueno
-  regular [note: 'Funciona, requiere mantenimiento']
+  regular [note: 'Funciona con fallas menores']
   malo [note: 'Requiere cambio de componentes']
   no_funcional [note: 'Requiere ser dado de baja']
 }
@@ -647,7 +683,6 @@ Enum tipo_evento {
   alta
   traslado_responsable
   cambio_componente
-  mantenimiento [note: 'Nuevo en v4 (PAMP)']
   diagnostico
   valoracion [note: 'Nuevo en v4 (GT-M4): reclasificación CID']
   baja
@@ -673,18 +708,6 @@ Enum destino_retirado {
   descarte
 }
 
-Enum tipo_mantenimiento {
-  preventivo
-  correctivo
-}
-
-Enum estado_plan {
-  borrador
-  aprobado
-  en_ejecucion
-  cerrado
-}
-
 Enum estado_levantamiento {
   en_curso
   pendiente_de_firma
@@ -694,7 +717,6 @@ Enum estado_levantamiento {
 Enum tipo_documento_adjunto {
   formato_entrega
   formato_baja
-  formato_mantenimiento
   acta_aceptacion_activos
   foto
   otro
@@ -733,7 +755,6 @@ Table dependencias {
   sigla varchar(20)
   proceso_id bigint [ref: > procesos.id, note: 'Proceso al que pertenece (GT-M4 4.2.1)']
   planta planta_personal [not null, default: 'central']
-  impacto_mantenimiento nivel_impacto [note: 'Impacto asignado en el PAMP']
   acto_administrativo varchar(60) [note: 'Ej.: "Decreto 609 de 2023"']
   activa boolean [not null, default: true]
   created_at timestamp
@@ -909,7 +930,7 @@ Table proveedores {
   correo varchar(120)
   created_at timestamp
   updated_at timestamp
-  Note: 'Quien vendió, donó o presta el equipo, y outsourcing de mantenimiento.'
+  Note: 'Quien vendió, donó o presta el equipo.'
 }
 
 // ---------------------------------------------------------------------
@@ -1108,62 +1129,7 @@ Table etiquetas_qr {
 }
 
 // ---------------------------------------------------------------------
-// 5. MANTENIMIENTO PREVENTIVO (Programa Anual de Mantenimiento, PAMP)
-// ---------------------------------------------------------------------
-
-Table planes_mantenimiento {
-  id bigint [pk, increment]
-  vigencia smallint [not null, unique, note: 'Año: 2026']
-  codigo varchar(30)
-  version varchar(10)
-  fecha_documento date
-  objetivo text
-  alcance text
-  horas_por_dispositivo decimal(4,2) [not null, default: 2.5, note: 'Parámetro del PAMP']
-  estado estado_plan [not null, default: 'borrador']
-  usuario_id bigint [not null, ref: > users.id]
-  created_at timestamp
-  updated_at timestamp
-}
-
-Table programaciones_mantenimiento {
-  id bigint [pk, increment]
-  plan_id bigint [not null, ref: > planes_mantenimiento.id]
-  dependencia_id bigint [not null, ref: > dependencias.id]
-  sede_id bigint [not null, ref: > sedes.id]
-  mes tinyint [not null, note: '1 a 12. Si una dependencia va en dos meses, son dos filas']
-  impacto nivel_impacto [not null]
-  responsable varchar(120) [not null, default: 'Director TIC o a quien este designe']
-  equipo_ejecutor varchar(200) [note: 'Ingenieros, técnicos, pasantes de soporte']
-  personas_asignadas tinyint [note: 'El PAMP proyecta 5 personas por actividad']
-  equipos_estimados smallint
-  impresoras_estimadas smallint
-  observaciones text
-  created_at timestamp
-  updated_at timestamp
-
-  indexes {
-    (plan_id, dependencia_id, sede_id, mes) [unique]
-  }
-}
-
-Table mantenimientos {
-  id bigint [pk, increment]
-  evento_id bigint [not null, unique, ref: - eventos.id]
-  tipo tipo_mantenimiento [not null]
-  programacion_id bigint [ref: > programaciones_mantenimiento.id, note: 'Null en correctivos']
-  actividades json [not null, note: 'Checklist: inspeccion, limpieza, actualizacion, revision']
-  hallazgos text
-  insumos text
-  duracion_minutos smallint
-  estado_resultante estado_funcionamiento [not null]
-  ejecutor_proveedor_id bigint [ref: > proveedores.id, note: 'Si lo hizo un tercero (outsourcing)']
-  created_at timestamp
-  Note: 'Extiende Evento. Si el mantenimiento cambia una pieza, se registra además un cambio_componente.'
-}
-
-// ---------------------------------------------------------------------
-// 6. LEVANTAMIENTO Y ACEPTACIÓN DE ACTIVOS (GT-M4 4.1)
+// 5. LEVANTAMIENTO Y ACEPTACIÓN DE ACTIVOS (GT-M4 4.1)
 // ---------------------------------------------------------------------
 
 Table levantamientos_activos {
@@ -1185,7 +1151,7 @@ Table levantamientos_activos {
 }
 
 // ---------------------------------------------------------------------
-// 7. SISTEMA: usuarios, auditoría, importación
+// 6. SISTEMA: usuarios, auditoría, importación
 // ---------------------------------------------------------------------
 
 Table users {

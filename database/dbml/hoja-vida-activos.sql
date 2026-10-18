@@ -3,11 +3,10 @@
 -- Modelo de datos v4 · MySQL 8 · equivalente SQL de hoja-vida-activos.dbml
 -- Uso: importarlo en dbdiagram.io (Import > MySQL) o en cualquier cliente MySQL.
 -- Las migraciones de Laravel siguen siendo la fuente que corre la app.
+-- El mantenimiento preventivo no forma parte del modelo (sigue fuera del alcance).
 -- =====================================================================
 
--- SQL dump generated using DBML (dbml.dbdiagram.io)
--- Database: MySQL
--- Generated at: 2026-10-18T00:23:53.657Z
+-- Generado desde el DBML y ajustado a mano el 17/10/2026 (sin mantenimiento).
 
 CREATE TABLE `procesos` (
   `id` bigint PRIMARY KEY AUTO_INCREMENT,
@@ -27,7 +26,6 @@ CREATE TABLE `dependencias` (
   `sigla` varchar(20),
   `proceso_id` bigint COMMENT 'Proceso al que pertenece (GT-M4 4.2.1)',
   `planta` ENUM ('central', 'educacion') NOT NULL DEFAULT 'central',
-  `impacto_mantenimiento` ENUM ('alto', 'medio', 'bajo') COMMENT 'Impacto asignado en el PAMP',
   `acto_administrativo` varchar(60) COMMENT 'Ej.: "Decreto 609 de 2023"',
   `activa` boolean NOT NULL DEFAULT true,
   `created_at` timestamp,
@@ -291,7 +289,7 @@ CREATE TABLE `asignaciones` (
 CREATE TABLE `eventos` (
   `id` bigint PRIMARY KEY AUTO_INCREMENT,
   `equipo_id` bigint NOT NULL,
-  `tipo` ENUM ('alta', 'traslado_responsable', 'cambio_componente', 'mantenimiento', 'diagnostico', 'valoracion', 'baja', 'actualizacion_datos', 'anulacion_aclaracion') NOT NULL,
+  `tipo` ENUM ('alta', 'traslado_responsable', 'cambio_componente', 'diagnostico', 'valoracion', 'baja', 'actualizacion_datos', 'anulacion_aclaracion') NOT NULL,
   `fecha` datetime NOT NULL,
   `es_historico` boolean NOT NULL DEFAULT false COMMENT 'Alta de carga inicial: exento de RN-13',
   `descripcion` text,
@@ -331,7 +329,7 @@ CREATE TABLE `diagnosticos` (
 CREATE TABLE `documentos` (
   `id` bigint PRIMARY KEY AUTO_INCREMENT,
   `evento_id` bigint NOT NULL,
-  `tipo` ENUM ('formato_entrega', 'formato_baja', 'formato_mantenimiento', 'acta_aceptacion_activos', 'foto', 'otro') NOT NULL,
+  `tipo` ENUM ('formato_entrega', 'formato_baja', 'acta_aceptacion_activos', 'foto', 'otro') NOT NULL,
   `consecutivo` varchar(30),
   `archivo_path` varchar(255) NOT NULL,
   `firmado` boolean NOT NULL DEFAULT false,
@@ -347,52 +345,6 @@ CREATE TABLE `etiquetas_qr` (
   `usuario_id` bigint NOT NULL,
   `motivo` ENUM ('primera_impresion', 'reposicion') NOT NULL,
   `lote` varchar(40),
-  `created_at` timestamp
-);
-
-CREATE TABLE `planes_mantenimiento` (
-  `id` bigint PRIMARY KEY AUTO_INCREMENT,
-  `vigencia` smallint UNIQUE NOT NULL COMMENT 'Año: 2026',
-  `codigo` varchar(30),
-  `version` varchar(10),
-  `fecha_documento` date,
-  `objetivo` text,
-  `alcance` text,
-  `horas_por_dispositivo` decimal(4,2) NOT NULL DEFAULT 2.5 COMMENT 'Parámetro del PAMP',
-  `estado` ENUM ('borrador', 'aprobado', 'en_ejecucion', 'cerrado') NOT NULL DEFAULT 'borrador',
-  `usuario_id` bigint NOT NULL,
-  `created_at` timestamp,
-  `updated_at` timestamp
-);
-
-CREATE TABLE `programaciones_mantenimiento` (
-  `id` bigint PRIMARY KEY AUTO_INCREMENT,
-  `plan_id` bigint NOT NULL,
-  `dependencia_id` bigint NOT NULL,
-  `sede_id` bigint NOT NULL,
-  `mes` tinyint NOT NULL COMMENT '1 a 12. Si una dependencia va en dos meses, son dos filas',
-  `impacto` ENUM ('alto', 'medio', 'bajo') NOT NULL,
-  `responsable` varchar(120) NOT NULL DEFAULT 'Director TIC o a quien este designe',
-  `equipo_ejecutor` varchar(200) COMMENT 'Ingenieros, técnicos, pasantes de soporte',
-  `personas_asignadas` tinyint COMMENT 'El PAMP proyecta 5 personas por actividad',
-  `equipos_estimados` smallint,
-  `impresoras_estimadas` smallint,
-  `observaciones` text,
-  `created_at` timestamp,
-  `updated_at` timestamp
-);
-
-CREATE TABLE `mantenimientos` (
-  `id` bigint PRIMARY KEY AUTO_INCREMENT,
-  `evento_id` bigint UNIQUE NOT NULL,
-  `tipo` ENUM ('preventivo', 'correctivo') NOT NULL,
-  `programacion_id` bigint COMMENT 'Null en correctivos',
-  `actividades` json NOT NULL COMMENT 'Checklist: inspeccion, limpieza, actualizacion, revision',
-  `hallazgos` text,
-  `insumos` text,
-  `duracion_minutos` smallint,
-  `estado_resultante` ENUM ('bueno', 'regular', 'malo', 'no_funcional') NOT NULL,
-  `ejecutor_proveedor_id` bigint COMMENT 'Si lo hizo un tercero (outsourcing)',
   `created_at` timestamp
 );
 
@@ -465,8 +417,6 @@ CREATE INDEX `equipos_index_5` ON `equipos` (`codigo_activo`);
 
 CREATE INDEX `equipos_index_6` ON `equipos` (`estado_ciclo_vida`, `tipo_equipo_id`);
 
-CREATE UNIQUE INDEX `programaciones_mantenimiento_index_7` ON `programaciones_mantenimiento` (`plan_id`, `dependencia_id`, `sede_id`, `mes`);
-
 ALTER TABLE `procesos` COMMENT = 'Mapa de procesos del SIG. 17 procesos listados en la hoja "Datos" del formato FOR.01.';
 
 ALTER TABLE `dependencias` COMMENT = 'Árbol: Despacho → Secretaría/Oficina/DAP → Dirección → Área. Reemplaza la lista plana de v3.';
@@ -487,7 +437,7 @@ ALTER TABLE `personas` COMMENT = 'Minimización de datos (Ley 1581): de las 77 c
 
 ALTER TABLE `modelos` COMMENT = 'Nuevo en v4: el modelo deja de ser texto libre.';
 
-ALTER TABLE `proveedores` COMMENT = 'Quien vendió, donó o presta el equipo, y outsourcing de mantenimiento.';
+ALTER TABLE `proveedores` COMMENT = 'Quien vendió, donó o presta el equipo.';
 
 ALTER TABLE `equipos` COMMENT = 'Centro del modelo. Ubicación y responsable actuales viven en asignaciones (la abierta).';
 
@@ -496,8 +446,6 @@ ALTER TABLE `valoraciones_activo` COMMENT = 'Valoración CID del Manual GT-M4. H
 ALTER TABLE `asignaciones` COMMENT = 'Una sola abierta por equipo (RN-04).';
 
 ALTER TABLE `eventos` COMMENT = 'Solo se escribe vía HistorialService::registrar(). update()/delete() bloqueados.';
-
-ALTER TABLE `mantenimientos` COMMENT = 'Extiende Evento. Si el mantenimiento cambia una pieza, se registra además un cambio_componente.';
 
 ALTER TABLE `levantamientos_activos` COMMENT = 'La matriz de activos por proceso y su acta firmada (GT-M4 4.1 c y 4.1.2). Reemplaza la "verificación en sitio" informal de v3.';
 
@@ -598,20 +546,6 @@ ALTER TABLE `documentos` ADD FOREIGN KEY (`evento_id`) REFERENCES `eventos` (`id
 ALTER TABLE `etiquetas_qr` ADD FOREIGN KEY (`equipo_id`) REFERENCES `equipos` (`id`);
 
 ALTER TABLE `etiquetas_qr` ADD FOREIGN KEY (`usuario_id`) REFERENCES `users` (`id`);
-
-ALTER TABLE `planes_mantenimiento` ADD FOREIGN KEY (`usuario_id`) REFERENCES `users` (`id`);
-
-ALTER TABLE `programaciones_mantenimiento` ADD FOREIGN KEY (`plan_id`) REFERENCES `planes_mantenimiento` (`id`);
-
-ALTER TABLE `programaciones_mantenimiento` ADD FOREIGN KEY (`dependencia_id`) REFERENCES `dependencias` (`id`);
-
-ALTER TABLE `programaciones_mantenimiento` ADD FOREIGN KEY (`sede_id`) REFERENCES `sedes` (`id`);
-
-ALTER TABLE `mantenimientos` ADD FOREIGN KEY (`evento_id`) REFERENCES `eventos` (`id`);
-
-ALTER TABLE `mantenimientos` ADD FOREIGN KEY (`programacion_id`) REFERENCES `programaciones_mantenimiento` (`id`);
-
-ALTER TABLE `mantenimientos` ADD FOREIGN KEY (`ejecutor_proveedor_id`) REFERENCES `proveedores` (`id`);
 
 ALTER TABLE `levantamientos_activos` ADD FOREIGN KEY (`dependencia_id`) REFERENCES `dependencias` (`id`);
 

@@ -3,8 +3,9 @@
 Gobernación de Córdoba · Dirección TIC. Lleva el ciclo de vida completo de cada equipo
 tecnológico (registro, componentes, traslados, diagnóstico, baja) con formatos PDF
 firmados y código QR por equipo. Desde la v4 el análisis se basa en la documentación
-oficial de la Gobernación (Manual GT-M4, formato FOR.01, Programa Anual de Mantenimiento,
-Decretos 607/608/609 de 2023); el Excel del inventario 2026 solo se usa para cargar datos.
+oficial de la Gobernación (Manual GT-M4, formato FOR.01, Decretos 607/608/609 de 2023 y el
+Programa Anual de Mantenimiento solo como fuente de sedes y pisos); el Excel del inventario
+2026 solo se usa para cargar datos. El mantenimiento sigue fuera del alcance.
 Ver `docs/analisis-requerimientos.md` (v4), `docs/base-de-datos.md` (modelo de datos v4)
 y `docs/plan-fase2.md` (plan y reparto de trabajo actual).
 
@@ -77,8 +78,7 @@ Bloques y a quién pertenecen (ver `docs/<nombre>.md` de cada persona):
 | Reportes (Alex) | `app/Livewire/Reportes` | `/reportes` |
 | Administración (Manuel) | `app/Livewire/Admin` | `/admin` |
 | Etiquetas QR (Manuel) | `app/Livewire/Qr` | `/qr` |
-| Mantenimiento (Anuar, nuevo en Fase 2) | `app/Livewire/Mantenimiento` | `/mantenimiento` |
-| Levantamientos (Manuel, nuevo en Fase 2) | `app/Livewire/Levantamientos` | `/levantamientos` |
+| Levantamientos (Anuar, nuevo en Fase 2) | `app/Livewire/Levantamientos` | `/levantamientos` |
 
 ## Sistema de diseño
 
