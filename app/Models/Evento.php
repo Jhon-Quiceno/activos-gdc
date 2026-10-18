@@ -43,12 +43,14 @@ class Evento extends Model
         'usuario_id',
         'estado_firma',
         'evento_anulado_id',
+        'valores',
     ];
 
     protected function casts(): array
     {
         return [
             'fecha' => 'datetime',
+            'valores' => 'array',
         ];
     }
 

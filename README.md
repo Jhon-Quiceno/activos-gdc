@@ -163,8 +163,9 @@ La carpeta `docs/` contiene:
 
 - [`analisis-requerimientos.md`](docs/analisis-requerimientos.md) — requerimientos, modelo de dominio y reglas de negocio.
 - [`plan-2-semanas.md`](docs/plan-2-semanas.md) — plan de trabajo de la Fase 1.
+- [`plan-fase2.md`](docs/plan-fase2.md) — qué sigue después de la Fase 1.
 - [`normas-de-trabajo.md`](docs/normas-de-trabajo.md) — reglas de ramas, migraciones, carpetas y eventos para trabajar en equipo sin pisarse.
-- `juan-jose.md`, `anuar.md`, `juan-camilo.md`, `alex.md`, `manuel.md` — tareas específicas de cada integrante del equipo.
+- `juan-jose.md`, `anuar.md`, `juan-camilo.md` — tareas específicas de cada integrante del equipo (los de Alex y Manuel se retiraron al quedar sus bloques completos).
 
 ## Ramas y flujo de trabajo
 
@@ -174,6 +175,10 @@ El repositorio tiene dos ramas protegidas:
 - **`develop`** — rama de integración diaria del equipo.
 
 Todo el mundo trabaja en ramas `feature/<bloque>-<tarea>` creadas siempre desde `develop`, nunca desde `main`, con Pull Requests pequeños y frecuentes. El detalle completo está en [docs/normas-de-trabajo.md](docs/normas-de-trabajo.md).
+
+**Importante:** antes de empezar a trabajar cada día, actualizá tu rama contra `develop` con `git fetch origin` + `git rebase origin/develop` (y qué hacer si hay conflictos) — ver [la sección "Mantenerte al día con develop"](docs/normas-de-trabajo.md#mantenerte-al-día-con-develop) en las normas de trabajo.
+
+> **Windows:** si cada página tarda ~30 segundos en cargar, es porque el proyecto está en el filesystem de Windows en vez del de WSL2 — Docker Desktop tiene que cruzar esa frontera en cada acceso a archivo. Cloná el repo **dentro** de tu distro de WSL2 (no en una ruta tipo `C:\Users\...`) y el problema desaparece.
 
 ---
 

@@ -1,63 +1,46 @@
 # Manuel — Administración y QR
 
-**Sistema de Hoja de Vida de Equipos · Gobernación de Córdoba · Dirección TIC**
-Plan de dos semanas · Bloque: Apoyo
+**Sistema de Hoja de Vida de Activos Tecnológicos · Gobernación de Córdoba · Dirección TIC**
+Fase 2 · Bloques: Administración y QR · Ver el [Plan de Fase 2](./plan-fase2.md)
 
 ## Rol
 
-Manuel lleva un **bloque con piezas pequeñas e independientes**: gestión de usuarios, listas administrables del sistema, generación y escaneo de códigos QR, etiquetas imprimibles y la auditoría del sistema.
+Vuelves con la **administración de todos los catálogos oficiales nuevos**. Sin ellos nadie puede corregir un nombre, agregar una sede o resolver una equivalencia al cargar un Excel. Además cierras las etiquetas QR por lotes, ahora por sede y piso reales.
 
 ## Tareas por día
 
 | Días | Tareas | Entregable |
 |---|---|---|
-| 1–2 | Usuarios: crear, editar, desactivar (nunca borrar), contraseña inicial con cambio obligatorio en el primer ingreso, perfiles Administrador y Usuario. | Gestión de usuarios. |
-| 3–4 | Listas administrables: sedes, pisos, dependencias, tipos de equipo, tipos de componente, marcas, sistemas operativos, motivos de baja (una pantalla genérica para todas). | Listas editables. |
-| 5–6 | QR: generar al registrar o importar, ruta corta `/e/{uuid}`, pedir inicio de sesión y luego abrir la hoja de vida de ese equipo. Insertar el QR en la vista de Juan José. | Escanear con el celular abre el equipo. |
-| 7–8 | Etiqueta QR individual imprimible (QR, serial, código, tipo, «Gobernación de Córdoba · Dirección TIC»). Si alcanza: impresión por lotes. | Etiqueta imprimible. |
-| 9–10 | Auditoría (inicios de sesión, cambios, consultas y exportaciones de cédula) y cédula enmascarada en listados. Pruebas. | Bitácora funcionando. |
+| 1–2 | **Árbol de dependencias** (RF-45, RF-60): crear, renombrar, mover y desactivar, nunca borrar (RN-20); impedir ciclos; vista en árbol con buscador. **Equivalencias**: listar las variantes de texto de cada dependencia, agregarlas, reasignarlas y ver cuáles quedaron sin resolver en la última carga. | Árbol y equivalencias editables. |
+| 3 | **Sedes con sus pisos** (con la marca de dirección reservada), **ubicación de dependencias por piso**, municipios y procesos. | Catálogos de ubicación editables. |
+| 4 | **Cargos** (código, denominación, nivel), **modelos** por marca y tipo, **proveedores**, y los campos nuevos de tipos de equipo (tipo de activo, configuración de cómputo, vida útil) y de sistemas operativos (fin de soporte). | Catálogos del activo editables. |
+| 5 | Usuarios enlazados a su persona (RF-44). Restablecer contraseña (RF-47, ya es un TODO en `UsuariosPanel::restablecerContrasena()`). | Usuarios v4. |
+| 6–7 | Etiquetas QR por lotes (RF-49): filtrar por sede, piso, dependencia (con subdependencias) o levantamiento, y armar la hoja de etiquetas; reimpresión con registro (RF-51). | Hoja de etiquetas de un piso. |
+| 8 | Acompañar a Juan Camilo con la carga real del inventario 2026: resolver en pantalla las equivalencias que queden pendientes. | Cero dependencias sin resolver. |
+| 9–10 | Prueba cruzada del bloque de Reportes (Alex); correcciones. | Pest en verde. |
 
-## Requerimientos funcionales a cargo
+## Requerimientos a cargo
 
-RF-08, RF-43, RF-44, RF-45, RF-46, RF-48, RF-50.
+RF-44, RF-45, RF-47, RF-49, RF-51, RF-60. Detalle en el [Análisis v4.1](./analisis-requerimientos.md), secciones 5.9, 5.10 y 5.12, CU-19, y los valores iniciales de cada catálogo en [base-de-datos.md §5](./base-de-datos.md#5-valores-oficiales-de-los-catálogos-para-los-seeders).
 
-Consulta el detalle completo en el [Análisis de requerimientos](./analisis-requerimientos.md), sección 5.9 (usuarios y administración) y sección 5.10 (códigos QR y etiquetas). Presta especial atención a las reglas RN-17, RN-18 y RN-19 sobre el comportamiento del QR.
+## Pruebas mínimas
+
+- No se puede borrar una dependencia con equipos o personas; solo desactivarla.
+- No se puede crear un ciclo en el árbol (una dependencia como hija de su propia hija).
+- Un piso no se puede eliminar si tiene asignaciones.
+- La dirección de una sede reservada no aparece en la etiqueta QR ni en el listado de sedes.
 
 ## Depende de / conecta con
 
-- **Breeze de Jhon** — la autenticación base (Laravel Breeze con stack Livewire) ya está instalada; Manuel construye la gestión de usuarios y perfiles sobre ella.
-- **La vista de hoja de vida de Juan José** — el QR individual se inserta ahí, y la ruta corta de escaneo (`/e/{uuid}`) redirige a esa misma vista tras validar la sesión.
-- Usa el paquete `simplesoftwareio/simple-qrcode` para generar los códigos QR y `spatie/laravel-activitylog` para la bitácora de auditoría.
-- El identificador del QR es un UUID interno que Jhon ya incluye en el modelo `Equipo` desde antes del día 1 (tarea 3 de la preparación del líder); Manuel no necesita crear ese campo, solo usarlo.
+- **Jhon:** migraciones de los catálogos y seeders oficiales.
+- **Juan Camilo** llena las equivalencias que tú administras.
+- **Anuar** usa el filtro por levantamiento de tus etiquetas QR.
 
-## Recordatorio de las normas de trabajo
+## Normas
 
-- Ramas `feature/admin-<tarea>` (usuarios y listas) o `feature/qr-<tarea>` (códigos QR y etiquetas) creadas siempre desde `develop`, nunca desde `main`. Son dos bloques, así que usa el prefijo que corresponda a la tarea.
-- Nunca crear ni tocar migraciones: si falta un campo (por ejemplo en `Usuario`, `EtiquetaQR` o `Auditoria`), se pide a Jhon y lo agrega el mismo día.
-- Escribir solo en `app/Livewire/Admin` y `resources/views/livewire/admin` y `tests/Feature/Admin` para usuarios/listas; en `app/Livewire/Qr`, `resources/views/livewire/qr` y `tests/Feature/Qr` para códigos QR y etiquetas.
-- Si alguna acción de este bloque genera un evento sobre un equipo, debe pasar por `HistorialService::registrar()`. Nunca se inserta un evento a mano.
-- Trabajar siempre con `docker compose exec -u sail laravel.test php artisan migrate:fresh --seed`.
-- Antes de abrir un PR, correr `docker compose exec -u sail laravel.test ./vendor/bin/pest` y que pase en verde.
-
-### Cómo crear tu rama (copiar y pegar)
+Ramas `feature/admin-<tarea>` y `feature/qr-<tarea>` desde `develop`; escribes en `app/Livewire/Admin`, `app/Livewire/Qr`, sus vistas y sus carpetas de `tests/Feature`. Detalle en [normas-de-trabajo.md](./normas-de-trabajo.md).
 
 ```bash
-git checkout develop
-git pull origin develop
-
-# Para usuarios y listas administrables:
-git checkout -b feature/admin-usuarios   # cambia "usuarios" por tu tarea
-
-# Para códigos QR y etiquetas (en otra tarea, otra rama):
-git checkout -b feature/qr-generacion    # cambia "generacion" por tu tarea
-
-# ...trabajar y commitear...
-git push -u origin <nombre-de-tu-rama>
-# abrir el Pull Request en GitHub apuntando a develop, nunca a main
+git checkout develop && git pull origin develop
+git checkout -b feature/admin-catalogos-v4
 ```
-
-Para el detalle completo de estas reglas, ver [normas-de-trabajo.md](./normas-de-trabajo.md).
-
----
-
-**Para profundizar:** [Análisis de requerimientos](./analisis-requerimientos.md) · [Normas de trabajo](./normas-de-trabajo.md)

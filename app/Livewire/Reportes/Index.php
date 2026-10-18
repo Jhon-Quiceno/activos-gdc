@@ -2,12 +2,34 @@
 
 namespace App\Livewire\Reportes;
 
+use App\Livewire\Reportes\Definiciones\CalidadInventario;
+use App\Livewire\Reportes\Definiciones\CambiosComponentes;
+use App\Livewire\Reportes\Definiciones\DadosDeBaja;
+use App\Livewire\Reportes\Definiciones\HistorialEquipo;
+use App\Livewire\Reportes\Definiciones\InventarioGeneral;
+use App\Livewire\Reportes\Definiciones\ObsolescenciaSo;
+use App\Livewire\Reportes\Definiciones\PendientesFirma;
+use App\Livewire\Reportes\Definiciones\PorDependencia;
+use App\Livewire\Reportes\Definiciones\PorEstado;
+use App\Livewire\Reportes\Definiciones\PorFuncionario;
+use App\Livewire\Reportes\Definiciones\PorSedePiso;
+use App\Livewire\Reportes\Definiciones\PorTipoMarcaModelo;
+use App\Livewire\Reportes\Definiciones\ReporteDefinicion;
+use App\Livewire\Reportes\Definiciones\SinAntivirus;
+use App\Livewire\Reportes\Definiciones\Terceros;
+use App\Livewire\Reportes\Definiciones\Traslados;
+use App\Livewire\Reportes\Exportes\ReporteExport;
 use App\Models\Dependencia;
-use App\Models\Equipo;
+use App\Models\Marca;
+use App\Models\Persona;
+use App\Models\Piso;
 use App\Models\Sede;
 use App\Models\SistemaOperativo;
+use App\Models\TipoEquipo;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Livewire\Component;
 use Livewire\WithPagination;
+use Maatwebsite\Excel\Facades\Excel;
 
 class Index extends Component
 {
@@ -21,13 +43,27 @@ class Index extends Component
 
     public string $filtroEstado = '';
 
+    /** Filtro propio de cada reporte (sistema operativo, problema, motivo, acción...). */
     public string $filtroSistemaOperativo = '';
+
+    public string $filtroPiso = '';
+
+    public string $filtroTipo = '';
+
+    public string $filtroMarca = '';
+
+    public string $filtroPropiedad = '';
+
+    public string $filtroPersona = '';
+
+    public string $filtroVinculacion = '';
+
+    public string $filtroDesde = '';
+
+    public string $filtroHasta = '';
 
     /**
      * Catálogo de los 15 reportes del prototipo "Hoja de Vida de Equipos".
-     * Solo "obsolescencia_so" consulta datos reales por ahora; los demás
-     * dejan el patrón (título + descripción + tabla vacía) para que el
-     * bloque de Reportes los implemente uno a uno.
      */
     public const REPORTES = [
         'inventario_general' => [
@@ -92,10 +128,34 @@ class Index extends Component
         ],
     ];
 
+    /** Reportes con datos reales: clave => clase de definición. */
+    public const DEFINICIONES = [
+        'inventario_general' => InventarioGeneral::class,
+        'por_dependencia' => PorDependencia::class,
+        'por_sede_piso' => PorSedePiso::class,
+        'por_funcionario' => PorFuncionario::class,
+        'por_tipo_marca_modelo' => PorTipoMarcaModelo::class,
+        'por_estado' => PorEstado::class,
+        'terceros' => Terceros::class,
+        'dados_de_baja' => DadosDeBaja::class,
+        'obsolescencia_so' => ObsolescenciaSo::class,
+        'sin_antivirus' => SinAntivirus::class,
+        'historial_equipo' => HistorialEquipo::class,
+        'cambios_componentes' => CambiosComponentes::class,
+        'traslados' => Traslados::class,
+        'pendientes_firma' => PendientesFirma::class,
+        'calidad_inventario' => CalidadInventario::class,
+    ];
+
     public const ESTADOS = [
         'en_servicio' => 'En servicio',
         'sin_asignar' => 'Sin asignar',
         'dado_de_baja' => 'Dado de baja',
+    ];
+
+    public const PROPIEDADES = [
+        'gobernacion' => 'Gobernación',
+        'tercero' => 'Tercero',
     ];
 
     public function seleccionarReporte(string $clave): void
@@ -105,77 +165,110 @@ class Index extends Component
         }
 
         $this->reporteActivo = $clave;
-        $this->filtroSede = '';
-        $this->filtroDependencia = '';
-        $this->filtroEstado = '';
-        $this->filtroSistemaOperativo = '';
+        $this->limpiarFiltros();
+    }
+
+    public function limpiarFiltros(): void
+    {
+        $this->reset([
+            'filtroSede', 'filtroDependencia', 'filtroEstado', 'filtroSistemaOperativo',
+            'filtroPiso', 'filtroTipo', 'filtroMarca', 'filtroPropiedad',
+            'filtroPersona', 'filtroVinculacion', 'filtroDesde', 'filtroHasta',
+        ]);
         $this->resetPage();
     }
 
-    public function updatingFiltroSede(): void
+    /** Al cambiar cualquier filtro, volver a la página 1. */
+    public function updated(string $propiedad): void
     {
-        $this->resetPage();
+        if (str_starts_with($propiedad, 'filtro')) {
+            $this->resetPage();
+        }
     }
 
-    public function updatingFiltroDependencia(): void
+    protected function definicion(): ?ReporteDefinicion
     {
-        $this->resetPage();
+        $clase = self::DEFINICIONES[$this->reporteActivo] ?? null;
+
+        return $clase ? new $clase : null;
     }
 
-    public function updatingFiltroEstado(): void
+    protected function filtros(): array
     {
-        $this->resetPage();
+        return [
+            'sede' => $this->filtroSede,
+            'piso' => $this->filtroPiso,
+            'dependencia' => $this->filtroDependencia,
+            'estado' => $this->filtroEstado,
+            'tipo' => $this->filtroTipo,
+            'marca' => $this->filtroMarca,
+            'propiedad' => $this->filtroPropiedad,
+            'persona' => $this->filtroPersona,
+            'vinculacion' => $this->filtroVinculacion,
+            'desde' => $this->filtroDesde,
+            'hasta' => $this->filtroHasta,
+            'especifico' => $this->filtroSistemaOperativo,
+        ];
     }
 
-    public function updatingFiltroSistemaOperativo(): void
+    public function exportarExcel()
     {
-        $this->resetPage();
+        $definicion = $this->definicion();
+
+        if (! $definicion) {
+            return null;
+        }
+
+        return Excel::download(
+            new ReporteExport($definicion->filas($this->filtros()), array_keys($definicion->columnas())),
+            str($definicion->titulo())->slug() . '.xlsx'
+        );
+    }
+
+    public function exportarPdf()
+    {
+        $definicion = $this->definicion();
+
+        if (! $definicion) {
+            return null;
+        }
+
+        $pdf = Pdf::loadView('livewire.reportes.pdf.reporte', [
+            'titulo' => $definicion->titulo(),
+            'encabezados' => array_keys($definicion->columnas()),
+            'filas' => $definicion->filas($this->filtros()),
+        ])->setPaper('letter', 'landscape'); // RNF-13: tamaño carta
+
+        return response()->streamDownload(
+            fn () => print($pdf->output()),
+            str($definicion->titulo())->slug() . '.pdf'
+        );
     }
 
     public function render()
     {
-        $equipos = null;
-
-        if ($this->reporteActivo === 'obsolescencia_so') {
-            $equipos = Equipo::query()
-                ->with([
-                    'tipoEquipo',
-                    'configuracionComputo.sistemaOperativo',
-                    'asignacionActual.persona',
-                    'asignacionActual.dependencia',
-                ])
-                ->whereHas('configuracionComputo.sistemaOperativo', function ($query) {
-                    $query->where('nombre', 'like', '%7%')
-                        ->orWhere('nombre', 'like', '%8%');
-                })
-                ->when($this->filtroSistemaOperativo !== '', function ($query) {
-                    $query->whereHas('configuracionComputo.sistemaOperativo', function ($so) {
-                        $so->where('id', $this->filtroSistemaOperativo);
-                    });
-                })
-                ->when($this->filtroSede !== '', function ($query) {
-                    $query->whereHas('asignacionActual', function ($asignacion) {
-                        $asignacion->where('sede_id', $this->filtroSede);
-                    });
-                })
-                ->when($this->filtroDependencia !== '', function ($query) {
-                    $query->whereHas('asignacionActual', function ($asignacion) {
-                        $asignacion->where('dependencia_id', $this->filtroDependencia);
-                    });
-                })
-                ->when($this->filtroEstado !== '', function ($query) {
-                    $query->where('estado_ciclo_vida', $this->filtroEstado);
-                })
-                ->latest('id')
-                ->paginate(10);
-        }
+        $definicion = $this->definicion();
 
         return view('livewire.reportes.index', [
-            'equipos' => $equipos,
+            'registros' => $definicion?->consulta($this->filtros())->paginate(10),
+            'encabezados' => $definicion ? array_keys($definicion->columnas()) : [],
+            'columnas' => $definicion?->columnas() ?? [],
             'reportes' => self::REPORTES,
             'estados' => self::ESTADOS,
+            'propiedades' => self::PROPIEDADES,
+            'etiquetaFecha' => $definicion?->etiquetaFecha() ?? 'Registrado',
+            'filtroEspecifico' => $definicion?->filtroEspecifico(),
             'sedes' => Sede::orderBy('nombre')->get(),
+            'pisos' => Piso::orderBy('numero')->get(),
             'dependencias' => Dependencia::orderBy('nombre')->get(),
+            'tipos' => TipoEquipo::orderBy('nombre')->get(),
+            'marcas' => Marca::orderBy('nombre')->get(),
+            'personas' => Persona::orderBy('nombre')->get(),
+            'vinculaciones' => Persona::query()
+                ->whereNotNull('tipo_vinculacion')
+                ->distinct()
+                ->orderBy('tipo_vinculacion')
+                ->pluck('tipo_vinculacion'),
             'sistemasOperativosObsoletos' => SistemaOperativo::query()
                 ->where('nombre', 'like', '%7%')
                 ->orWhere('nombre', 'like', '%8%')

@@ -1,6 +1,9 @@
-<x-layouts.app-shell title="Movimientos">
+<x-layouts.app-shell :title="__('Responsables')">
     <div class="space-y-6">
-        <x-ui.page-header :title="__('Movimientos')" :subtitle="__('Traslados, cambios de responsable, diagnósticos y bajas.')" />
+        <x-ui.page-header
+            :title="__('Responsables')"
+            :subtitle="__('Personas a cargo de equipos, sus equipos y su formato de entrega consolidado.')"
+        />
 
         <livewire:movimientos.index />
     </div>

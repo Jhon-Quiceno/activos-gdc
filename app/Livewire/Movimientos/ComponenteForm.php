@@ -2,12 +2,14 @@
 
 namespace App\Livewire\Movimientos;
 
+use App\Livewire\Movimientos\Soporte\ReglasMovimiento;
 use App\Models\CambioComponente;
 use App\Models\Componente;
 use App\Models\Equipo;
 use App\Models\TipoComponente;
 use App\Services\HistorialService;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Livewire\Component;
 
 /**
@@ -57,7 +59,15 @@ class ComponenteForm extends Component
         ];
 
         if ($this->accion !== 'agregar') {
-            $rules['componenteRetiradoId'] = ['required', 'exists:componentes,id'];
+            // El componente a retirar debe pertenecer a ESTE equipo y seguir instalado;
+            // sin este scope, un id de componente de otro equipo pasaba la validación
+            // y quedaba marcado como retirado igual (bug reportado por Juan José).
+            $rules['componenteRetiradoId'] = [
+                'required',
+                Rule::exists('componentes', 'id')
+                    ->where('equipo_id', $this->equipo->id)
+                    ->whereNull('fecha_retiro'),
+            ];
             $rules['destinoRetirado'] = ['required', 'in:bodega,otro_equipo,descarte'];
         }
 
@@ -73,6 +83,12 @@ class ComponenteForm extends Component
         $this->validate();
 
         DB::transaction(function () {
+            // RN-10: un equipo dado de baja (o con la baja en trámite) no
+            // admite cambios de componente. Dentro de la transacción (no
+            // antes) para que el lockForUpdate() de la consulta sirva contra
+            // dos envíos concurrentes sobre el mismo equipo.
+            ReglasMovimiento::asegurarQueAdmiteEventos($this->equipo);
+
             $componenteRetirado = null;
             $componenteInstalado = null;
 

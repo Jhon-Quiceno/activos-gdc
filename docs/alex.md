@@ -1,58 +1,45 @@
 # Alex — Reportes
 
-**Sistema de Hoja de Vida de Equipos · Gobernación de Córdoba · Dirección TIC**
-Plan de dos semanas · Bloque: Apoyo
+**Sistema de Hoja de Vida de Activos Tecnológicos · Gobernación de Córdoba · Dirección TIC**
+Fase 2 · Bloque: Apoyo · Ver el [Plan de Fase 2](./plan-fase2.md)
 
 ## Rol
 
-Alex construye el **módulo de reportes y consultas** sobre todo el parque tecnológico. Trabaja con los datos falsos de los seeders hasta que llegue la importación real de Juan Camilo (día 8).
+Vuelves al equipo con el bloque de Reportes. Tus 15 reportes de la Fase 1 siguen sirviendo, pero hay que adaptarlos al modelo v4 (árbol de dependencias, pisos por sede, proceso, importancia). Además entregas las **salidas oficiales nuevas**: la matriz de inventario de activos en el formato FOR.01, el reporte de activos que van a gestión de riesgos y el tablero de inicio.
 
 ## Tareas por día
 
 | Días | Tareas | Entregable |
 |---|---|---|
-| 1–2 | Componente de reporte reutilizable: filtros combinables (sede, piso, dependencia, tipo, marca, estado, propiedad, responsable, vinculación, fechas) y exportación a Excel y PDF. | Base de reportes. |
-| 3–5 | Reportes de inventario: general, por dependencia, por sede y piso, por funcionario, por tipo/marca/modelo, por estado, de terceros. | 7 reportes. |
-| 6–7 | Reporte de calidad del inventario: sin serial, sin código, sin responsable, código repetido, pendientes de verificar, sin etiqueta QR. | Reporte de calidad. |
-| 8 | Reportes de movimientos: dados de baja, traslados y cambios de componentes en un período, pendientes de firma. | 4 reportes. |
-| 9–10 | Probar con el inventario real; cédula enmascarada en exportaciones; ayudar en pruebas cruzadas. | Reportes con datos reales. |
+| 1–2 | Adaptar los 15 reportes al modelo v4 (RF-34): filtro por dependencia con o sin subdependencias (`x-ui.dependencia-select`), sede → piso, proceso, importancia; las sedes reservadas no muestran dirección (RN-28). Calidad del inventario (RF-37) + «sin valoración» y «sin datos de adquisición». | Reportes existentes en verde con el modelo nuevo. |
+| 3–4 | **Matriz FOR.01 (RF-53):** exportación a Excel con el encabezado («Proceso Gestión de Seguridad de la Información · FOR.01 · Versión 00»), los grupos de columnas (Identificación, Atributo, Propiedad, Ubicación, Retención, Valoración) y las mismas columnas del formato, por proceso o dependencia. Usar `maatwebsite/excel` con estilos. | Matriz exportada igual al formato oficial. |
+| 5 | **Activos que requieren gestión de riesgos (RF-54)** y **activos por importancia**. | Dos reportes. |
+| 6–7 | **Tablero de inicio (RF-36):** totales por tipo, estado, sede y dependencia, importancia de los activos, pendientes de verificar y de valoración, comparados con los conteos del PAMP por sede. | Pantalla de inicio con indicadores. |
+| 8 | Garantías y vida útil; personas por retirarse con equipos a cargo; equipos por estructura (secretaría con sus direcciones). | Tres reportes. |
+| 9–10 | Prueba cruzada del bloque de Carga (Juan Camilo); correcciones. | Pest en verde. |
 
-## Requerimientos funcionales a cargo
+## Requerimientos a cargo
 
-RF-34, RF-35, RF-37 (los demás reportes del catálogo de la sección 11 del análisis se hacen solo si sobra tiempo).
+RF-34, RF-35, RF-36, RF-37, RF-53, RF-54 y los reportes nuevos de la sección 11 del [Análisis v4.1](./analisis-requerimientos.md).
 
-Consulta el detalle completo en el [Análisis de requerimientos](./analisis-requerimientos.md), sección 5.7 (requerimientos) y sección 11 (catálogo completo de reportes y salidas).
+## Pruebas mínimas
+
+- La matriz FOR.01 trae las mismas columnas, en el mismo orden, que el formato oficial.
+- Un equipo con C = 4 aparece en el reporte de riesgos aunque su importancia sea media.
+- Filtrar por «Secretaría de Hacienda» incluye los equipos de sus seis direcciones.
+- Cédulas enmascaradas en todas las exportaciones masivas (RN-12) y ninguna dirección reservada.
 
 ## Depende de / conecta con
 
-- **El modelo de datos de Jhon** — base de todos los reportes.
-- **Los eventos de Juan José y Anuar** — los reportes de movimientos (traslados, cambios de componentes, bajas, pendientes de firma) leen los eventos que esos dos bloques generan vía `HistorialService`.
-- **Los datos de Juan Camilo** — a partir del día 8, los reportes deben probarse con el inventario real importado, no solo con los datos falsos de los seeders.
-- Usa el paquete `maatwebsite/excel` (exportación) y `barryvdh/laravel-dompdf` (exportación a PDF).
-- La cédula debe mostrarse enmascarada en cualquier exportación masiva (RN-12), por lo que este bloque no debe exponerla completa en listados ni archivos exportados.
+- **Juan José:** `valoraciones_activo` (días 4–5). Mientras tanto, trabaja con valoraciones de factory.
+- **Anuar** reutiliza tu exportación FOR.01 en el levantamiento: dejala como una clase que reciba una lista de equipos.
+- **Juan Camilo:** datos reales cargados para probar los conteos.
 
-## Recordatorio de las normas de trabajo
+## Normas
 
-- Ramas `feature/reportes-<tarea>` creadas siempre desde `develop`, nunca desde `main`.
-- Nunca crear ni tocar migraciones: si falta un campo o un índice para optimizar un filtro, se pide a Jhon y lo agrega el mismo día.
-- Escribir solo en `app/Livewire/Reportes`, `resources/views/livewire/reportes` y `tests/Feature/Reportes`.
-- Los reportes son de solo lectura, pero si alguna acción del módulo llegara a generar un evento sobre un equipo, debe pasar por `HistorialService::registrar()`. Nunca se inserta un evento a mano.
-- Trabajar siempre con `docker compose exec -u sail laravel.test php artisan migrate:fresh --seed`.
-- Antes de abrir un PR, correr `docker compose exec -u sail laravel.test ./vendor/bin/pest` y que pase en verde.
-
-### Cómo crear tu rama (copiar y pegar)
+Rama `feature/reportes-<tarea>` desde `develop`; escribes en `app/Livewire/Reportes`, sus vistas y `tests/Feature/Reportes`. Solo lectura: los reportes no modifican datos. Detalle en [normas-de-trabajo.md](./normas-de-trabajo.md).
 
 ```bash
-git checkout develop
-git pull origin develop
-git checkout -b feature/reportes-base   # cambia "base" por tu tarea
-# ...trabajar y commitear...
-git push -u origin feature/reportes-base
-# abrir el Pull Request en GitHub apuntando a develop, nunca a main
+git checkout develop && git pull origin develop
+git checkout -b feature/reportes-matriz-for01
 ```
-
-Para el detalle completo de estas reglas, ver [normas-de-trabajo.md](./normas-de-trabajo.md).
-
----
-
-**Para profundizar:** [Análisis de requerimientos](./analisis-requerimientos.md) · [Normas de trabajo](./normas-de-trabajo.md)

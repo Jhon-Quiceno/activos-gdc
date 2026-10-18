@@ -2,11 +2,14 @@
 
 namespace App\Livewire\Equipos;
 
+use App\Livewire\Equipos\Concerns\CaracteristicasPorFamilia;
+use App\Livewire\Equipos\Concerns\NormalizaIdentificadores;
 use App\Models\Asignacion;
 use App\Models\Componente;
 use App\Models\ConfiguracionComputo;
 use App\Models\Dependencia;
 use App\Models\Equipo;
+use App\Models\Evento;
 use App\Models\Marca;
 use App\Models\Persona;
 use App\Models\Piso;
@@ -15,7 +18,9 @@ use App\Models\SistemaOperativo;
 use App\Models\TipoComponente;
 use App\Models\TipoEquipo;
 use App\Services\HistorialService;
+use Closure;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Livewire\Component;
 
 /**
@@ -27,6 +32,9 @@ use Livewire\Component;
  */
 class Crear extends Component
 {
+    use CaracteristicasPorFamilia;
+    use NormalizaIdentificadores;
+
     // --- 1. Tipo de equipo ---
     public ?int $tipoEquipoId = null;
 
@@ -35,9 +43,23 @@ class Crear extends Component
     // --- 2. Identificación ---
     public string $serial = '';
 
+    /**
+     * RN-02: el inventario 2026 trae equipos sin serial legible. En vez de exigir
+     * una migración para permitir serial nulo, se guarda uno provisional
+     * (`PENDIENTE-REG-######`) y el equipo nace "pendiente de verificar"; al
+     * confirmar el serial real se corrige luego desde "Editar datos".
+     */
+    public bool $sinSerial = false;
+
     public string $codigoActivo = '';
 
     public bool $sinCodigoActivo = false;
+
+    /**
+     * RN-03: obligatoria solo si el código de activo ya existe en otro equipo
+     * (p. ej. un All in One que comparte código con su pantalla integrada).
+     */
+    public string $codigoActivoJustificacion = '';
 
     public ?int $marcaId = null;
 
@@ -51,9 +73,8 @@ class Crear extends Component
     public string $propietarioTercero = '';
 
     /**
-     * Figura jurídica del tercero. No existe columna para esto en `equipos`
-     * (ver migración), así que se captura para completar el formulario del
-     * prototipo pero no se persiste, igual que "Observaciones" más abajo.
+     * Figura jurídica del tercero (RF-04): comodato, convenio o proveedor.
+     * Se guarda en `equipos.figura_tercero`.
      */
     public string $figura = '';
 
@@ -82,41 +103,7 @@ class Crear extends Component
         ['nombre' => 'Cámara', 'tiene' => false, 'marca' => '', 'serial' => ''],
     ];
 
-    // --- 4. Monitor (familia "video") ---
-    public string $tamanoPulgadas = '';
-
-    public string $conexionMonitor = '';
-
-    // --- 4. Impresión ---
-    public string $funcionesImpresora = '';
-
-    public string $tipoImpresion = '';
-
-    public string $conexionImpresora = '';
-
-    // --- 4. Digitalización ---
-    public string $tipoEscaner = '';
-
-    public string $conexionEscaner = '';
-
-    // --- 4. Energía ---
-    public string $tipoEnergia = '';
-
-    public string $capacidadVa = '';
-
-    public string $numTomas = '';
-
-    // --- 4. Conectividad ---
-    public string $numPuertos = '';
-
-    public string $administrable = '';
-
-    public string $velocidad = '';
-
-    // --- 4. Proyección ---
-    public string $lumenes = '';
-
-    public string $resolucion = '';
+    // --- 4. Demás familias: ver el trait CaracteristicasPorFamilia ---
 
     // --- 5. Responsable y ubicación ---
     public bool $asignarResponsable = false;
@@ -192,28 +179,196 @@ class Crear extends Component
     {
         $rules = [
             'tipoEquipoId' => ['required', 'exists:tipos_equipo,id'],
-            'serial' => ['required', 'string', 'max:255', 'unique:equipos,serial'],
-            'codigoActivo' => ['nullable', 'string', 'max:255', 'unique:equipos,codigo_activo'],
+            // RN-02: obligatorio y único en todo el inventario, incluidos los dados de baja,
+            // salvo que se marque que el equipo no tiene serial (se genera uno provisional).
+            'serial' => [
+                $this->sinSerial ? 'nullable' : 'required',
+                'string',
+                'max:255',
+                $this->noRepetidoEnOtroEquipo('serial'),
+            ],
+            // RN-03: obligatorio salvo que se marque que el equipo no tiene código.
+            // Puede repetirse, pero entonces se exige justificación (abajo).
+            'codigoActivo' => [
+                $this->sinCodigoActivo ? 'nullable' : 'required',
+                'string',
+                'max:255',
+                'regex:'.self::PATRON_CODIGO_ACTIVO,
+            ],
+            // Un equipo tiene que quedar identificable por al menos una de las dos vías.
+            'sinSerial' => [$this->noAmbosSinIdentificar()],
+            'codigoActivoJustificacion' => [
+                $this->equipoConMismoCodigo() ? 'required' : 'nullable',
+                'string',
+                'min:10',
+                'max:1000',
+            ],
             'marcaId' => ['required', 'exists:marcas,id'],
             'modelo' => ['nullable', 'string', 'max:255'],
             'estadoFuncionamiento' => ['required', 'string'],
             'propiedad' => ['required', 'in:gobernacion,tercero'],
+            // RF-19: la ubicación siempre lleva sede, piso y dependencia, tenga o no responsable.
             'sedeId' => ['required', 'exists:sedes,id'],
             'pisoId' => ['required', 'exists:pisos,id'],
+            'dependenciaId' => ['required', 'exists:dependencias,id'],
         ];
 
         if ($this->propiedad === 'tercero') {
             $rules['propietarioTercero'] = ['required', 'string', 'max:255'];
-            $rules['figura'] = ['required', 'string'];
+            // RF-04: mismas opciones que el enum `equipos.figura_tercero`.
+            $rules['figura'] = ['required', 'in:comodato,convenio,proveedor'];
         }
+
+        // Características por tipo (RF-03): números enteros donde aplica.
+        $rules += $this->reglasCaracteristicas();
+        $rules['observaciones'] = ['nullable', 'string', 'max:2000'];
 
         if ($this->asignarResponsable) {
             $rules['responsableNombre'] = ['required', 'string', 'max:255'];
+            $rules['responsableCedula'] = ['nullable', 'regex:/^\d+$/', 'max:15'];
             $rules['vinculacion'] = ['required', 'in:planta,contratista'];
-            $rules['dependenciaId'] = ['required', 'exists:dependencias,id'];
         }
 
         return $rules;
+    }
+
+    protected function messages(): array
+    {
+        return [
+            'serial.required' => __('Escribe el serial o marca «El equipo no tiene serial».'),
+            'codigoActivo.required' => __('Escribe el código de activo o marca «El equipo no tiene código de activo».'),
+            'codigoActivo.regex' => __('El código de activo debe tener el formato I1-###### (por ejemplo, I1-024147).'),
+            'codigoActivoJustificacion.required' => __('Este código de activo ya está en otro equipo: escribe por qué se repite (RN-03).'),
+            'responsableCedula.regex' => __('La cédula solo puede tener números.'),
+        ];
+    }
+
+    protected function validationAttributes(): array
+    {
+        return [
+            'tipoEquipoId' => __('tipo de equipo'),
+            'serial' => __('serial'),
+            'codigoActivo' => __('código de activo'),
+            'codigoActivoJustificacion' => __('justificación'),
+            'marcaId' => __('marca'),
+            'estadoFuncionamiento' => __('estado de funcionamiento'),
+            'propietarioTercero' => __('propietario'),
+            'figura' => __('figura'),
+            'numTomas' => __('número de tomas'),
+            'numPuertos' => __('número de puertos'),
+            'observaciones' => __('observaciones'),
+            'responsableNombre' => __('responsable'),
+            'responsableCedula' => __('cédula'),
+            'vinculacion' => __('vinculación'),
+            'dependenciaId' => __('dependencia'),
+            'sedeId' => __('sede'),
+            'pisoId' => __('piso'),
+        ];
+    }
+
+    /**
+     * RF-02 / RN-03: otro equipo que ya tiene este código de activo, si existe.
+     * La vista lo usa para avisar con cuál choca y pedir la justificación.
+     */
+    public function equipoConMismoCodigo(): ?Equipo
+    {
+        if ($this->sinCodigoActivo || $this->codigoActivo === '') {
+            return null;
+        }
+
+        return Equipo::with('tipoEquipo')->where('codigo_activo', $this->codigoActivo)->first();
+    }
+
+    /**
+     * RN-02: serial provisional cuando el equipo no trae uno legible, con el
+     * mismo formato que ya usa la importación del inventario 2026. Se reintenta
+     * por si choca por azar con uno ya existente (el serial es único).
+     */
+    private function serialProvisional(): string
+    {
+        do {
+            $candidato = 'PENDIENTE-REG-'.str_pad((string) random_int(1, 999999), 6, '0', STR_PAD_LEFT);
+        } while (Equipo::where('serial', $candidato)->exists());
+
+        return $candidato;
+    }
+
+    /**
+     * Un equipo necesita al menos un identificador: no se puede marcar a la vez
+     * «no tiene serial» y «no tiene código de activo».
+     */
+    private function noAmbosSinIdentificar(): Closure
+    {
+        return function (string $attribute, mixed $value, Closure $fail): void {
+            if ($this->sinSerial && $this->sinCodigoActivo) {
+                $fail(__('El equipo debe tener al menos serial o código de activo: no se pueden marcar las dos casillas a la vez.'));
+            }
+        };
+    }
+
+    /**
+     * RF-02: si el valor ya pertenece a otro equipo, avisa cuál es, para que la
+     * persona pueda revisarlo en vez de recibir solo un «ya está en uso».
+     */
+    private function noRepetidoEnOtroEquipo(string $columna): Closure
+    {
+        return function (string $attribute, mixed $value, Closure $fail) use ($columna): void {
+            $otro = Equipo::with('tipoEquipo')->where($columna, $value)->first();
+
+            if ($otro) {
+                $fail(__('Ya está registrado en otro equipo: :tipo con serial :serial.', [
+                    'tipo' => $otro->tipoEquipo?->nombre ?? __('equipo'),
+                    'serial' => $otro->serial,
+                ]));
+            }
+        };
+    }
+
+    // Al salir de cada campo se normaliza y se valida de una vez, para avisar
+    // de un duplicado o de un formato inválido antes de llegar a «Guardar».
+
+    public function updatedSerial(): void
+    {
+        $this->serial = $this->normalizarSerial($this->serial);
+
+        if ($this->serial !== '') {
+            $this->validateOnly('serial');
+        }
+    }
+
+    public function updatedCodigoActivo(): void
+    {
+        $this->codigoActivo = $this->normalizarCodigoActivo($this->codigoActivo);
+
+        if ($this->codigoActivo !== '') {
+            $this->validateOnly('codigoActivo');
+        }
+    }
+
+    public function updatedSinCodigoActivo(): void
+    {
+        if ($this->sinCodigoActivo) {
+            $this->codigoActivo = '';
+            $this->codigoActivoJustificacion = '';
+            $this->resetValidation(['codigoActivo', 'codigoActivoJustificacion']);
+        }
+    }
+
+    public function updatedSinSerial(): void
+    {
+        if ($this->sinSerial) {
+            $this->serial = '';
+            $this->resetValidation(['serial']);
+        }
+    }
+
+    public function updatedResponsableCedula(): void
+    {
+        $this->responsableCedula = $this->normalizarCedula($this->responsableCedula);
+
+        if ($this->responsableCedula !== '') {
+            $this->validateOnly('responsableCedula');
+        }
     }
 
     public function guardar(): void
@@ -234,43 +389,70 @@ class Crear extends Component
 
     private function guardarEquipo(): Equipo
     {
-        // Normaliza antes de validar: si se marcó "no tiene código", el input
-        // queda vacío/deshabilitado en la vista, pero igual podría traer texto
-        // residual; nos aseguramos de que viaje null.
-        $this->codigoActivo = $this->sinCodigoActivo ? '' : $this->codigoActivo;
+        // Normaliza antes de validar (los hooks updated* ya lo hacen al salir de
+        // cada campo, pero se repite por si se guarda sin haber salido de él).
+        // Si se marcó "no tiene código", el input queda vacío/deshabilitado en la
+        // vista, pero igual podría traer texto residual; nos aseguramos de que viaje null.
+        $this->serial = $this->sinSerial ? '' : $this->normalizarSerial($this->serial);
+        $this->codigoActivo = $this->sinCodigoActivo ? '' : $this->normalizarCodigoActivo($this->codigoActivo);
+        $this->responsableCedula = $this->normalizarCedula($this->responsableCedula);
 
         $this->validate();
 
+        try {
+            return $this->guardarEquipoEnTransaccion();
+        } catch (ValidationException $validationException) {
+            // El modelo valida RN-03 con la clave de columna `codigo_activo`; la
+            // remapeamos a la propiedad Livewire `codigoActivo` para que el error
+            // se muestre junto al campo correcto (x-ui.input busca $errors por el
+            // atributo `name`, que aquí es "codigoActivo").
+            $errores = $validationException->errors();
+
+            throw array_key_exists('codigo_activo', $errores)
+                ? ValidationException::withMessages(['codigoActivo' => $errores['codigo_activo']])
+                : $validationException;
+        }
+    }
+
+    private function guardarEquipoEnTransaccion(): Equipo
+    {
         return DB::transaction(function () {
+            $justificacion = trim($this->codigoActivoJustificacion);
+
             $equipo = Equipo::create([
-                'serial' => $this->serial,
+                'serial' => $this->sinSerial ? $this->serialProvisional() : $this->serial,
                 'codigo_activo' => $this->codigoActivo !== '' ? $this->codigoActivo : null,
+                // Solo se guarda si el código realmente se repite (RN-03).
+                'codigo_activo_justificacion' => $this->equipoConMismoCodigo() && $justificacion !== '' ? $justificacion : null,
                 'tipo_equipo_id' => $this->tipoEquipoId,
                 'marca_id' => $this->marcaId,
                 'modelo' => $this->modelo !== '' ? $this->modelo : null,
+                'caracteristicas' => $this->caracteristicas(),
                 'propiedad' => $this->propiedad,
                 'propietario_tercero' => $this->propiedad === 'tercero' ? $this->propietarioTercero : null,
+                'figura_tercero' => $this->propiedad === 'tercero' ? $this->figura : null,
                 'estado_funcionamiento' => $this->estadoFuncionamiento,
+                'observaciones' => trim($this->observaciones) !== '' ? trim($this->observaciones) : null,
                 // RN: sin responsable asignado el equipo queda "sin_asignar" (bodega);
                 // con responsable queda "en_servicio".
                 'estado_ciclo_vida' => $this->asignarResponsable ? 'en_servicio' : 'sin_asignar',
-                // El serial es obligatorio en este formulario, así que el equipo
-                // siempre nace verificado (ver resumen de la pantalla).
-                'verificacion' => 'verificado',
+                // RN-02: con serial provisional el equipo nace "pendiente de
+                // verificar"; en el resto de los casos nace verificado (ver resumen).
+                'verificacion' => $this->sinSerial ? 'pendiente_de_verificar' : 'verificado',
             ]);
 
             if ($this->familiaSeleccionada === 'computo') {
                 $this->guardarConfiguracionComputo($equipo);
             }
 
-            $this->guardarUbicacionResponsable($equipo);
-
-            app(HistorialService::class)->registrar(
+            $alta = app(HistorialService::class)->registrar(
                 equipo: $equipo,
                 tipo: 'alta',
                 usuario: auth()->user(),
                 descripcion: 'Alta registrada desde el formulario de registro.',
             );
+
+            $this->guardarUbicacionResponsable($equipo, $alta);
 
             return $equipo;
         });
@@ -333,7 +515,11 @@ class Crear extends Component
         }
     }
 
-    private function guardarUbicacionResponsable(Equipo $equipo): void
+    /**
+     * Abre la primera asignación del equipo (responsable y ubicación), enlazada
+     * al evento de alta que la originó.
+     */
+    private function guardarUbicacionResponsable(Equipo $equipo, Evento $alta): void
     {
         $persona = null;
 
@@ -357,8 +543,9 @@ class Crear extends Component
             'persona_id' => $persona?->id,
             'sede_id' => $this->sedeId,
             'piso_id' => $this->pisoId,
-            'dependencia_id' => $this->asignarResponsable ? $this->dependenciaId : null,
+            'dependencia_id' => $this->dependenciaId,
             'fecha_inicio' => now(),
+            'evento_origen_id' => $alta->id,
         ]);
     }
 

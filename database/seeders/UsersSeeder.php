@@ -17,7 +17,7 @@ class UsersSeeder extends Seeder
             'password' => Hash::make('password'),
             'perfil' => 'administrador',
             'activo' => true,
-            'debe_cambiar_contrasena' => true,
+            'debe_cambiar_contrasena' => false,
         ]);
 
         User::create([
@@ -27,7 +27,7 @@ class UsersSeeder extends Seeder
             'password' => Hash::make('password'),
             'perfil' => 'administrador',
             'activo' => true,
-            'debe_cambiar_contrasena' => true,
+            'debe_cambiar_contrasena' => false,
         ]);
 
         User::create([
@@ -37,7 +37,7 @@ class UsersSeeder extends Seeder
             'password' => Hash::make('password'),
             'perfil' => 'usuario',
             'activo' => true,
-            'debe_cambiar_contrasena' => true,
+            'debe_cambiar_contrasena' => false,
         ]);
 
         User::create([
@@ -47,7 +47,7 @@ class UsersSeeder extends Seeder
             'password' => Hash::make('password'),
             'perfil' => 'usuario',
             'activo' => true,
-            'debe_cambiar_contrasena' => true,
+            'debe_cambiar_contrasena' => false,
         ]);
     }
 }

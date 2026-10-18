@@ -9,7 +9,12 @@
 --}}
 <x-layouts.app-shell :title="__('Traslados')">
     <div class="space-y-6">
-        <x-ui.page-header :title="__('Traslados')" :subtitle="__('Elegí un equipo para registrar su traslado o cambio de responsable.')" />
+        <x-ui.page-header :title="__('Traslados')" :subtitle="__('Elegí un equipo para registrar su traslado o cambio de responsable.')">
+            <x-slot name="actions">
+                <x-ui.button variant="secondary" :href="route('movimientos.index')">{{ __('Responsables') }}</x-ui.button>
+                <x-ui.button variant="secondary" :href="route('movimientos.pendientes')">{{ __('Pendientes de firma') }}</x-ui.button>
+            </x-slot>
+        </x-ui.page-header>
 
         <livewire:movimientos.traslados-listado />
     </div>
