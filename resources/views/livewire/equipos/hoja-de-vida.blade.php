@@ -170,6 +170,9 @@
                     <x-ui.button variant="secondary" :href="route('movimientos.diagnostico', $equipo)">
                         {{ __('Diagnóstico') }}
                     </x-ui.button>
+                    <x-ui.button variant="secondary" :href="route('equipos.editar', $equipo)">
+                        {{ __('Editar datos') }}
+                    </x-ui.button>
                     <x-ui.button variant="danger" :href="route('movimientos.baja', $equipo)">
                         {{ __('Registrar baja') }}
                     </x-ui.button>
@@ -332,6 +335,21 @@
 
                     @if($evento->descripcion)
                         <p @class(['mt-1 text-[14px] text-ink-muted', 'line-through' => $anulacion])>{{ $evento->descripcion }}</p>
+                    @endif
+
+                    {{-- RF-12: valor anterior y nuevo de una actualización de datos. --}}
+                    @if($evento->tipo === 'actualizacion_datos' && ! empty($evento->valores['despues']))
+                        <dl class="mt-2 space-y-1 rounded-lg bg-app-bg px-4 py-3 text-[13px]">
+                            @foreach($evento->valores['despues'] as $campo => $nuevo)
+                                <div>
+                                    <dt class="inline font-semibold text-ink-label">{{ __(\App\Livewire\Equipos\Editar::ETIQUETAS[$campo] ?? $campo) }}:</dt>
+                                    <dd class="inline text-ink">
+                                        <span class="text-ink-muted line-through">{{ $evento->valores['antes'][$campo] ?? __('(vacío)') }}</span>
+                                        → {{ $nuevo ?? __('(vacío)') }}
+                                    </dd>
+                                </div>
+                            @endforeach
+                        </dl>
                     @endif
 
                     @if($detalleCambio)
