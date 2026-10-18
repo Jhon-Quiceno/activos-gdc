@@ -102,7 +102,7 @@ CREATE TABLE `personas` (
   `tipo_provision` ENUM ('carrera_administrativa', 'libre_nombramiento', 'provisional', 'temporal', 'periodo', 'no_aplica') NOT NULL DEFAULT 'no_aplica',
   `numero_contrato` varchar(40) COMMENT 'Solo contratistas',
   `fecha_fin_vinculacion` date COMMENT 'Fin de contrato o retiro: dispara el paz y salvo (RF-23)',
-  `activa` boolean NOT NULL DEFAULT true,
+  `activo` boolean NOT NULL DEFAULT true,
   `created_at` timestamp,
   `updated_at` timestamp
 );
@@ -110,7 +110,7 @@ CREATE TABLE `personas` (
 CREATE TABLE `tipos_equipo` (
   `id` bigint PRIMARY KEY AUTO_INCREMENT,
   `nombre` varchar(80) UNIQUE NOT NULL,
-  `familia` ENUM ('computo', 'video', 'impresion', 'digitalizacion', 'conectividad', 'seguridad_electronica', 'energia', 'climatizacion', 'proyeccion_audio', 'telefonia') NOT NULL,
+  `familia` ENUM ('computo', 'video', 'impresion', 'digitalizacion', 'conectividad', 'seguridad_electronica', 'energia', 'climatizacion', 'proyeccion', 'telefonia') NOT NULL,
   `tipo_activo` ENUM ('hardware', 'soporte') NOT NULL DEFAULT 'hardware',
   `usa_configuracion_computo` boolean NOT NULL DEFAULT false COMMENT 'Muestra SO, antivirus, red y componentes internos',
   `campos_aplicables` json COMMENT 'Claves de equipos.caracteristicas que aplican: pulgadas, VA, puertos, lúmenes…',
@@ -195,7 +195,7 @@ CREATE TABLE `equipos` (
   `fecha_fin_garantia` date,
   `vida_util_meses` smallint,
   `estado_funcionamiento` ENUM ('bueno', 'regular', 'malo', 'no_funcional') NOT NULL DEFAULT 'bueno',
-  `estado_ciclo_vida` ENUM ('en_servicio', 'sin_asignar', 'dado_de_baja') NOT NULL DEFAULT 'sin_asignar',
+  `estado_ciclo_vida` ENUM ('en_servicio', 'sin_asignar', 'dado_de_baja') NOT NULL DEFAULT 'en_servicio',
   `verificacion` ENUM ('verificado', 'pendiente_de_verificar') NOT NULL DEFAULT 'pendiente_de_verificar',
   `puesto_trabajo_id` bigint,
   `importacion_id` bigint,
@@ -235,7 +235,7 @@ CREATE TABLE `configuraciones_computo` (
   `id` bigint PRIMARY KEY AUTO_INCREMENT,
   `equipo_id` bigint UNIQUE NOT NULL,
   `sistema_operativo_id` bigint,
-  `licencia_so` varchar(80),
+  `licencia` varchar(80) COMMENT 'Licencia del sistema operativo',
   `ofimatica` varchar(80) COMMENT 'Ej.: Office Home and Business',
   `licencia_ofimatica` varchar(80),
   `tiene_antivirus` boolean NOT NULL DEFAULT false,
@@ -265,7 +265,7 @@ CREATE TABLE `componentes` (
 
 CREATE TABLE `puestos_trabajo` (
   `id` bigint PRIMARY KEY AUTO_INCREMENT,
-  `codigo` varchar(30) UNIQUE NOT NULL,
+  `nombre_o_codigo` varchar(255) NOT NULL,
   `piso_id` bigint NOT NULL,
   `dependencia_id` bigint,
   `created_at` timestamp,
