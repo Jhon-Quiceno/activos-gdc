@@ -11,7 +11,23 @@ class SistemaOperativo extends Model
 
     protected $fillable = [
         'nombre',
+        'fin_soporte',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'fin_soporte' => 'date',
+        ];
+    }
+
+    /**
+     * Sin soporte del fabricante a la fecha (reporte de obsolescencia).
+     */
+    public function sinSoporte(): bool
+    {
+        return $this->fin_soporte !== null && $this->fin_soporte->isPast();
+    }
 
     public function configuracionesComputo(): HasMany
     {

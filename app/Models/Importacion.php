@@ -11,6 +11,7 @@ class Importacion extends Model
     protected $table = 'importaciones';
 
     protected $fillable = [
+        'tipo',
         'archivo',
         'fecha',
         'usuario_id',

@@ -23,11 +23,21 @@ class Equipo extends Model
         'qr_uuid',
         'tipo_equipo_id',
         'marca_id',
-        'modelo',
+        'modelo_id',
+        'descripcion',
         'caracteristicas',
+        'proceso_id',
         'propiedad',
-        'propietario_tercero',
+        'proveedor_tercero_id',
         'figura_tercero',
+        'forma_ingreso',
+        'fecha_adquisicion',
+        'valor_adquisicion',
+        'proveedor_id',
+        'numero_contrato',
+        'numero_factura',
+        'fecha_fin_garantia',
+        'vida_util_meses',
         'estado_funcionamiento',
         'observaciones',
         'estado_ciclo_vida',
@@ -35,12 +45,29 @@ class Equipo extends Model
         'puesto_trabajo_id',
         'importacion_id',
         'fila_origen_importacion',
+        // Campos viejos: se borran en la migración de cierre del día 2
+        // (docs/base-de-datos.md §6). Código nuevo: modelo_id y proveedor_tercero_id.
+        'modelo',
+        'propietario_tercero',
+    ];
+
+    public const FORMAS_INGRESO = [
+        'compra' => 'Compra',
+        'donacion' => 'Donación',
+        'comodato' => 'Comodato',
+        'convenio' => 'Convenio',
+        'arrendamiento' => 'Arrendamiento',
+        'carga_inicial' => 'Carga inicial',
     ];
 
     protected function casts(): array
     {
         return [
             'caracteristicas' => 'array',
+            'numero_activo' => 'integer',
+            'fecha_adquisicion' => 'date',
+            'valor_adquisicion' => 'decimal:2',
+            'fecha_fin_garantia' => 'date',
         ];
     }
 
@@ -60,13 +87,69 @@ class Equipo extends Model
         // contra el que comparar); en update se preserva el isDirty de antes: revalida
         // también si solo cambia la justificación (si alguien la borra dejando un
         // código duplicado, tiene que fallar igual).
+        // RN-27: el número de activo («ID ACTIVO» del FOR.01) es el consecutivo
+        // del equipo. Se asigna justo después de insertar, a partir del id, así
+        // dos altas simultáneas nunca obtienen el mismo número; después no cambia.
+        static::created(function (Equipo $equipo): void {
+            if ($equipo->numero_activo === null) {
+                $equipo->numero_activo = $equipo->id;
+                $equipo->saveQuietly();
+            }
+        });
+
+        static::updating(function (Equipo $equipo): void {
+            if ($equipo->isDirty('numero_activo') && $equipo->getOriginal('numero_activo') !== null) {
+                throw ValidationException::withMessages([
+                    'numero_activo' => ['El número de activo no cambia nunca (RN-27).'],
+                ]);
+            }
+        });
+
         static::saving(function (Equipo $equipo): void {
+            $equipo->sincronizarCamposViejos();
+
             if (! $equipo->exists
                 || $equipo->isDirty('codigo_activo')
                 || $equipo->isDirty('codigo_activo_justificacion')) {
                 self::validarJustificacionCodigoActivo($equipo);
             }
         });
+    }
+
+    /**
+     * Migración en dos tiempos: mientras convivan, `modelo` y
+     * `propietario_tercero` (texto) siguen a `modelo_id` y `proveedor_tercero_id`.
+     */
+    protected function sincronizarCamposViejos(): void
+    {
+        if ($this->modelo_id && ($this->isDirty('modelo_id') || blank($this->modelo))) {
+            $this->modelo = ModeloEquipo::query()->whereKey($this->modelo_id)->value('nombre');
+        }
+
+        if ($this->proveedor_tercero_id && ($this->isDirty('proveedor_tercero_id') || blank($this->propietario_tercero))) {
+            $this->propietario_tercero = Proveedor::query()->whereKey($this->proveedor_tercero_id)->value('razon_social');
+        }
+    }
+
+    /**
+     * Garantía vigente que vence en los próximos `$dias` días (RF-52).
+     */
+    public function garantiaPorVencer(int $dias = 60): bool
+    {
+        return $this->fecha_fin_garantia !== null
+            && $this->fecha_fin_garantia->isFuture()
+            && $this->fecha_fin_garantia->lte(now()->addDays($dias));
+    }
+
+    /**
+     * Superó su vida útil desde la fecha de adquisición (RF-52).
+     */
+    public function vidaUtilSuperada(): bool
+    {
+        $meses = $this->vida_util_meses ?? $this->tipoEquipo?->vida_util_meses;
+
+        return $this->fecha_adquisicion !== null && $meses !== null
+            && $this->fecha_adquisicion->copy()->addMonths($meses)->isPast();
     }
 
     /**
@@ -125,6 +208,40 @@ class Equipo extends Model
     public function marca(): BelongsTo
     {
         return $this->belongsTo(Marca::class);
+    }
+
+    /** Modelo del catálogo. Se llama así porque `modelo` es el campo viejo de texto. */
+    public function modeloEquipo(): BelongsTo
+    {
+        return $this->belongsTo(ModeloEquipo::class, 'modelo_id');
+    }
+
+    public function proceso(): BelongsTo
+    {
+        return $this->belongsTo(Proceso::class);
+    }
+
+    /** Dueño del equipo cuando propiedad = tercero (RN-16). */
+    public function proveedorTercero(): BelongsTo
+    {
+        return $this->belongsTo(Proveedor::class, 'proveedor_tercero_id');
+    }
+
+    /** A quién se compró el equipo (RF-52). */
+    public function proveedor(): BelongsTo
+    {
+        return $this->belongsTo(Proveedor::class);
+    }
+
+    public function valoraciones(): HasMany
+    {
+        return $this->hasMany(ValoracionActivo::class)->latest('id');
+    }
+
+    /** Valoración GT-M4 vigente (RN-22: como máximo una). */
+    public function valoracionVigente(): HasOne
+    {
+        return $this->hasOne(ValoracionActivo::class)->where('vigente', true);
     }
 
     public function puestoTrabajo(): BelongsTo

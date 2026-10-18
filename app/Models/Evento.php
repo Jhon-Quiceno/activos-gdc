@@ -39,6 +39,7 @@ class Evento extends Model
         'equipo_id',
         'tipo',
         'fecha',
+        'es_historico',
         'descripcion',
         'usuario_id',
         'estado_firma',
@@ -50,6 +51,7 @@ class Evento extends Model
     {
         return [
             'fecha' => 'datetime',
+            'es_historico' => 'boolean',
             'valores' => 'array',
         ];
     }

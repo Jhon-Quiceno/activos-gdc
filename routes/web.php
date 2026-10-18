@@ -40,6 +40,9 @@ Route::middleware(['auth', 'cambiar.contrasena'])->group(function () {
     // --- Importación (Juan Camilo) ---
     Route::view('/importacion', 'livewire.importacion.page')->name('importacion.index');
 
+    // --- Levantamientos de activos (Anuar, Fase 2) ---
+    Route::view('/levantamientos', 'livewire.levantamientos.page')->name('levantamientos.index');
+
     // --- Reportes (Alex) ---
     Route::view('/reportes', 'livewire.reportes.page')->name('reportes.index');
 

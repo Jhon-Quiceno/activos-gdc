@@ -13,9 +13,14 @@ class ConfiguracionComputo extends Model
         'equipo_id',
         'sistema_operativo_id',
         'licencia',
+        'ofimatica',
+        'licencia_ofimatica',
         'tiene_antivirus',
         'antivirus_producto',
         'nombre_red',
+        'dominio',
+        'direccion_ip',
+        'direccion_mac',
     ];
 
     protected function casts(): array

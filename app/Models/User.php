@@ -7,11 +7,12 @@ use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-#[Fillable(['name', 'email', 'password', 'perfil', 'activo', 'debe_cambiar_contrasena'])]
+#[Fillable(['name', 'email', 'persona_id', 'password', 'perfil', 'activo', 'debe_cambiar_contrasena'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -36,6 +37,12 @@ class User extends Authenticatable
     public function esAdministrador(): bool
     {
         return $this->perfil === 'administrador';
+    }
+
+    /** Funcionario o contratista TIC al que corresponde esta cuenta (modelo v4). */
+    public function persona(): BelongsTo
+    {
+        return $this->belongsTo(Persona::class);
     }
 
     public function eventos(): HasMany

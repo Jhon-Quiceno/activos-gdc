@@ -14,8 +14,8 @@ use Illuminate\Support\Facades\Date;
  * RN-06 / RF-12: los registros de la tabla `eventos` son inmutables (ver
  * App\Models\Evento). Por eso NINGÚN otro lugar de la aplicación debe crear un
  * Evento directamente con `Evento::create()`. Todos los módulos (altas, traslados,
- * cambios de componente, diagnósticos, bajas, actualizaciones de datos y
- * anulaciones/aclaraciones) deben pasar siempre por este servicio para que la
+ * cambios de componente, diagnósticos, valoraciones, bajas, actualizaciones de
+ * datos y anulaciones/aclaraciones) deben pasar siempre por este servicio para que la
  * hoja de vida quede completa, consistente y auditable.
  *
  * Este servicio solo implementa el núcleo de registro (crear el Evento base). La
@@ -43,10 +43,16 @@ class HistorialService
      *
      * @param  Equipo  $equipo  Equipo al que pertenece el evento.
      * @param  string  $tipo  Uno de: alta, traslado_responsable, cambio_componente,
-     *                        diagnostico, baja, actualizacion_datos, anulacion_aclaracion.
+     *                        diagnostico, valoracion, baja, actualizacion_datos,
+     *                        anulacion_aclaracion. Para `valoracion` no se llama
+     *                        directo: se usa App\Models\ValoracionActivo::registrar(),
+     *                        que crea el evento y la valoración en la misma transacción.
+     *                        El mantenimiento no es un tipo de evento (RN-08).
      * @param  User  $usuario  Usuario autenticado que origina el evento (autor, RF-11).
      * @param  array<string, mixed>  $datos  Campos adicionales opcionales del Evento
-     *                                       (p. ej. 'estado_firma').
+     *                                       (p. ej. 'estado_firma', 'valores', o
+     *                                       'es_historico' => true para las altas de
+     *                                       la carga inicial, exentas de RN-13).
      * @param  string|null  $descripcion  Descripción libre del evento.
      * @param  Evento|null  $eventoAnulado  Evento que este evento anula/aclara, si aplica.
      * @return Evento El evento recién creado.
