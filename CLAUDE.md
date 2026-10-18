@@ -119,7 +119,6 @@ colores, tamaños ni íconos que no estén ya en `tailwind.config.js` o en los c
 - `docs/base-de-datos.md` — modelo de datos v4, diccionario, valores oficiales de los
   catálogos y plan de migración. DBML (dbdiagram.io) y SQL en `database/dbml/`.
 - `docs/plan-fase2.md` — plan y reparto de la Fase 2 (reestructuración).
-- `docs/plan-2-semanas.md` — plan de la Fase 1 (cerrada, histórico).
 - `docs/normas-de-trabajo.md` — reglas de ramas/carpetas/eventos en detalle.
 - `docs/juan-jose.md`, `docs/anuar.md`, `docs/juan-camilo.md`, `docs/alex.md`,
   `docs/manuel.md` — tareas de la Fase 2 de cada integrante.
