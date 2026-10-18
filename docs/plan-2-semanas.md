@@ -7,6 +7,8 @@ Basado en el [Análisis de Requerimientos v3](./analisis-requerimientos.md) (35 
 Jhon (líder) · Juan José y Anuar (núcleo) · Juan Camilo, Alex y Manuel (apoyo) · 10 días hábiles
 Versión 1.2 · Octubre de 2026
 
+> **Documento histórico.** La Fase 1 está cerrada. El 17 de octubre de 2026 el análisis pasó a la v4, basada en la documentación oficial (ya no en el Excel del inventario 2026), y el trabajo actual sigue el [Plan de Fase 2](./plan-fase2.md). Las referencias a «análisis v3», RF y secciones de este documento corresponden a esa versión anterior.
+
 ---
 
 ## 0. Estado real al cierre (revisado por Jhon, 2026-10-11)

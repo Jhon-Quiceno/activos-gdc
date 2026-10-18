@@ -1,76 +1,51 @@
-# Juan José — Núcleo 1: Equipos y hoja de vida
+# Juan José — Núcleo 1: Equipos, hoja de vida y valoración
 
-**Sistema de Hoja de Vida de Equipos · Gobernación de Córdoba · Dirección TIC**
-Plan de dos semanas · Bloque: Núcleo 1
+**Sistema de Hoja de Vida de Activos Tecnológicos · Gobernación de Córdoba · Dirección TIC**
+Fase 2 · Bloque: Núcleo 1 · Ver el [Plan de Fase 2](./plan-fase2.md)
 
 ## Rol
 
-Juan José lleva el **bloque central** del sistema: todo lo demás se ve a través de la hoja de vida. Sin este bloque funcionando, ningún otro bloque tiene dónde mostrar sus resultados (los botones de acción de Anuar, el QR de Manuel, los reportes de Alex dependen de que un equipo pueda registrarse y consultarse).
+Sigues llevando el bloque central: la ficha del equipo y su hoja de vida. En esta fase la ficha crece con los datos oficiales del formato FOR.01 y de adquisición, y se suma la **valoración del activo del Manual GT-M4**, que después usan Alex (matriz FOR.01, riesgos) y Manuel (levantamiento).
+
+## Heredado de la Fase 1
+
+Edición de equipo, QR real y filtros (PR #9 y #10): Jhon los fusiona **antes** del cambio de esquema, así que no tienes que rehacerlos. Tu bloque de la Fase 1 queda cerrado.
 
 ## Tareas por día
 
-> **Días 1–2 ya hechos por el líder** como parte del bootstrap, para dejar un ejemplo real de cómo conectar una pantalla al modelo de datos: el listado de equipos con búsqueda (`app/Livewire/Equipos/Index.php` y `resources/views/livewire/equipos/index.blade.php`) ya existe y funciona contra la base real — búsqueda por serial, código de activo, responsable, cédula, dependencia y sede, tolerando espacios y guiones (`I1 24147` = `I1-24147`). Arrancá directo en los días 3–4; revisá ese archivo primero para seguir el mismo patrón (Livewire + `x-ui.table` + `x-ui.badge`) en el resto de tus pantallas.
-
 | Días | Tareas | Entregable |
 |---|---|---|
-| ~~1–2~~ | ~~Listado de equipos y búsqueda por serial, código de activo, responsable, cédula, dependencia y sede, tolerando espacios y guiones (`I1 24147` = `I1-24147`).~~ | **Ya hecho** — listado con búsqueda. |
-| 3–4 | Registro y edición de equipo con formulario que cambia según el tipo; serial obligatorio y único; código de activo con formato `I1-######`; aviso de duplicados; propiedad Gobernación o tercero. | Registrar un equipo. |
-| 5–6 | Vista de hoja de vida: ficha, configuración, componentes actuales, responsable, ubicación e historial cronológico. Botones de acción que llaman a los flujos de Anuar. | Hoja de vida completa. |
-| 7–8 | Componentes y cambio de componente (agregar, cambiar, quitar) con seriales y motivo; actualiza la configuración y registra el evento. Eventos inmutables y anulación/aclaración. | Cambio de componente funcionando. |
-| 9–10 | Pruebas: serial único, evento inmutable, autor automático. Corrección de errores. | Pruebas en verde. |
+| 1–2 | Adaptar el registro y la edición al modelo v4: modelo del catálogo (marca → modelo), número de activo automático (RN-27), descripción, proceso (por defecto el de la dependencia), propietario tercero desde `proveedores`, estado de funcionamiento como lista. Búsqueda por número de activo y por rama del árbol de dependencias (RF-07, con `x-ui.dependencia-select`). | Registrar y editar un equipo con la ficha nueva. |
+| 3 | Datos de adquisición (RF-52): forma de ingreso, fecha, valor COP, proveedor, contrato, factura, garantía, vida útil. Avisos en la hoja de vida: garantía por vencer y vida útil superada. Configuración de cómputo con ofimática, licencias, dominio, IP y MAC. | Ficha completa. |
+| 4–5 | **Valoración GT-M4 (RF-56, RF-57):** formulario en la hoja de vida con las escalas de las tablas 3, 4 y 5 (texto de cada nivel), cálculo de total, importancia y «requiere gestión de riesgos», validaciones RN-22, RN-24 y RN-25. Registro vía `HistorialService` (tipo `valoracion`). | Valorar un equipo. |
+| 6 | Reclasificación con historial (RF-58): la anterior queda no vigente; se ven todas las valoraciones en la hoja de vida. | Historial de valoraciones. |
+| 7 | Hoja de vida (RF-09): bloques nuevos de valoración vigente, adquisición y mantenimientos (lectura de lo que registra Anuar). PDF de la hoja de vida (RF-33) con esas secciones. | Hoja de vida v4 y su PDF. |
+| 8 | Ayudar a Manuel a enganchar la valoración dentro del levantamiento (RF-59). | Valoración usable desde el levantamiento. |
+| 9–10 | Prueba cruzada del bloque de Mantenimiento (Anuar); pruebas propias y correcciones. | Pest en verde. |
 
-## Requerimientos funcionales a cargo
+## Requerimientos a cargo
 
-RF-01, RF-02, RF-03, RF-04, RF-07, RF-09, RF-10, RF-11, RF-12, RF-14, RF-15.
+RF-01, RF-02, RF-04, RF-07, RF-09, RF-33, RF-52, RF-56, RF-57, RF-58. Detalle en el [Análisis v4](./analisis-requerimientos.md), secciones 5.1, 5.2 y 5.11, y la tabla `valoraciones_activo` en [base-de-datos.md §4.5](./base-de-datos.md#45-valoraciones_activo-gt-m4).
 
-Consulta el detalle completo de cada uno en el [Análisis de requerimientos](./analisis-requerimientos.md), secciones 5.1 a 5.3.
+## Pruebas mínimas
 
-> **Agregado fuera del plan original: RF-33 · Exportar la hoja de vida a PDF.**
-> RF-33 estaba en la **Fase 2** (análisis, sección 13; plan, sección 6 «Qué queda fuera de estas dos semanas»). Se **adelantó a la Fase 1** con autorización de Jhon el **7 de octubre de 2026** y lo implementó Juan José: botón «Exportar hoja de vida (PDF)» en la hoja de vida, que descarga un PDF tamaño carta sin firma con la ficha, el responsable y la ubicación (cédula enmascarada, RN-12), el software, los componentes actuales y el historial completo. Código: `App\Livewire\Equipos\HojaDeVida::exportarPdf()` y `resources/views/livewire/equipos/pdf/hoja-de-vida.blade.php`.
-
-## Estado al cierre de la Fase 1 (revisado por Jhon, 2026-10-08)
-
-| Días | Tarea | Estado |
-|---|---|---|
-| 1–2 | Listado y búsqueda | ✅ Hecho (ya estaba antes del plan). |
-| 3–4 | Registro de equipo | ✅ Hecho y fusionado (PR #3). Incluye RN-02/RN-03 (serial y código únicos, duplicado con justificación), características por tipo (RF-03) y figura del tercero (RF-04). ⚠️ **Edición de equipo**: no se implementó — solo existe creación (`Crear.php`), no hay pantalla de editar. No estaba en tus RF formales (RF-01 a RF-04 no la exigen), pero la tabla de tareas sí la mencionaba; a decidir si hace falta para cerrar Fase 1. |
-| 5–6 | Hoja de vida | ✅ Hecho y fusionado (PR #4): ficha, componentes, responsable, ubicación, historial cronológico, botones de acción hacia Movimientos. |
-| 7–8 | Cambio de componente | ✅ Funciona (RF-14/RF-15), pero terminó implementado dentro del bloque de **Movimientos** (`app/Livewire/Movimientos/ComponenteForm.php`), no en `app/Livewire/Equipos` como decía el plan original. Ya tiene el bloqueo de concurrencia (dos retiros simultáneos del mismo componente) corregido. |
-| 9–10 | Pruebas | ✅ En verde. Además se corrigieron hoy 6 hallazgos de una revisión de código real sobre RN-03 (excepción cruda que daba 500, condición de carrera, código "0" que se saltaba la validación, índice faltante en la BD). |
-
-RF-33 (export a PDF, adelantado de Fase 2): ✅ hecho y fusionado (PR #5), incluye ahora también características/figura/observaciones en el PDF.
-
-**Para Juan José, si sigue en Fase 1:** decidir si hace falta edición de equipo; el resto de su bloque está cerrado.
+- Total = C + I + D; importancia según la tabla 6; marca de riesgo si algún criterio vale 4 o la importancia es alta o muy alta.
+- No se puede valorar un activo de soporte (RN-25), ni guardar una clasificación distinta de «no aplica» sin datos personales (RN-24).
+- Una sola valoración vigente por equipo, incluso con dos guardados simultáneos (lock, como en RN-03).
+- El número de activo no cambia al editar.
 
 ## Depende de / conecta con
 
-- **El modelo de datos y `HistorialService` de Jhon** — ya deben existir antes del día 1; no se crean migraciones propias (ver norma 2 más abajo).
-- **Anuar** usa los botones de acción de la hoja de vida (traslado, diagnóstico, baja) que Juan José expone en esta vista.
-- **Manuel** inserta el código QR en esta misma vista de hoja de vida.
-- Este es el bloque del que dependen casi todos los demás: si el día 4 no se puede registrar un equipo y ver su hoja de vida, es el riesgo principal del plan (ver sección 6 del [Plan de dos semanas](./plan-2-semanas.md)).
+- **Jhon:** migraciones v4, `x-ui.dependencia-select`, tipo de evento `valoracion`.
+- **Alex** lee `valoraciones_activo` para la matriz FOR.01 y el reporte de riesgos.
+- **Manuel** reutiliza tu formulario de valoración dentro del levantamiento.
+- **Anuar** escribe los mantenimientos que tú muestras en la hoja de vida.
 
-## Recordatorio de las normas de trabajo
+## Normas
 
-- Ramas `feature/equipos-<tarea>` creadas siempre desde `develop`, nunca desde `main`.
-- Nunca crear ni tocar migraciones: si falta un campo, se pide a Jhon y lo agrega el mismo día.
-- Escribir solo en `app/Livewire/Equipos`, `resources/views/livewire/equipos` y `tests/Feature/Equipos`.
-- Todo cambio sobre un equipo pasa por `HistorialService::registrar()`. Nunca se inserta un evento a mano.
-- Trabajar siempre con `docker compose exec -u sail laravel.test php artisan migrate:fresh --seed`.
-- Antes de abrir un PR, correr `docker compose exec -u sail laravel.test ./vendor/bin/pest` y que pase en verde.
-
-### Cómo crear tu rama (copiar y pegar)
+Rama `feature/equipos-<tarea>` desde `develop`; solo escribes en `app/Livewire/Equipos`, `resources/views/livewire/equipos` y `tests/Feature/Equipos`; los campos que falten se le piden a Jhon; todo cambio pasa por `HistorialService::registrar()`; Pest en verde antes del PR. Detalle en [normas-de-trabajo.md](./normas-de-trabajo.md).
 
 ```bash
-git checkout develop
-git pull origin develop
-git checkout -b feature/equipos-busqueda   # cambia "busqueda" por tu tarea
-# ...trabajar y commitear...
-git push -u origin feature/equipos-busqueda
-# abrir el Pull Request en GitHub apuntando a develop, nunca a main
+git checkout develop && git pull origin develop
+git checkout -b feature/equipos-valoracion
 ```
-
-Para el detalle completo de estas reglas, ver [normas-de-trabajo.md](./normas-de-trabajo.md).
-
----
-
-**Para profundizar:** [Análisis de requerimientos](./analisis-requerimientos.md) · [Normas de trabajo](./normas-de-trabajo.md)

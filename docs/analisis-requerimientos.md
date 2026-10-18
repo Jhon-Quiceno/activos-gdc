@@ -1,644 +1,485 @@
-# Análisis de requerimientos — Sistema de Hoja de Vida de Equipos
+# Análisis de requerimientos — Sistema de Hoja de Vida de Activos Tecnológicos
 
-**Gobernación de Córdoba · Dirección TIC · Fase 1: Análisis · Versión 3**
-Oct 2, 2026 · @JWRCompany
+**Gobernación de Córdoba · Dirección TIC · Versión 4**
+17 de octubre de 2026 · Jhon (líder) · @JWRCompany
 
-> Este es el documento de referencia permanente del proyecto: 35 requerimientos funcionales esenciales, modelo de dominio, reglas de negocio y casos de uso. Consúltalo aquí en vez de depender del Google Doc original.
+> Documento de referencia permanente del proyecto. La versión 4 cambia la **fuente** del análisis: deja de construirse a partir del Excel del inventario 2026 y pasa a apoyarse en la documentación oficial de la Gobernación (sección 2). El modelo de datos completo está en [base-de-datos.md](./base-de-datos.md).
+> Hay una versión Word de este mismo documento en [analisis-requerimientos-v4.docx](./analisis-requerimientos-v4.docx).
 
 ---
 
 ## 1. Introducción
 
-El sistema será una aplicación web independiente que lleve la hoja de vida de cada equipo tecnológico de la Gobernación de Córdoba, desde su registro hasta su baja, tomando como punto de partida el inventario de marzo de 2026 (461 registros, 930 equipos). Esta versión 3 incorpora los códigos QR en las hojas de vida, para llegar a la información de un equipo escaneando una etiqueta pegada en él. Este documento cierra la fase de análisis: fija qué debe hacer el sistema para que la fase de diseño parta de una base acordada.
+El sistema es una aplicación web que lleva la **hoja de vida de cada activo tecnológico** de la Gobernación de Córdoba, desde su ingreso hasta su baja. Su ficha sigue la estructura oficial del inventario de activos (Manual GT-M4 y formato FOR.01). Ubica cada activo en la estructura organizacional vigente (Decreto 609 de 2023) y en las sedes reales, asigna sus responsables con el catálogo oficial de cargos (Decreto 607 de 2023) y registra el mantenimiento preventivo según el Programa Anual de Mantenimiento.
 
 ### 1.1 Propósito
 
-Responder, con evidencia, cuatro preguntas que hoy no tienen respuesta en un solo lugar:
+Responder, con evidencia y en un solo lugar:
 
-1. Qué equipos tiene la entidad.
-2. Dónde están y quién responde por ellos.
-3. Qué cambios se les han hecho.
-4. Cuáles salieron de servicio.
+1. Qué activos tecnológicos tiene la entidad y cuánto valen para ella (valoración CID).
+2. Dónde están (sede, piso, dependencia) y quién responde por ellos (responsable, propietario, custodio).
+3. Qué se les ha hecho: traslados, cambios de componentes, mantenimientos, diagnósticos.
+4. Cuáles salieron de servicio y por qué.
 
 ### 1.2 Alcance
 
 **Incluido:**
 
-- Registro y ficha de cada equipo (computadores, monitores, impresoras, escáneres, UPS, switches, access points, servidores, video beam), identificado por su serial y su código de activo.
-- Historial de eventos por equipo: alta, traslado o cambio de responsable, cambio de componentes (agregar, cambiar o quitar RAM, disco, monitor, periféricos, etc.), diagnóstico y baja.
-- Generación de los dos formatos que usa la Dirección TIC (formato de entrega y formato de baja) y carga de los documentos firmados.
-- Código QR por equipo y etiquetas imprimibles: al escanear la etiqueta se abre la hoja de vida del equipo.
-- Carga inicial del inventario 2026 y su depuración.
-- Consultas y reportes sobre todo el parque tecnológico.
-- Usuarios creados por un administrador; cada evento queda a nombre de quien lo registra.
+- Registro y ficha de cada activo de tipo **hardware** y **soporte** (GT-M4, tabla 2): computadores, portátiles, servidores, monitores, impresoras, escáneres, equipos de red, NAS, videograbadores, cámaras, control de acceso, video beam, telefonía, UPS, plantas eléctricas y aires de cuartos técnicos.
+- Datos de adquisición, garantía y propiedad (Gobernación o tercero).
+- **Clasificación y valoración del activo** según GT-M4: datos personales, infraestructura crítica, continuidad del negocio, propietario, custodio, retención y calificación de confidencialidad, integridad y disponibilidad.
+- Historial de eventos inmutable: alta, traslado, cambio de componente, **mantenimiento**, diagnóstico, **valoración**, baja.
+- **Mantenimiento preventivo y correctivo**: plan anual, programación por dependencia y mes, ejecución y cumplimiento. *(Cambio frente a v3, que lo excluía.)*
+- Levantamiento de activos por proceso con acta de aceptación firmada (GT-M4 4.1).
+- Formatos firmados (entrega, baja y mantenimiento), código QR y etiquetas.
+- Estructura organizacional oficial, sedes con sus pisos y personas responsables con datos mínimos.
+- Carga de datos desde Excel con plantilla oficial: equipos, personas y valoraciones.
+- Consultas, reportes y exportación de la matriz de activos en el formato FOR.01.
 
 **Excluido:**
 
-- Mantenimiento preventivo y correctivo: es un procedimiento que se gestiona en otro sistema, fuera del control de la Dirección TIC. Solo los cambios de componentes que resulten de él se registran en la hoja de vida.
-- Equipos personales de los funcionarios: no se registran ni se intervienen.
-- El trámite administrativo o contable de la baja: la Dirección TIC deja la baja especificada en la hoja de vida; no recibe constancia de otra dependencia.
-- Mesa de ayuda y tickets: el sistema no se conecta con osTicket ni con SIGSA-TIC.
-- Inventario contable de Almacén: se usa su código de activo como referencia, pero el sistema no lo administra.
-- Monitoreo de red y servidores.
+- Activos de información que no son equipos (software, bases de datos, servicios, información física o electrónica, personas, instalaciones e intangibles). El GT-M4 los incluye, pero no tienen hoja de vida de equipo; ver pregunta abierta 3.
+- Equipos de las instituciones educativas (166 IE, 201 sedes), hasta que se decida lo contrario (pregunta 2).
+- Equipos personales de los funcionarios.
+- Gestión de riesgos e incidentes de seguridad: el sistema solo **marca** los activos que deben pasar a la matriz de riesgos (GT-M4 4.2.6), no la administra.
+- Contabilidad del Almacén, mesa de ayuda y monitoreo de red.
 
-### 1.3 Relación con otros documentos
-
-El análisis SIGSA-TIC (v2.0, 04-09-2026) se usa como referencia de método, no como alcance. El formato «Hoja de vida / baja» v1.0 (02-09-2024) y el formato de entrega son las dos salidas oficiales del sistema, con libertad para mejorarlos. Los prototipos de interfaz se mantienen en Claude Design.
-
-### 1.4 Control de versiones
+### 1.3 Control de versiones
 
 | Versión | Cambios principales |
 |---|---|
 | 1 | Análisis inicial a partir del inventario 2026 y la primera reunión con el jefe. |
-| 2 | Segunda revisión: administrador y usuarios, solo dos formatos (entrega y baja), traslado con dos documentos firmados, mantenimiento fuera del alcance, módulo de componentes, serial y código de activo como identificadores, baja sin constancia externa, equipos de terceros. |
-| 3 | Se incorporan los códigos QR: RF-08 pasa de deseable a esencial y se agrega el módulo 5.10 (RF-48 a RF-51), dos requerimientos no funcionales, tres reglas de negocio, la entidad EtiquetaQR, dos casos de uso, un indicador en el reporte de calidad y tres preguntas abiertas. |
+| 2 | Administrador y usuarios, dos formatos, traslado con dos firmas, mantenimiento fuera del alcance, componentes, serial y código de activo, terceros. |
+| 3 | Códigos QR (RF-08 esencial, RF-48 a RF-51). |
+| **4** | **Cambio de fuente:** documentación oficial en lugar del Excel 2026, que solo se usa para cargar datos. Estructura organizacional jerárquica, sedes reales con sus pisos, catálogo oficial de cargos, valoración GT-M4, datos de adquisición, mantenimiento preventivo dentro del alcance, levantamiento con acta. RF-52 a RF-65, RN-20 a RN-29, modelo de datos v4. |
 
-### 1.5 Definiciones
+### 1.4 Definiciones
 
-| Término | Significado en este documento |
+| Término | Significado |
 |---|---|
-| **Equipo** | Bien tecnológico individual con hoja de vida propia: un PC, un monitor, una impresora, una UPS, etc. |
-| **Componente** | Parte interna (RAM, disco, procesador, tarjeta) o periférico (teclado, mouse, sonido, cámara) de un equipo de cómputo. Se registra dentro de la hoja de vida del equipo. |
-| **Cambio de componente** | Agregar, cambiar o quitar un componente a un equipo. Forma parte de la hoja de vida, no del mantenimiento. |
-| **Parque tecnológico** | El conjunto de todos los equipos tecnológicos de la entidad. |
-| **Puesto de trabajo** | Conjunto de equipos que usa un funcionario en un lugar. Es la unidad con la que se levantó el inventario 2026 (una fila = un puesto). |
-| **Serial** | Número de serie del fabricante. Identificador obligatorio y único de cada equipo. |
-| **Código de activo** | Código de Almacén pegado en el equipo (formato `I1-######`). Identificador obligatorio cuando el equipo lo tiene. |
-| **Código QR** | Código de barras bidimensional impreso en una etiqueta pegada al equipo. Contiene solo un enlace que abre su hoja de vida en el sistema. |
-| **Etiqueta QR** | Adhesivo resistente con el código QR, el serial y el código de activo del equipo. |
-| **Hoja de vida** | Ficha del equipo más todo su historial de eventos. |
-| **Evento** | Hecho registrado sobre un equipo, con fecha, autor y soporte: traslado, cambio de componente, diagnóstico, baja, etc. |
-| **Formato de entrega** | Documento que firma quien recibe un equipo. |
-| **Formato de baja** | Documento que firma quien entrega un equipo, ya sea para pasarlo a otra persona o porque sale definitivamente de servicio. Incluye diagnóstico y recomendaciones del área de sistemas. |
-| **Equipo de tercero** | Equipo que está en la entidad pero no es 100 % de la Gobernación (comodato, convenio, proveedor). Se registra indicando su propietario. |
+| **Activo de información** | Lo que tiene valor para la entidad y contiene o manipula información (GT-M4). En este sistema: los de tipo hardware y soporte. |
+| **Equipo** | Activo tecnológico individual con hoja de vida propia. |
+| **Activo de soporte** | Componente físico que no contiene información pero sostiene su disponibilidad: UPS, aire acondicionado, planta eléctrica. No se clasifica por información (GT-M4). |
+| **Propietario del activo** | Director o líder del proceso donde está el activo. Identifica, actualiza y mantiene sus activos (GT-M4). |
+| **Custodio del activo** | Cargo que administra el activo y aplica los controles que define el propietario (GT-M4). |
+| **Responsable** | Funcionario o contratista que tiene el equipo a cargo y firma su entrega. |
+| **Valoración CID** | Calificación de 1 a 4 de confidencialidad, integridad y disponibilidad; su suma (3 a 12) da la importancia (GT-M4, tablas 3 a 6). |
+| **Levantamiento** | Identificación y valoración de los activos de un proceso, cerrada con un acta firmada por el propietario y los custodios (GT-M4 4.1). |
+| **PAMP** | Programa Anual de Mantenimiento Preventivo de la Dirección TIC. |
+| **Dependencia** | Unidad de la estructura del Decreto 609: despacho, secretaría, departamento administrativo, oficina, dirección o área. |
+| **Sede** | Edificio donde funciona la entidad («sucursal» en el GT-M4). Cada sede tiene sus pisos. |
+| **Serial**, **código de activo**, **QR**, **evento**, **formato de entrega / de baja** | Igual que en v3. |
 
 ---
 
-## 2. Decisiones del levantamiento
+## 2. Fuentes del análisis
 
-Tras la segunda revisión quedaron resueltas 12 de las 14 preguntas; siguen abiertas la carga de hojas de vida antiguas (7) y si el traslado podrá hacerse con un solo documento (10). A ellas se suman tres decisiones nuevas: registrar todos los equipos existentes, no manejar equipos personales e incorporar códigos QR.
+### 2.1 Documentos usados
 
-| # | Pregunta | Respuesta | Implicación para el sistema |
-|---|---|---|---|
-| 1 | Alojamiento y tecnologías | Se define después | El análisis no fija tecnología. RNF de portabilidad: debe poder instalarse en servidor propio o intranet. |
-| 2 | Usuarios, roles y permisos | Un administrador crea los usuarios con su contraseña; los usuarios hacen todo lo demás | Dos perfiles: Administrador y Usuario. Cada evento queda registrado automáticamente a nombre del usuario que lo hizo. Los funcionarios responsables no ingresan; firman los formatos. |
-| 3 | Firma de los funcionarios | Se necesita firmar | Cada movimiento genera su formato prellenado, se imprime, se firma y se sube escaneado al evento. La firma digital queda como mejora futura. |
-| 4 | Fuente oficial de datos | El inventario 2026 es la base y tiene más información que el formato | El modelo de datos se construye a partir de las 53 columnas del inventario. |
-| 5 | Identificación del equipo | Lo más importante son el serial y el código de activo | No se crea código interno visible. El serial es obligatorio y único; el código de activo es obligatorio cuando el equipo lo tiene. |
-| 6 | Tipos de equipo | Todos (confirmado por el inventario) | 12 tipos iniciales; el catálogo de tipos es editable y el formulario de registro cambia según el tipo. |
-| 7 | Carga inicial o migración de hojas antiguas | Sin respuesta | Supuesto: se carga el inventario 2026 como estado inicial y el historial empieza desde ahí. |
-| 8 | Eventos a registrar | Ajustado en la revisión | Alta, traslado o cambio de responsable, cambio de componente, diagnóstico y baja. El mantenimiento no se registra. |
-| 9 | Proceso de baja | La Dirección TIC emite el diagnóstico y lo especifica en la hoja de vida; no recibe constancia de nadie | Al registrar la baja con su formato firmado, el equipo queda «Dado de baja». No hay estado intermedio de espera. |
-| 10 | Traslados | Se suben dos documentos: el formato de baja de quien entrega y el formato de entrega de quien recibe, cada uno con su firma | El traslado exige los dos documentos firmados. Se está averiguando si pueden unirse en uno solo; el sistema debe permitir ambas opciones. |
-| 11 | Mantenimiento | Es un procedimiento aparte, fuera del alcance | No hay módulo de mantenimiento. Los cambios de componentes (agregar, cambiar, quitar) sí son parte de la hoja de vida. |
-| 12 | Formatos | No hay código institucional; solo existen dos formatos: entrega y baja, que sirven para casi todo | El sistema genera esos dos formatos prellenados y los mejora; no se crean actas adicionales. |
-| 13 | Reportes | Todos | Catálogo de reportes de la sección 11 con filtros combinables y exportación. |
-| 14 | Datos sensibles | Aplica Ley 1581 de 2012 | La cédula se trata como dato personal: enmascarada en listados y con registro de quién la consulta o exporta. |
-| — | Nuevo: registro de cada equipo | Hay que registrar todos los equipos | El sistema es también el inventario maestro: cada equipo existe en él aunque nunca haya tenido un evento. |
-| — | Nuevo: propiedad | Hay equipos que no son 100 % de la Gobernación y se indican; los personales no se manejan | Los equipos de terceros se registran con su propietario; los personales no se registran ni se cargan desde el inventario. |
-| — | Nuevo (v3): códigos QR | Incorporar QR a las hojas de vida de los PC para acceder más fácil a su información | Cada equipo tiene un QR con un enlace a su hoja de vida, impreso en una etiqueta pegada al equipo (módulo 5.10). Supuesto: se genera para todos los equipos, empezando por los PC, y solo lo abre el personal con sesión iniciada. |
+| Documento | Qué aporta al sistema |
+|---|---|
+| **GT-M4** Manual para elaboración del inventario, definición y clasificación de los activos de información (v01, 28/09/2023, proceso Gestión Tecnológica) | Campos oficiales del activo (identificación, atributo, propiedad, ubicación, valoración), tipos de activo, escalas CID e importancia, criterios para pasar a gestión de riesgos, levantamiento con acta de aceptación. Marco: ISO/IEC 27001:2013, Ley 1581 de 2012, Ley 1712 de 2014, MSPI de MinTIC. |
+| **FOR.01** Formato de inventario de activos de información v00 | Las columnas exactas de la matriz y sus listas (hoja «Datos»): sedes, tipo de sede, dependencias, 17 procesos, tipos de activo, datos personales, tipo de ubicación, controles de monitoreo y la matriz de impacto. Trae 29 activos de ejemplo de la Dirección de Sistemas. |
+| **Programa Anual de Mantenimiento Preventivo** (v01, 21/10/2024, vigencia 2026) | Objetivo, alcance y recursos del mantenimiento; programación mensual por dependencia con impacto alto, medio o bajo; sedes con dirección, pisos y dependencias por piso; conteos de equipos e impresoras; 2,5 h por dispositivo. |
+| **Decreto 609 de 2023** (organigrama) | Estructura organizacional vigente, creación de la Secretaría de Minas y Energía y cambios de nombre de dependencias (la Dirección Técnica de Sistemas pasa a ser la Dirección TICS). |
+| **Decreto 607 de 2023** (planta global y nomenclatura) | Niveles jerárquicos y códigos oficiales de cargos (001 a 477), grados. |
+| **Decreto 608 de 2023** (manual de funciones, 2 copias) | Función común a todo empleo: usar bien los equipos e informar los cambios para mantener actualizado el inventario del área. *Solo se pudieron extraer las primeras 80 de 639 páginas* (ver pregunta 12). |
+| **Planta Central** (2-mar-2026) y **Planta Educación** (13-may-2026) | Dependencias reales y ubicación de cada funcionario, cargo con código y grado, nivel, tipo de provisión, jefe inmediato. La de Educación muestra 686 cargos en 166 instituciones educativas de 71 municipios. |
+| **Organigrama_GobCordoba.webp** | Imagen del organigrama del Decreto 609 (el texto del decreto ya lo transcribe). |
 
----
+### 2.2 Documentos descartados
 
-## 3. Diagnóstico del inventario 2026
+Descartados por indicación del profesor, porque no tienen relación con los activos:
 
-El inventario sirve como punto de partida, pero no puede cargarse tal cual: está organizado por puesto de trabajo y no por equipo, y 146 de sus 930 equipos (16 %) no tienen un código de activo utilizable. Se levantó con un formulario de Microsoft Forms entre el 16 y el 25 de marzo de 2026, por 83 personas distintas, en 11 sedes.
+- *106. Reporte a la CNSC Auxiliar Administrativo 407-7 – Renuncia* (trámite de personal).
+- *Necesidad_DTH.pdf*.
+- *reporteEvaluacion_2914065.pdf*.
+- *Resolución 0148 de 2026 – Renuncia* (acto de personal).
 
-### 3.1 Estructura del archivo
+### 2.3 El inventario 2026 (Excel)
 
-Cada una de las 461 filas describe un puesto de trabajo y puede contener hasta seis equipos y tres periféricos. Las 53 columnas se agrupan así:
+Hasta v3, el modelo se construyó con las 53 columnas del inventario de marzo de 2026 (Microsoft Forms, 461 filas, 930 equipos). **Desde v4 ese archivo no define la estructura del sistema.** Queda solo como **fuente de datos para la carga**: sus columnas se mapean a la plantilla oficial de carga (sección 12). Su diagnóstico de calidad (sin serial, códigos repetidos, 175 variantes de dependencia) sigue sirviendo para diseñar la depuración, pero ya no condiciona los campos.
 
-| Grupo | Columnas | Contenido |
+### 2.4 Inconsistencias encontradas en las fuentes
+
+| # | Inconsistencia | Tratamiento |
 |---|---|---|
-| Metadatos del formulario | 6 | ID, hora de inicio y fin, correo (siempre «anonymous»), nombre, última modificación |
-| Equipos (6 bloques de 4 campos) | 24 | Procesamiento, video, impresión, conectividad, digitalización y otros; cada bloque con tipo, marca, modelo y código de activo |
-| Software | 2 | Versión de sistema operativo y antivirus |
-| Periféricos (3 bloques) | 12 | Teclado, mouse y sonido: si tiene, estado, marca y serial |
-| Estado | 2 | Estado de funcionamiento (4 opciones) y observaciones |
-| Ubicación | 3 | Sede, piso y dependencia |
-| Responsable | 3 | Nombre, cédula y tipo de vinculación (planta o contratista) |
-| Levantamiento | 1 | Nombre de quien hizo el inventario |
+| I-01 | La tabla 1 del GT-M4 (procesos y propietarios) viene de una plantilla de empresa privada: «Comercial», «Postventa», «SAGRILAFT», «Gerente General». El FOR.01 sí lista los 17 procesos de la Gobernación. | Se usan los procesos del FOR.01. |
+| I-02 | El FOR.01 y sus ejemplos dicen «Empresa» y usan nombres anteriores al Decreto 609 («DIRECION DE SISTEMAS»). | Tabla de equivalencias hacia los nombres oficiales. |
+| I-03 | La tabla 6 del GT-M4 pone la importancia baja «de 0 a 3», aunque la suma mínima es 3. | Se acepta 3 como mínimo real. |
+| I-04 | El Decreto 607 escaneado asigna el código 430 al Auxiliar de Servicios Generales; el artículo 15 y la planta usan 470. | Se usa 470. |
+| I-05 | Fondo Territorial de Pensiones aparece bajo Hacienda en el PAMP y bajo Gestión Administrativa en la planta. | Planta (oficial de personal); por confirmar. |
+| I-06 | El PAMP se titula «Plan anual de Mantenimiento 2024», pero programa la vigencia 2026. | Se registra como plan de la vigencia 2026. |
+| I-07 | En el FOR.01 hay activos con «Contiene datos personales = NO» y clasificación «Reservado» o «Sensible». | El sistema exige `no_aplica` cuando no hay datos personales (RN-24). |
 
-Al separar los bloques, las 461 filas producen 930 equipos individuales. Palacio Naín concentra 263 puestos (57 %), seguido de Morindo (52) y Edificio Victoria Char (50).
+---
 
-> Inventario de la infraestructura tecnológica 2026 (1-461) · 930 equipos, 12 tipos. Los equipos de cómputo dominan, pero 187 equipos de impresión, energía, conectividad y digitalización también necesitan hoja de vida.
+## 3. Diagnóstico de la situación con las fuentes oficiales
 
-### 3.2 Problemas de calidad encontrados
-
-| ID | Problema | Magnitud | Ejemplo | Consecuencia para el sistema |
-|---|---|---|---|---|
-| D-01 | Datos por puesto, no por equipo | 461 filas → 930 equipos | Una fila con PC, monitor e impresora | La carga debe dividir cada fila en varios equipos y conservar el puesto como agrupación. |
-| D-02 | Equipos sin código de activo | 146 equipos (16 %) | «N/A», «Sin código», «No se ve», «No legible» | El equipo se identifica por serial y código de activo; los que no tengan código quedan marcados y se priorizan en la verificación en sitio. |
-| D-03 | Formato de código inconsistente | 4 escrituras del mismo patrón; 11 con «L1» en vez de «I1»; números de 5 y 6 dígitos (425 y 266) | I1-25646, I1 24147, I125547, L1 25558, IU-25515 | Normalizar al cargar y validar el formato al registrar. Confirmar con Almacén si 25646 y 025646 son series distintas. |
-| D-04 | Códigos de activo repetidos | 12 códigos repetidos en 24 equipos | PC y monitor con I1-25614; I1-23999 en dos puestos | En All in One el monitor es parte del PC (no es duplicado real); en los demás, revisar en sitio. |
-| D-05 | Valores que no son código | Cerca de 45 | Seriales (VNB4513213, X2HJ044200) o frases | Separar código de activo y serial en campos distintos. |
-| D-06 | No se capturó el serial del equipo principal | 930 equipos sin serial | Solo hay serial de teclado, mouse y sonido | Sin código ni serial, un equipo no puede identificarse con certeza. El serial pasa a ser obligatorio desde el registro. |
-| D-07 | Texto libre sin normalizar | 175 variantes de dependencia; unas 25 de sistema operativo | «Secretaría de educación», «Sec Educación», «Educación»; «W10», «Windows 10» | Listas cerradas y administrables para dependencia, sede, piso, tipo, marca y sistema operativo. |
-| D-08 | Responsable incompleto | 51 sin nombre, 199 sin cédula, 22 cédulas con texto | «No estaba funcionario» en el campo cédula | Permitir equipos sin responsable asignado como estado válido, y marcar los pendientes de completar. |
-| D-09 | Estado por puesto, no por equipo | 30 puestos «No funcional, requiere ser dado de baja»; 34 «Malo, requiere cambio de componentes» | Un puesto malo puede tener un monitor bueno | El estado se registra por equipo. Los 64 puestos señalados son los primeros candidatos a diagnóstico. |
-| D-10 | Equipos que no son de la entidad | Algunos casos | «No es de la gobernación», «es personal» | Los equipos de terceros se registran indicando su propietario; los personales se excluyen de la carga. |
-| D-11 | Campos mezclados | Antivirus con Sí, No y nombres de producto | «Fortinet», «FortiEDR», «Si» | Separar «tiene antivirus» (sí/no) de «producto». |
-
-Estas cifras salen de una revisión automática del archivo; la corrección final de cada equipo requiere verificación en sitio o con Almacén.
+1. **Hoy la entidad tiene tres inventarios que no se cruzan:** la matriz de activos de información (FOR.01, valoración de seguridad), el programa de mantenimiento (conteos por dependencia) y el inventario 2026 (equipos por puesto). El sistema los une en una sola ficha por equipo.
+2. **La estructura organizacional es jerárquica y cambió en 2023.** Una lista plana de dependencias no permite consultar «todo lo de la Secretaría de Hacienda» (con sus seis direcciones), ni reconocer nombres viejos.
+3. **Las sedes tienen pisos distintos.** Palacio de Naín tiene 8 pisos ocupados; Places Mall, un local en el piso 2; el Laboratorio, uno solo. El PAMP dice qué dependencia está en cada piso.
+4. **El responsable es un empleo oficial,** con código, grado y jefe inmediato. La planta trae mucho más (salario, RH, salud, etnia, hijos, dirección); la Ley 1581 obliga a no copiarlo.
+5. **La valoración de seguridad es parte de la ficha del activo** según el GT-M4, y define qué activos pasan a gestión de riesgos.
+6. **El mantenimiento preventivo existe como programa oficial** con meta mensual: 507 equipos y 64 impresoras, a 2,5 h por dispositivo.
 
 ---
 
 ## 4. Usuarios y actores
 
-El sistema tiene dos perfiles: un Administrador, que crea y gestiona a los usuarios, y los Usuarios del área de sistemas, que hacen todo el trabajo diario; cada evento queda a nombre de quien lo registró.
-
-| Actor | ¿Ingresa al sistema? | Qué hace |
+| Actor | ¿Ingresa? | Qué hace |
 |---|---|---|
-| **Administrador** | Sí | Crea, edita y desactiva usuarios y les asigna contraseña inicial; restablece contraseñas; mantiene las listas (sedes, dependencias, tipos, marcas). Además puede hacer todo lo que hace un usuario. |
-| **Usuario** (ingeniero o técnico de soporte) | Sí, con usuario propio | Registra equipos, traslados, cambios de componentes, diagnósticos y bajas; genera los formatos; sube los documentos firmados; consulta y exporta reportes. |
-| **Funcionario responsable del equipo** | No | Firma el formato de entrega cuando recibe un equipo y el formato de baja cuando lo entrega. |
-| **Jefe de la Dirección TIC** | No | Recibe reportes. |
-| **Dependencia que tramita la baja administrativa** | No | Puede recibir el listado de equipos dados de baja; no devuelve constancia al sistema. |
-| **Almacén** | No | Fuente del código de activo; destinatario de conciliaciones. |
-
-### 4.1 Valoración del esquema de administrador
-
-El esquema propuesto (un administrador que crea los usuarios y usuarios que operan todo) es el adecuado para un equipo pequeño: es simple, evita cuentas compartidas y permite saber quién hizo cada cambio. Para que funcione bien se recomienda:
-
-- Tener al menos dos personas con perfil de administrador, para no depender de una sola si falta o se va.
-- Desactivar usuarios en lugar de borrarlos, para que el historial conserve siempre el nombre del autor.
-- Obligar al usuario a cambiar la contraseña asignada en su primer ingreso; el administrador no debe conocer las contraseñas definitivas.
-- Que ni el administrador pueda editar o borrar eventos: solo anularlos con un evento justificado.
+| **Administrador** | Sí | Usuarios, contraseñas, catálogos (árbol de dependencias, sedes y pisos, cargos, procesos, tipos, modelos, proveedores). Además, todo lo de un usuario. |
+| **Usuario** (ingeniero, técnico o pasante de soporte TIC) | Sí | Registra equipos, valoraciones, traslados, componentes, mantenimientos, diagnósticos y bajas; genera formatos; sube documentos firmados; carga datos; consulta reportes. |
+| **Responsable del equipo** (funcionario o contratista) | No | Firma la entrega y la devolución; informa los cambios del equipo a su cargo (Decreto 608, función común). |
+| **Propietario del activo** (director o líder del proceso) | No | Valida la valoración y firma el acta de aceptación del levantamiento. |
+| **Custodio del activo** | No | Firma el acta del levantamiento; aplica los controles. |
+| **Responsable del SGSI** | No | Orienta el levantamiento y dirime dudas de clasificación; recibe el reporte de activos críticos. |
+| **Director TIC** | No | Aprueba el PAMP, recibe reportes y cumplimiento. |
+| **Almacén General** | No | Fuente del código de activo y de los datos de adquisición. |
+| **Dirección de Talento Humano** | No | Fuente de la planta de personal. |
 
 ---
 
 ## 5. Requerimientos funcionales
 
-Son 51 requerimientos en 10 módulos: **35 esenciales** (van en la primera versión), 15 importantes y 1 deseable. La versión 2 eliminó el código interno y el módulo de mantenimiento y agregó el de componentes; la versión 3 sube el QR (RF-08) a esencial y agrega el módulo 5.10 de códigos QR.
+**65 requerimientos en 13 módulos.** Los RF-01 a RF-51 conservan su número de v3: los que cambian se marcan **(mod. v4)**. Los nuevos son RF-52 a RF-65 **(nuevo v4)**. Prioridades: E = esencial, I = importante, D = deseable.
 
 ### 5.1 Inventario maestro de equipos
 
 | ID | Requerimiento | Prioridad |
 |---|---|---|
-| RF-01 | Registrar cualquier equipo de la Gobernación o de terceros, de los tipos del catálogo, con los campos de la sección 8, aunque aún no tenga responsable ni eventos. Los equipos personales no se registran. | Esencial |
-| RF-02 | Identificar cada equipo por su serial (obligatorio y único) y su código de activo (obligatorio cuando el equipo lo tiene, formato I1-######), avisando si alguno ya existe en otro equipo y marcando los equipos sin código de activo. | Esencial |
-| RF-03 | Mostrar campos distintos según el tipo de equipo (por ejemplo, sistema operativo y antivirus solo para equipos de cómputo). | Esencial |
-| RF-04 | Registrar la propiedad: Gobernación o tercero (comodato, convenio, proveedor), con el nombre del propietario cuando es de tercero. | Esencial |
-| RF-05 | Agrupar equipos en un puesto de trabajo (PC, monitor, impresora, UPS) y trasladar el puesto completo o un equipo suelto. | Importante |
-| RF-06 | Adjuntar fotografías al equipo (chasis, etiqueta, serial). | Importante |
-| RF-07 | Buscar un equipo por serial, código de activo, responsable, cédula, dependencia o sede, tolerando espacios y guiones (I1 24147 = I1-24147). | Esencial |
-
-> El antiguo RF-08 (etiqueta con QR) pasa al módulo 5.10, ahora como esencial.
+| RF-01 | Registrar cualquier activo de tipo hardware o soporte, de la Gobernación o de terceros, con los campos de la sección 8, aunque aún no tenga responsable ni eventos. **(mod. v4)** | E |
+| RF-02 | Identificar cada equipo por serial (obligatorio y único), código de activo de Almacén (I1-######, cuando lo tiene) y un consecutivo de activo (`ID ACTIVO` del FOR.01) que asigna el sistema. **(mod. v4)** | E |
+| RF-03 | Mostrar campos distintos según el tipo de equipo. | E |
+| RF-04 | Registrar la propiedad: Gobernación o tercero (comodato, convenio, proveedor, arrendamiento), con el propietario tomado del catálogo de proveedores. **(mod. v4)** | E |
+| RF-05 | Agrupar equipos en un puesto de trabajo y trasladar el puesto completo. | I |
+| RF-06 | Adjuntar fotografías al equipo. | I |
+| RF-07 | Buscar por serial, código de activo, número de activo, responsable, documento, dependencia (incluidas sus subdependencias) o sede, tolerando espacios y guiones. **(mod. v4)** | E |
+| RF-52 | Registrar los datos de adquisición: forma de ingreso, fecha, valor en COP, proveedor, contrato, factura, fin de garantía y vida útil; avisar las garantías por vencer y los equipos que superan su vida útil. **(nuevo v4)** | I |
 
 ### 5.2 Hoja de vida e historial
 
 | ID | Requerimiento | Prioridad |
 |---|---|---|
-| RF-09 | Mostrar en una sola vista la ficha del equipo, su configuración y componentes actuales, su responsable y ubicación, y su historial completo en orden cronológico. | Esencial |
-| RF-10 | Registrar eventos sobre un equipo con tipo, fecha, descripción y adjuntos. Tipos iniciales: alta, traslado o cambio de responsable, cambio de componente, diagnóstico, baja, actualización de datos. | Esencial |
-| RF-11 | Asignar como autor de cada evento, de forma automática, al usuario que inició sesión, sin posibilidad de cambiarlo. | Esencial |
-| RF-12 | Impedir la edición o eliminación de eventos; una corrección se registra como un evento de anulación o aclaración. Registrar automáticamente un evento cuando cambian responsable, ubicación o estado, con valor anterior y nuevo. | Esencial |
-| RF-13 | Permitir configurar nuevos tipos de evento sin desarrollo. | Importante |
+| RF-09 | Mostrar en una sola vista la ficha, la valoración vigente, la configuración y los componentes, el responsable y la ubicación, los datos de adquisición y el historial completo, incluidos los mantenimientos. **(mod. v4)** | E |
+| RF-10 | Registrar eventos con tipo, fecha, descripción y adjuntos. Tipos: alta, traslado, cambio de componente, mantenimiento, diagnóstico, valoración, baja, actualización de datos, anulación o aclaración. **(mod. v4)** | E |
+| RF-11 | Asignar el autor del evento automáticamente. | E |
+| RF-12 | Eventos inmutables; un cambio de responsable, ubicación, estado o valoración genera un evento con valor anterior y nuevo. **(mod. v4)** | E |
+| RF-13 | Configurar nuevos tipos de evento sin desarrollo. | I |
 
-### 5.3 Componentes y cambios de configuración
-
-Reemplaza al módulo de mantenimiento de la versión 1: el mantenimiento se gestiona fuera del sistema, pero todo lo que se agrega, cambia o quita a un equipo es parte de su hoja de vida.
+### 5.3 Componentes y configuración
 
 | ID | Requerimiento | Prioridad |
 |---|---|---|
-| RF-14 | Registrar los componentes de cada equipo de cómputo (RAM, disco, procesador, tarjeta de red o video, teclado, mouse, sonido, cámara) con tipo, capacidad o característica, marca, serial y estado. | Esencial |
-| RF-15 | Registrar un cambio de componente (agregar, cambiar o quitar) con fecha, motivo, componente retirado y componente instalado con sus seriales; el cambio queda como evento y actualiza la configuración actual del equipo. Si el elemento cambiado es a su vez un equipo con hoja de vida propia (por ejemplo, un monitor), el cambio se registra en ambas hojas. | Esencial |
-| RF-16 | Consultar el historial de cada componente y la configuración que tenía el equipo en una fecha dada. | Importante |
-| RF-17 | Registrar el destino del componente retirado: bodega, otro equipo (con su serial) o descarte. | Importante |
+| RF-14 | Registrar los componentes de un equipo de cómputo; RAM, disco y procesador son obligatorios para darlo por verificado. **(mod. v4)** | E |
+| RF-15 | Registrar un cambio de componente (agregar, cambiar, quitar) como evento. | E |
+| RF-16 | Consultar la configuración en una fecha dada. | I |
+| RF-17 | Registrar el destino del componente retirado (bodega, otro equipo con su referencia, descarte). | I |
 
 ### 5.4 Responsables, ubicación y traslados
 
 | ID | Requerimiento | Prioridad |
 |---|---|---|
-| RF-18 | Asignar un responsable a cada equipo con nombre, cédula, cargo, dependencia y tipo de vinculación (planta o contratista). | Esencial |
-| RF-19 | Registrar la ubicación con sede, piso y dependencia, tomados de listas administrables. | Esencial |
-| RF-20 | Registrar un traslado o cambio de responsable con origen, destino, fecha y motivo, generando los dos formatos prellenados (baja de quien entrega y entrega de quien recibe) y exigiendo subir ambos firmados. Si la Dirección TIC aprueba un documento único, el sistema debe aceptarlo en su lugar. | Esencial |
-| RF-21 | Permitir que un equipo quede sin responsable (en bodega) como estado válido y listarlo. | Esencial |
-| RF-22 | Consultar todos los equipos a cargo de una persona y generar su formato de entrega consolidado. | Esencial |
-| RF-23 | Generar el paz y salvo o listado de devolución cuando un funcionario se retira. | Importante |
+| RF-18 | Registrar la persona responsable con tipo y número de documento, nombres, apellidos, correo institucional, cargo oficial (código, denominación, grado, encargo), dependencia real, jefe inmediato, planta, tipo de vinculación (planta, contratista, pasante) y provisión. **(mod. v4)** | E |
+| RF-19 | Registrar la ubicación como sede → piso de esa sede → dependencia del árbol oficial, proponiendo las dependencias que el PAMP ubica en ese piso. **(mod. v4)** | E |
+| RF-20 | Traslado o cambio de responsable con los dos formatos firmados (o documento único). | E |
+| RF-21 | Equipo sin responsable (bodega) como estado válido. | E |
+| RF-22 | Consultar los equipos a cargo de una persona y su formato de entrega consolidado. | E |
+| RF-23 | Paz y salvo cuando un funcionario se retira; el sistema avisa de las personas con `fecha_fin_vinculacion` próxima que aún tienen equipos. **(mod. v4)** | I |
 
 ### 5.5 Diagnóstico y baja
 
 | ID | Requerimiento | Prioridad |
 |---|---|---|
-| RF-24 | Registrar un diagnóstico técnico con estado encontrado, causa, recomendación y evidencia. | Esencial |
-| RF-25 | Registrar la baja del equipo con diagnóstico, motivo (obsolescencia, daño irreparable, pérdida), recomendaciones del área de sistemas y formato de baja firmado; el equipo pasa a «Dado de baja» y queda especificado en su hoja de vida. No se espera constancia de otra dependencia. | Esencial |
-| RF-26 | Anular una baja registrada por error mediante un evento justificado, devolviendo el equipo a su estado anterior. | Importante |
-| RF-27 | Generar el listado de equipos dados de baja en un período, por si se necesita entregar a la dependencia que tramita la baja administrativa. | Importante |
+| RF-24 | Registrar un diagnóstico técnico. | E |
+| RF-25 | Registrar la baja con diagnóstico, motivo y formato firmado. | E |
+| RF-26 | Anular una baja con evento justificado. | I |
+| RF-27 | Listado de bajas por período. | I |
 
 ### 5.6 Formatos y firmas
 
 | ID | Requerimiento | Prioridad |
 |---|---|---|
-| RF-28 | Generar en PDF el formato de entrega prellenado: datos del equipo, componentes, responsable que recibe, fecha y espacios de firma. | Esencial |
-| RF-29 | Generar en PDF el formato de baja prellenado: datos del equipo, responsable que entrega, diagnóstico, recomendaciones y espacios de firma del ingeniero de soporte y del funcionario. | Esencial |
-| RF-30 | Subir al evento los documentos firmados; mientras falte alguno, el evento queda «Pendiente de firma». | Esencial |
-| RF-31 | Listar los eventos pendientes de firma. | Importante |
-| RF-32 | Capturar la firma en pantalla (tableta o celular) en lugar de imprimir, si se aprueba. | Deseable |
-| RF-33 | Exportar la hoja de vida completa (ficha, componentes e historial) como reporte imprimible, sin firma. | Importante |
+| RF-28 | Formato de entrega en PDF. | E |
+| RF-29 | Formato de baja en PDF. | E |
+| RF-30 | Subir documentos firmados; «Pendiente de firma» hasta tenerlos. | E |
+| RF-31 | Listar pendientes de firma. | I |
+| RF-32 | Firma en pantalla. | D |
+| RF-33 | Exportar la hoja de vida completa en PDF (incluye valoración y mantenimientos). **(mod. v4)** | I |
 
 ### 5.7 Consultas y reportes
 
 | ID | Requerimiento | Prioridad |
 |---|---|---|
-| RF-34 | Ofrecer el catálogo de reportes de la sección 11 con filtros combinables por sede, piso, dependencia, tipo, marca, estado, propiedad, responsable, vinculación y rango de fechas. | Esencial |
-| RF-35 | Exportar cualquier listado o reporte a Excel y PDF. | Esencial |
-| RF-36 | Mostrar un tablero con totales por tipo, estado, sede y dependencia. | Importante |
-| RF-37 | Mostrar indicadores de calidad del inventario: equipos sin serial, sin código de activo, sin responsable, con código repetido y pendientes de verificar. | Esencial |
+| RF-34 | Catálogo de reportes de la sección 11, con filtros por sede, piso, dependencia (con o sin subdependencias), proceso, tipo, marca, estado, propiedad, importancia, responsable, vinculación y fechas. **(mod. v4)** | E |
+| RF-35 | Exportar a Excel y PDF. | E |
+| RF-36 | Tablero de totales. | I |
+| RF-37 | Indicadores de calidad: sin serial, sin código, sin responsable, código repetido, pendientes de verificar, **sin valoración**, **sin datos de adquisición**. **(mod. v4)** | E |
+| RF-53 | Exportar la matriz de inventario de activos con las columnas y el encabezado del formato FOR.01, por proceso o dependencia. **(nuevo v4)** | E |
+| RF-54 | Reporte de activos que requieren gestión de riesgos (algún criterio CID = 4, o importancia alta o muy alta). **(nuevo v4)** | E |
 
-### 5.8 Carga inicial y depuración
+### 5.8 Carga de datos desde Excel
 
 | ID | Requerimiento | Prioridad |
 |---|---|---|
-| RF-38 | Importar el inventario 2026 desde Excel, dividiendo cada fila en equipos y componentes, conservando el número de fila de origen y excluyendo los equipos personales. | Esencial |
-| RF-39 | Normalizar al importar: códigos de activo, dependencias, sedes, pisos, sistemas operativos y marcas, con tabla de equivalencias editable. | Esencial |
-| RF-40 | Mostrar una vista previa con errores y advertencias por fila antes de confirmar la carga. | Esencial |
-| RF-41 | Marcar como «Pendiente de verificar» los equipos importados sin serial o con datos dudosos, y permitir confirmarlos en sitio. | Esencial |
-| RF-42 | Permitir cargas posteriores desde Excel para nuevos levantamientos o equipos nuevos. | Importante |
+| RF-38 | Importar equipos desde la **plantilla oficial de carga** (columnas del modelo v4 y del FOR.01), con vista previa, número de fila de origen y modo simulación. El inventario 2026 se carga mapeando sus columnas a esa plantilla. **(mod. v4)** | E |
+| RF-39 | Normalizar con la tabla de equivalencias editable (dependencias con nombres anteriores al Decreto 609, sedes, marcas, modelos, sistemas operativos). **(mod. v4)** | E |
+| RF-40 | Vista previa con errores y advertencias por fila. | E |
+| RF-41 | Marcar «Pendiente de verificar» lo importado sin serial o con datos dudosos. | E |
+| RF-42 | Cargas posteriores sin duplicar equipos existentes. | I |
+| RF-55 | Importar personas desde la planta de Talento Humano (Central y Educación), tomando **solo** las columnas permitidas y descartando el resto sin guardarlo. **(nuevo v4)** | E |
 
 ### 5.9 Usuarios y administración
 
 | ID | Requerimiento | Prioridad |
 |---|---|---|
-| RF-43 | Manejar dos perfiles: Administrador y Usuario. Ambos operan todo el sistema; solo el Administrador gestiona usuarios y listas. | Esencial |
-| RF-44 | Permitir al Administrador crear, editar y desactivar usuarios y asignar una contraseña inicial que el usuario debe cambiar en su primer ingreso. Los usuarios no se borran. | Esencial |
-| RF-45 | Permitir al Administrador mantener las listas: sedes, pisos, dependencias, tipos de equipo, tipos de componente, marcas, sistemas operativos, tipos de evento, motivos de baja. | Esencial |
-| RF-46 | Registrar una bitácora de auditoría de inicios de sesión, cambios, consultas y exportaciones de cédulas. | Esencial |
-| RF-47 | Permitir al Administrador restablecer la contraseña de un usuario. | Importante |
+| RF-43 | Dos perfiles: Administrador y Usuario. | E |
+| RF-44 | Crear, editar y desactivar usuarios, con cambio de contraseña en el primer ingreso; enlazar el usuario con su persona. **(mod. v4)** | E |
+| RF-45 | Mantener los catálogos: procesos, árbol de dependencias y equivalencias, municipios, sedes y pisos, ubicación de dependencias, cargos, tipos de equipo, marcas, modelos, proveedores, sistemas operativos, tipos de componente, motivos de baja. **(mod. v4)** | E |
+| RF-46 | Bitácora de auditoría. | E |
+| RF-47 | Restablecer contraseñas. | I |
 
-### 5.10 Códigos QR y etiquetas (nuevo en v3)
+### 5.10 Códigos QR y etiquetas
 
-El QR lleva a la hoja de vida del equipo sin tener que buscarlo: el técnico escanea la etiqueta con el celular y ve la ficha, los componentes, el responsable y el historial. El QR contiene solo un enlace; la información siempre se lee del sistema, así que nunca queda desactualizada.
+RF-08 (E), RF-48 (E), RF-49 (I), RF-50 (E) y RF-51 (I) quedan **sin cambios** respecto a v3. RF-49 filtra ahora por sede y piso reales.
+
+### 5.11 Clasificación y valoración del activo — GT-M4 (nuevo v4)
 
 | ID | Requerimiento | Prioridad |
 |---|---|---|
-| RF-08 | Generar automáticamente un código QR para cada equipo al registrarlo, con un enlace permanente a su hoja de vida. | Esencial |
-| RF-48 | Imprimir la etiqueta QR de un equipo desde su hoja de vida, con el QR, el serial, el código de activo, el tipo y el texto «Gobernación de Córdoba · Dirección TIC». | Esencial |
-| RF-49 | Imprimir etiquetas QR por lotes, filtrando por sede, piso, dependencia o tipo, o seleccionando equipos de un listado, en hojas de etiquetas adhesivas. | Importante |
-| RF-50 | Al escanear el QR, abrir la hoja de vida del equipo. Si el usuario no tiene sesión iniciada, pedir el ingreso y después abrir directamente ese equipo. | Esencial |
-| RF-51 | Reimprimir la etiqueta de un equipo (por daño o pérdida) con el mismo QR, registrando quién la reimprimió y cuándo. | Importante |
+| RF-56 | Registrar la valoración de un activo de hardware: datos personales y su clasificación, infraestructura crítica, continuidad del negocio, cargo del propietario, cargo del custodio, tipo de ubicación, tiempo de retención, controles de monitoreo y calificación de 1 a 4 de confidencialidad, integridad y disponibilidad, mostrando junto a cada nivel el texto de la escala del GT-M4. | E |
+| RF-57 | Calcular automáticamente el total, la importancia y la marca «requiere gestión de riesgos». | E |
+| RF-58 | Reclasificar un activo (por incidente o a pedido del propietario) como evento `valoracion`, conservando la historia de valoraciones. | E |
+| RF-59 | Llevar un levantamiento de activos por dependencia y proceso: lista de sus equipos con su valoración, acta de identificación y aceptación prellenada, firma del propietario y los custodios, y carga del acta firmada. | I |
+
+### 5.12 Mantenimiento preventivo y correctivo (nuevo v4)
+
+| ID | Requerimiento | Prioridad |
+|---|---|---|
+| RF-60 | Registrar el plan anual de mantenimiento por vigencia (código, versión, objetivo, alcance, horas por dispositivo) y su programación por dependencia, sede y mes, con impacto, responsable, equipo ejecutor y equipos estimados. Debe poder cargarse desde el Excel del PAMP. | E |
+| RF-61 | Registrar el mantenimiento de un equipo (preventivo, enlazado a su programación, o correctivo) con checklist de actividades (inspección, limpieza, actualización, revisión), hallazgos, insumos, duración, estado resultante y ejecutor (propio o tercero). Si cambia una pieza, ofrecer el cambio de componente en el mismo flujo. | E |
+| RF-62 | Generar la lista de trabajo de una programación: los equipos asignados hoy a esa dependencia y sede, con su estado. | E |
+| RF-63 | Mostrar el cumplimiento del plan: equipos mantenidos frente a estimados, por mes, dependencia y sede, y los atrasados. | I |
+| RF-64 | Generar el formato de mantenimiento en PDF por equipo o por programación, con espacio para la firma del responsable de la dependencia. | I |
+
+### 5.13 Estructura organizacional (nuevo v4)
+
+| ID | Requerimiento | Prioridad |
+|---|---|---|
+| RF-65 | Mostrar y filtrar por el árbol de dependencias: al elegir una secretaría se incluyen sus direcciones y áreas; las dependencias suprimidas se desactivan, sin borrarse, y se pueden fusionar con equivalencias. | E |
 
 ---
 
 ## 6. Requerimientos no funcionales
 
-Son 18 condiciones de calidad, cada una con la forma de verificarla en la fase de pruebas; la tecnología se decide después, por eso se exige portabilidad.
+Se mantienen **RNF-01 a RNF-18 de v3** (web responsive, español, rendimiento con 5.000 equipos, servidor propio, integridad referencial, contraseñas, HTTPS, Ley 1581, bitácora 5 años, respaldos, adjuntos, PDF carta, formatos colombianos, código en repositorio, manuales, etiquetas QR resistentes, ruta corta del QR). Se agregan:
 
 | ID | Requerimiento | Criterio de verificación |
 |---|---|---|
-| RNF-01 | Aplicación web usable en computador, tableta y celular; el registro de eventos, la consulta de la hoja de vida y la apertura por QR deben funcionar en celular para trabajo en sitio. | Prueba en dispositivos reales durante una visita técnica. |
-| RNF-02 | Interfaz en español, con la terminología de la entidad y mensajes de error que digan qué corregir. | Revisión de textos por la Dirección TIC. |
-| RNF-03 | Registrar un evento común (traslado, cambio de componente) en menos de 2 minutos y en no más de 3 pantallas. | Prueba cronometrada con 3 técnicos. |
-| RNF-04 | Soportar al menos 5.000 equipos con su historial y responder búsquedas y listados en menos de 2 segundos. | Prueba con datos sintéticos. |
-| RNF-05 | Instalable en servidor propio o intranet, sin depender de servicios externos de pago; despliegue documentado y reproducible. | Instalación en un equipo limpio siguiendo el manual. |
-| RNF-06 | Base de datos relacional con integridad referencial y unicidad garantizada para serial y código de activo. | Revisión del modelo físico. |
-| RNF-07 | Acceso con usuario y contraseña personal creados por el Administrador, con cambio obligatorio en el primer ingreso; contraseñas guardadas con función de derivación segura; cierre de sesión por inactividad. | Revisión de código y prueba. |
-| RNF-08 | Comunicación cifrada (HTTPS) y acceso solo desde la red interna o VPN. | Verificación de configuración. |
-| RNF-09 | Tratamiento de cédulas conforme a la Ley 1581 de 2012: enmascaradas en listados y exportaciones masivas, completas solo en la ficha y en los formatos, y registro de cada consulta o exportación. | Prueba funcional y revisión de bitácora. |
-| RNF-10 | Bitácora de auditoría inmutable y conservada mínimo 5 años. | Intento de modificación fallido. |
-| RNF-11 | Copia de respaldo diaria de base de datos y adjuntos en ubicación separada; pérdida máxima de 24 horas. | Restauración de prueba documentada. |
-| RNF-12 | Adjuntos en PDF, JPG o PNG, con tamaño máximo configurable (por defecto 10 MB). | Prueba de carga de archivos. |
-| RNF-13 | PDF generados en tamaño carta, legibles en blanco y negro y con espacios de firma suficientes. | Impresión de muestra. |
-| RNF-14 | Formatos colombianos: fecha DD/MM/AAAA, moneda COP, zona horaria de Colombia. | Revisión funcional. |
-| RNF-15 | Código fuente en repositorio de la entidad con control de versiones; propiedad de la Gobernación. | Verificación del repositorio. |
-| RNF-16 | Entrega con manual de usuario, manual de instalación y documentación del modelo de datos, para que otra persona pueda sostenerlo. | Revisión de entregables. |
-| RNF-17 | Etiqueta QR en material resistente (poliéster o vinilo, no papel), de mínimo 5 × 3 cm, con el QR de al menos 2 × 2 cm, legible por la cámara de un celular común a 20 cm. | Prueba de lectura con tres celulares distintos sobre etiquetas pegadas en equipos. |
-| RNF-18 | El enlace del QR debe usar una ruta corta y estable (por ejemplo, `/e/[identificador]`) para que, si cambia el dominio o el servidor, se redirija sin reimprimir las etiquetas. | Prueba de redirección tras cambiar el dominio en el ambiente de pruebas. |
+| RNF-19 | **Minimización de datos personales:** el sistema solo almacena de cada persona los datos de RF-18. Las cargas desde la planta descartan en memoria el resto de columnas. | Revisión del esquema y de una importación de prueba. |
+| RNF-20 | El propio sistema es un activo de información (tipo «Información electrónica», datos semiprivados) y debe quedar registrado en la matriz FOR.01 de la Dirección TIC. | Registro en la matriz. |
+| RNF-21 | Los PDF y las exportaciones llevan el encabezado del Sistema Integrado de Gestión (proceso, código, versión, fecha) cuando la Gobernación asigne el código del formato. | Revisión de un PDF. |
+| RNF-22 | Las direcciones reservadas (Casa Refugio) nunca aparecen en listados, exportaciones, PDF ni etiquetas. | Prueba funcional sobre todas las salidas. |
 
 ---
 
 ## 7. Reglas de negocio
 
-Estas 19 reglas son lo que el sistema no debe permitir; varias existen para que no se repitan los problemas de calidad de la sección 3.
+Se mantienen **RN-01 a RN-19 de v3**, salvo **RN-08**, que se reemplaza, y **RN-11**, que se amplía:
 
-| ID | Regla | Origen |
-|---|---|---|
-| RN-01 | Todo equipo de la Gobernación o de terceros que esté en la entidad debe estar registrado, aunque no tenga responsable ni eventos. Los equipos personales no se registran. | Decisión nueva |
-| RN-02 | El serial es obligatorio y único en todo el inventario, y nunca se reutiliza, ni siquiera tras la baja. Los equipos importados sin serial quedan «Pendiente de verificar» hasta completarlo. | Pregunta 5, D-06 |
-| RN-03 | El código de activo es obligatorio cuando el equipo lo tiene y debe cumplir el formato I1-######. Si ya existe en otro equipo, el sistema exige justificación; solo un All in One puede compartirlo con su pantalla integrada. | Pregunta 5, D-03, D-04 |
-| RN-04 | Un equipo tiene como máximo un responsable a la vez. | — |
-| RN-05 | Todo traslado o cambio de responsable exige dos documentos firmados: el formato de baja de quien entrega y el formato de entrega de quien recibe (o el documento único, si se aprueba). Sin ellos, el evento queda «Pendiente de firma». | Pregunta 10 |
-| RN-06 | Los eventos son inmutables y su autor es siempre el usuario que inició sesión; no se puede registrar un evento a nombre de otro. Un error se corrige con un evento de anulación o aclaración. | Pregunta 2 |
-| RN-07 | La configuración de un equipo solo cambia mediante un evento de cambio de componente, que registra el serial de lo retirado y de lo instalado. | Pregunta 11 |
-| RN-08 | El mantenimiento preventivo y correctivo no se registra en este sistema; solo sus efectos sobre los componentes, como cambio de componente. | Pregunta 11 |
-| RN-09 | La baja la registra la Dirección TIC con diagnóstico y formato de baja firmado, y queda especificada en la hoja de vida; no se espera constancia externa. | Pregunta 9 |
-| RN-10 | Un equipo «Dado de baja» conserva su hoja de vida y no admite nuevos eventos, salvo una anulación justificada o una aclaración. | — |
-| RN-11 | Sede, piso, dependencia, tipo, marca, tipo de componente y sistema operativo solo se eligen de listas; no se acepta texto libre en esos campos. | D-07 |
-| RN-12 | La cédula se muestra enmascarada (****6226) en listados y exportaciones masivas; completa solo en la ficha y en los formatos para firma, y cada consulta queda en la bitácora. | Pregunta 14 |
-| RN-13 | La fecha de un evento no puede ser futura ni anterior al alta del equipo (salvo eventos históricos marcados como tales). | — |
-| RN-14 | El estado de funcionamiento se registra por equipo, no por puesto de trabajo. | D-09 |
-| RN-15 | Solo el Administrador crea, edita, desactiva usuarios y restablece contraseñas; los usuarios nunca se eliminan. | Pregunta 2 |
-| RN-16 | Un equipo de tercero se registra con el nombre de su propietario. | D-10 |
-| RN-17 | El QR contiene únicamente el enlace a la hoja de vida con un identificador del equipo; nunca guarda datos del equipo ni datos personales. | v3 |
-| RN-18 | La hoja de vida que abre el QR solo se muestra a usuarios con sesión iniciada; quien escanee sin cuenta ve la pantalla de ingreso. | v3 (supuesto, pregunta 10 de la sección 14) |
-| RN-19 | El identificador del QR es permanente: no cambia aunque se corrija el serial o cambien el código de activo, el responsable o la ubicación. Un equipo dado de baja conserva su QR, que sigue mostrando su hoja de vida. | v3 |
+| ID | Regla |
+|---|---|
+| RN-08 **(reemplazada)** | El mantenimiento preventivo y correctivo se registra como evento `mantenimiento`. Si cambia una pieza, ese cambio se registra además como cambio de componente (RN-07). |
+| RN-11 **(ampliada)** | Sede, piso, dependencia, proceso, cargo, tipo, marca, modelo, proveedor, tipo de componente y sistema operativo solo se eligen de listas. |
+| RN-20 | Las dependencias usan los nombres oficiales del Decreto 609 y forman un árbol sin ciclos. Nunca se borran: se desactivan. |
+| RN-21 | Un piso pertenece a una sola sede; la ubicación de un equipo es un piso válido de esa sede. |
+| RN-22 | Cada equipo de hardware tiene como máximo una valoración vigente. El total, la importancia y la marca de gestión de riesgos los calcula el sistema; nunca se digitan. |
+| RN-23 | Un activo con algún criterio CID igual a 4, o con importancia alta o muy alta, queda marcado «requiere gestión de riesgos» (GT-M4 4.2.6). |
+| RN-24 | Si un activo no contiene datos personales, su clasificación de datos personales es «no aplica». |
+| RN-25 | Los activos de tipo soporte no tienen valoración de información. |
+| RN-26 | De la planta de personal solo se guardan los datos de RF-18 (RNF-19). |
+| RN-27 | El número de activo (consecutivo) se asigna al crear el equipo y nunca se reutiliza ni cambia. |
+| RN-28 | Un mantenimiento preventivo se enlaza a una programación de la vigencia; si el equipo no está en la dependencia y sede programadas, el sistema pide confirmación. |
+| RN-29 | La dirección de una sede reservada no se muestra en ninguna salida del sistema. |
 
 ---
 
-## 8. Modelo de dominio y diccionario de datos
+## 8. Modelo de dominio
 
-El eje del modelo es el **Equipo**, identificado por serial y código de activo: todo lo demás (componentes, responsable, ubicación, eventos, documentos) cuelga de él con historia, de modo que siempre se pueda reconstruir quién lo tuvo, dónde estuvo y cómo cambió. Es un modelo conceptual; tipos de dato físicos e índices se definen en diseño.
+El modelo físico completo, con diccionario, valores oficiales de los catálogos y plan de migración, está en **[base-de-datos.md](./base-de-datos.md)**. El DBML para dbdiagram.io está en [database/dbml/hoja-vida-activos.dbml](../database/dbml/hoja-vida-activos.dbml) y el SQL equivalente en [hoja-vida-activos.sql](../database/dbml/hoja-vida-activos.sql).
 
-### 8.1 Entidades
+| Bloque | Entidades | Fuente |
+|---|---|---|
+| Estructura organizacional | Proceso, Dependencia (árbol), Equivalencia, Municipio, Sede, Piso, UbicaciónDependencia, Cargo, Persona | Decretos 607 y 609, plantas, PAMP, FOR.01 |
+| Catálogos del activo | TipoEquipo, Marca, Modelo, SistemaOperativo, TipoComponente, MotivoBaja, Proveedor | FOR.01, GT-M4 |
+| Equipo | Equipo, ValoraciónActivo, ConfiguraciónCómputo, Componente, PuestoTrabajo, Asignación | GT-M4, FOR.01 |
+| Eventos | Evento, CambioComponente, Diagnóstico, Documento, EtiquetaQR | v3 |
+| Mantenimiento | PlanMantenimiento, ProgramaciónMantenimiento, Mantenimiento | PAMP |
+| Levantamiento | LevantamientoActivos | GT-M4 4.1 |
+| Sistema | Usuario, Auditoría, Importación | v3 |
 
-| Entidad | Qué representa | Atributos clave | Relación principal |
-|---|---|---|---|
-| **Equipo** | Bien tecnológico con hoja de vida | Serial, código de activo, identificador del QR (interno, no visible), tipo, marca, modelo, propiedad, propietario (si es de tercero), estado, verificación | Centro del modelo |
-| **TipoEquipo** | Catálogo de tipos | Nombre, familia (cómputo, video, impresión, conectividad, digitalización, energía, proyección), campos aplicables | 1 tipo → muchos equipos |
-| **Marca** | Catálogo de marcas | Nombre | 1 marca → muchos equipos |
-| **ConfiguracionComputo** | Software de equipos de cómputo | Sistema operativo, licencia, antivirus (sí/no + producto), nombre de red | 1 a 1 con Equipo de cómputo |
-| **Componente** | Parte interna o periférico | Tipo (RAM, disco, procesador, teclado, mouse, sonido, cámara…), capacidad o característica, marca, serial, estado, fechas de instalación y retiro | Muchos por equipo, con histórico |
-| **TipoComponente** | Catálogo de tipos de componente | Nombre, si es interno o periférico | 1 tipo → muchos componentes |
-| **PuestoTrabajo** | Agrupación de equipos en un sitio | Nombre o código, ubicación | 1 puesto → muchos equipos |
-| **Persona** | Responsable de equipos | Nombre, cédula (dato personal), cargo, dependencia, vinculación, estado | 1 persona → muchos equipos |
-| **Sede / Piso / Dependencia** | Ubicación física y organizacional | Nombre normalizado | Listas administrables |
-| **Asignacion** | Histórico de responsable y ubicación | Equipo, persona, sede, piso, dependencia, fecha inicio, fecha fin, evento que la originó | La asignación abierta es la actual |
-| **Evento** | Hecho en la hoja de vida | Consecutivo, tipo, fecha, descripción, usuario autor, estado de firma, evento anulado (si aplica) | Muchos por equipo |
-| **CambioComponente** | Detalle de un evento de cambio | Acción (agregar, cambiar, quitar), componente retirado y su serial, componente instalado y su serial, motivo, destino de lo retirado | Extiende Evento |
-| **Diagnostico** | Detalle de un diagnóstico o baja | Estado encontrado, causa, recomendaciones, ¿es baja?, motivo de baja | Extiende Evento |
-| **Documento** | Archivo generado o adjunto | Tipo (formato de entrega, formato de baja, foto, otro), consecutivo, archivo, firmado sí/no, fecha | Muchos por evento |
-| **EtiquetaQR** (nueva en v3) | Cada impresión de la etiqueta de un equipo | Equipo, fecha de impresión, usuario, motivo (primera impresión o reposición), lote | 1 equipo → muchas impresiones |
-| **Usuario** | Persona del área de sistemas que usa el sistema | Nombre, usuario, perfil (Administrador o Usuario), activo, debe cambiar contraseña | Autor de eventos |
-| **Auditoria** | Traza de operaciones | Usuario, acción, entidad, valor anterior y nuevo, fecha, IP | Inmutable |
-| **Importacion** | Registro de cada carga desde Excel | Archivo, fecha, usuario, filas, errores; cada equipo guarda su fila de origen | 1 importación → muchos equipos |
+### 8.1 Ficha del equipo frente al formato FOR.01
 
-### 8.2 Diccionario del Equipo con origen en el inventario
-
-| Campo | Obligatorio | Origen en el inventario 2026 | Observación |
-|---|---|---|---|
-| Serial | Sí | No existe para el equipo principal | Identificador único. Se completa en la verificación en sitio. El QR no usa el serial (podría corregirse), sino un identificador interno permanente que genera el sistema. |
-| Código de activo (Almacén) | Sí, si el equipo lo tiene | «Código activo …» de cada bloque | Normalizado a I1-######. |
-| Tipo | Sí | «Dispositivo de procesamiento / video / impresión / conectividad / digitalización / Otros» | 12 tipos iniciales. |
-| Marca | Sí | «Marca …» de cada bloque | Normalizar (Hp, HP → HP). |
-| Modelo | No | «Modelo …» de cada bloque | Texto. |
-| Propiedad | Sí | Inferida de observaciones | Gobernación o tercero; los personales no se cargan. |
-| Propietario | Si es de tercero | Observaciones | Nombre de la entidad o empresa dueña. |
-| Estado de funcionamiento | Sí | «Describa el estado de funcionamiento actual» (por puesto) | Se copia a cada equipo del puesto y queda por verificar. |
-| Estado del ciclo de vida | Sí | No existe | En servicio, Sin asignar o Dado de baja (sección 9). |
-| Sistema operativo | Solo cómputo | «Versión Sistema operativo» | Lista normalizada (Windows 7, 8, 10, 11 y edición). |
-| Antivirus | Solo cómputo | «El dispositivo cuenta con antivirus» | Separar sí/no y producto. |
-| Componentes | Solo cómputo | 12 columnas de teclado, mouse y sonido | Se crean como Componente; RAM, disco y procesador se completan en sitio. |
-| Sede, piso | Sí | «Sede…», «Piso…» | Listas: 11 sedes, pisos 1 a 8. |
-| Dependencia | Sí | «Dependencia responsable del equipo» | De 175 variantes a una lista oficial. |
-| Responsable | No | «Nombre del responsable» | Puede quedar vacío (sin asignar). |
-| Cédula | Si hay responsable | «Numero de Cedula del responsable» | Dato personal; solo dígitos. |
-| Tipo de vinculación | Si hay responsable | «Tipo de Vinculacion» | Planta o contratista. |
-| Observaciones | No | «Describa las Observaciones adicionales» | Texto. |
-| Levantado por y fecha | Sí (importación) | «Nombre de quien realiza el inventario», «Hora de finalización» | Queda como evento de alta histórico. |
-
-> No se migran: correo (siempre «anonymous»), nombre y hora de última modificación del formulario (vacíos).
+| Columna del FOR.01 | Dónde queda en el sistema |
+|---|---|
+| ID ACTIVO | `equipos.numero_activo` |
+| Sucursal | Sede de la asignación actual |
+| Proceso | `equipos.proceso_id` |
+| Área o Dependencia | Dependencia de la asignación actual |
+| Nombre Activo | Tipo de equipo + marca + modelo |
+| Descripción Activo | `equipos.descripcion` |
+| Tipo de Activo | `tipos_equipo.tipo_activo` (hardware o soporte) |
+| Contiene datos personales / Clasificación | `valoraciones_activo` |
+| Infraestructura crítica / Continuidad del negocio | `valoraciones_activo` |
+| Propietario del activo (cargo) / Custodio técnico (cargo) | `valoraciones_activo` |
+| Tipo ubicación del activo | `valoraciones_activo.tipo_ubicacion` |
+| Tiempo de retención de los datos | `valoraciones_activo.tiempo_retencion` |
+| Confidencialidad / Integridad / Disponibilidad (escenario y respuesta) | Valores 1 a 4; la respuesta es el texto de la escala |
+| Total / Importancia | Calculados |
 
 ---
 
 ## 9. Estados del equipo y tipos de evento
 
-Después del alta, un equipo solo tiene tres estados: **En servicio**, **Sin asignar** (bodega) y **Dado de baja**. Se elimina el estado «En reparación» porque el mantenimiento queda fuera del sistema, y se elimina «Recomendado para baja» porque la Dirección TIC no recibe constancia de otra dependencia: la baja queda registrada al subir el diagnóstico y el formato firmado.
+Estados del ciclo de vida: **En servicio**, **Sin asignar** y **Dado de baja**, más la marca **Verificado / Pendiente de verificar**. El estado de funcionamiento pasa a lista cerrada: bueno, regular (requiere mantenimiento), malo (requiere componentes), no funcional (requiere baja).
 
-> Ciclo de vida del equipo · 3 estados tras el alta.
-
-Aparte del estado, cada equipo lleva una marca de verificación (Verificado o Pendiente de verificar) que indica si su serial y sus datos se confirmaron en sitio.
-
-| Tipo de evento | Efecto en el estado | Documentos firmados | Datos propios |
+| Tipo de evento | Efecto | Firmas | Datos propios |
 |---|---|---|---|
-| Alta | Crea el equipo «En servicio» (con responsable) o «Sin asignar» | Formato de entrega, si se entrega a alguien | Origen (compra, donación, tercero, importación 2026), fecha |
-| Traslado o cambio de responsable | Ninguno, o «En servicio» ↔ «Sin asignar» si queda o deja de estar sin responsable | Formato de baja de quien entrega y formato de entrega de quien recibe | Origen, destino, motivo |
-| Cambio de componente | Ninguno; actualiza la configuración | No | Acción (agregar, cambiar, quitar), seriales retirado e instalado, motivo, destino de lo retirado |
-| Diagnóstico | Ninguno | Según el caso | Estado encontrado, causa, recomendaciones |
-| Baja | → «Dado de baja» | Formato de baja | Diagnóstico, motivo, recomendaciones |
-| Actualización de datos | Ninguno | No | Campo, valor anterior y nuevo |
-| Anulación o aclaración | Revierte el efecto del evento anulado | No | Evento referenciado y motivo |
+| Alta | Crea el equipo | Entrega, si se entrega | Forma de ingreso, adquisición |
+| Traslado / cambio de responsable | Puede cambiar entre «en servicio» y «sin asignar» | Baja y entrega | Origen, destino, motivo |
+| Cambio de componente | Actualiza la configuración | No | Acción, seriales, destino |
+| **Mantenimiento** (nuevo) | Actualiza el estado de funcionamiento | Formato de mantenimiento (si aplica) | Tipo, programación, actividades, hallazgos, duración |
+| Diagnóstico | Ninguno | Según el caso | Estado, causa, recomendaciones |
+| **Valoración** (nuevo) | Reemplaza la valoración vigente | No (el acta va en el levantamiento) | CID, atributos, propietario, custodio |
+| Baja | → Dado de baja | Formato de baja | Motivo, diagnóstico |
+| Actualización de datos | Ninguno | No | Antes y después |
+| Anulación / aclaración | Revierte el evento anulado | No | Evento y motivo |
 
 ---
 
 ## 10. Casos de uso
 
-Se identifican 15 casos de uso; los ejecuta cualquier usuario, salvo CU-12 y CU-13, que son del Administrador. Se detallan los siete que fijan el comportamiento crítico y el resto se especifica en diseño.
+Se mantienen CU-01 a CU-15 de v3 (CU-01 cambia de fuente). Se agregan:
 
-| ID | Caso de uso | Actor | Requerimientos |
+| ID | Caso de uso | Actor | RF |
 |---|---|---|---|
-| CU-01 | Importar el inventario desde Excel | Usuario | RF-38 a RF-42 |
-| CU-02 | Verificar en sitio un equipo importado (puede iniciar escaneando el QR) | Usuario | RF-02, RF-41, RF-50 |
-| CU-03 | Registrar un equipo nuevo | Usuario | RF-01 a RF-04, RF-08, RF-18, RF-19 |
-| CU-04 | Consultar la hoja de vida de un equipo | Usuario | RF-07, RF-09 |
-| CU-05 | Registrar traslado o cambio de responsable | Usuario | RF-20, RF-28 a RF-30 |
-| CU-06 | Registrar un cambio de componente | Usuario | RF-14 a RF-17 |
-| CU-07 | Registrar un diagnóstico | Usuario | RF-24 |
-| CU-08 | Registrar la baja de un equipo | Usuario | RF-25 a RF-27, RF-29 |
-| CU-09 | Subir documentos firmados | Usuario | RF-30, RF-31 |
-| CU-10 | Generar formatos y hoja de vida en PDF | Usuario | RF-28, RF-29, RF-33 |
-| CU-11 | Consultar y exportar reportes | Usuario | RF-34 a RF-37 |
-| CU-12 | Administrar usuarios | Administrador | RF-43, RF-44, RF-47 |
-| CU-13 | Administrar listas | Administrador | RF-45 |
-| CU-14 | Generar e imprimir etiquetas QR (nuevo en v3) | Usuario | RF-08, RF-48, RF-49, RF-51 |
-| CU-15 | Escanear el QR y consultar la hoja de vida (nuevo en v3) | Usuario | RF-50, RF-09 |
+| CU-01 **(mod.)** | Cargar datos desde la plantilla oficial (equipos, personas, valoraciones) | Usuario | RF-38 a RF-42, RF-55 |
+| CU-16 | Valorar un activo | Usuario | RF-56, RF-57 |
+| CU-17 | Reclasificar un activo | Usuario | RF-58 |
+| CU-18 | Hacer el levantamiento de activos de una dependencia | Usuario | RF-59, RF-53 |
+| CU-19 | Registrar el plan anual de mantenimiento | Usuario | RF-60 |
+| CU-20 | Ejecutar un mantenimiento programado | Usuario | RF-61, RF-62, RF-64 |
+| CU-21 | Consultar el cumplimiento del plan | Usuario | RF-63 |
+| CU-22 | Administrar la estructura organizacional | Administrador | RF-45, RF-65 |
 
-### 10.1 CU-01 · Importar el inventario desde Excel
+### 10.1 CU-16 · Valorar un activo
 
-**Precondición:** el archivo tiene la estructura de 53 columnas del inventario 2026.
+**Precondición:** el equipo existe, es de tipo hardware y no está dado de baja.
 
-**Flujo:**
-1. El usuario sube el archivo.
-2. El sistema divide cada fila en equipos y componentes y descarta los equipos marcados como personales.
-3. Normaliza códigos, dependencias, sedes, pisos, marcas y sistemas operativos con la tabla de equivalencias.
-4. Muestra la vista previa: equipos a crear, errores (sin tipo, sin sede) y advertencias (sin código, código repetido, sin cédula).
-5. El usuario corrige equivalencias o confirma.
-6. El sistema crea los equipos con un evento de alta histórico (fecha e inventariador) y los marca «Pendiente de verificar», porque el inventario no trae el serial del equipo principal.
+1. Desde la hoja de vida, elegir «Valorar activo».
+2. Responder datos personales y su clasificación, infraestructura crítica, continuidad del negocio, tipo de ubicación y retención.
+3. Indicar los cargos del propietario (sugerido: el director de la dependencia) y del custodio.
+4. Elegir, para C, I y D, la respuesta de la escala del GT-M4; el sistema muestra el valor de 1 a 4.
+5. El sistema calcula el total y la importancia, y marca si requiere gestión de riesgos.
+6. Al guardar se crea el evento `valoracion` y la valoración anterior deja de estar vigente.
 
-**Postcondición:** los equipos existen con su fila de origen y un reporte de la importación.
+### 10.2 CU-18 · Levantamiento de activos de una dependencia
 
-### 10.2 CU-05 · Registrar traslado o cambio de responsable
+1. Crear el levantamiento eligiendo dependencia, proceso y sede.
+2. El sistema lista los equipos asignados a esa dependencia (y sus subdependencias) y señala los que no tienen valoración.
+3. El técnico verifica cada equipo en sitio: serial, componentes, valoración y etiqueta QR.
+4. El sistema genera la matriz FOR.01 y el acta de aceptación prellenada.
+5. Firman el propietario y los custodios; se sube el acta y el levantamiento queda «Aceptado».
 
-**Precondición:** el equipo existe y no está dado de baja.
+### 10.3 CU-20 · Ejecutar un mantenimiento programado
 
-**Flujo:**
-1. Buscar el equipo por serial, código de activo o responsable.
-2. Elegir «Trasladar / reasignar».
-3. Indicar nuevo responsable, sede, piso, dependencia, fecha y motivo (el sistema muestra los datos actuales).
-4. Guardar.
-5. El sistema cierra la asignación anterior, abre la nueva, crea el evento a nombre del usuario y genera dos PDF prellenados: formato de baja (quien entrega) y formato de entrega (quien recibe).
-6. El evento queda «Pendiente de firma».
-7. Al subir los dos documentos firmados, queda completo.
+**Precondición:** existe un plan aprobado para la vigencia.
 
-**Alternativo:** trasladar el puesto completo; se aplica a todos sus equipos con un juego de formatos.
-**Alternativo:** si se aprueba un documento único, se sube ese solo.
+1. Elegir la programación del mes (dependencia y sede).
+2. El sistema muestra la lista de trabajo con los equipos asignados ahí.
+3. Por cada equipo: marcar las actividades hechas, anotar hallazgos, insumos y duración, y elegir el estado resultante.
+4. Si se cambió una pieza, registrar en el mismo flujo el cambio de componente.
+5. Cada equipo queda con su evento `mantenimiento`; opcionalmente se genera el formato para firma.
 
-### 10.3 CU-06 · Registrar un cambio de componente
-
-**Precondición:** el equipo existe y no está dado de baja.
-
-**Flujo:**
-1. Abrir la hoja de vida.
-2. Elegir «Cambio de componente».
-3. Seleccionar la acción: agregar, cambiar o quitar.
-4. Indicar el componente retirado (de la configuración actual) y el instalado, con tipo, capacidad, marca y serial.
-5. Registrar motivo y destino de lo retirado.
-6. Guardar.
-7. El sistema crea el evento a nombre del usuario y actualiza la configuración del equipo.
-
-**Alternativo:** el elemento cambiado es un monitor con hoja de vida propia; el sistema registra el evento en ambas hojas y actualiza el puesto de trabajo.
-
-### 10.4 CU-08 · Registrar la baja de un equipo
-
-**Precondición:** el equipo es de la Gobernación y no está dado de baja.
-
-**Flujo:**
-1. Abrir la hoja de vida.
-2. Elegir «Baja».
-3. Registrar estado encontrado, motivo, diagnóstico, recomendaciones y evidencia.
-4. El sistema genera el formato de baja prellenado.
-5. Se sube el formato firmado.
-6. El equipo pasa a «Dado de baja» y la baja queda especificada en su hoja de vida.
-
-**Alternativo:** la baja se registró por error; un usuario la anula con un evento justificado y el equipo vuelve a su estado anterior.
-
-### 10.5 CU-12 · Administrar usuarios
-
-**Actor:** Administrador.
-
-**Flujo:**
-1. Entrar a «Usuarios».
-2. Crear un usuario con nombre, usuario, perfil y contraseña inicial.
-3. El usuario ingresa y el sistema le obliga a cambiar la contraseña.
-4. El Administrador puede editar datos, restablecer la contraseña o desactivar al usuario.
-
-**Regla:** un usuario desactivado no puede ingresar, pero su nombre se conserva en todos los eventos que registró.
-
-### 10.6 CU-14 · Generar e imprimir etiquetas QR
-
-**Precondición:** el equipo existe (el QR se genera automáticamente al registrarlo o importarlo).
-
-**Flujo individual:**
-1. Abrir la hoja de vida.
-2. Elegir «Imprimir etiqueta QR».
-3. El sistema muestra la vista previa con el QR, el serial, el código de activo y el tipo.
-4. Imprimir.
-
-**Flujo por lotes:**
-1. Entrar a «Etiquetas QR».
-2. Filtrar por sede, piso, dependencia o tipo (por ejemplo, los PC de Palacio Naín, piso 5), o marcar equipos en un listado.
-3. El sistema arma la hoja de etiquetas.
-4. Imprimir y registrar el lote.
-
-**Alternativo:** la etiqueta se dañó o se perdió; se reimprime con el mismo QR y queda registrado quién y cuándo.
-
-### 10.7 CU-15 · Escanear el QR y consultar la hoja de vida
-
-**Actor:** Usuario (personal TIC) con su celular.
-
-**Flujo:**
-1. Escanear la etiqueta con la cámara del celular.
-2. El navegador abre el enlace del equipo.
-3. Si el usuario no tiene sesión, el sistema pide ingresar.
-4. Se abre directamente la hoja de vida del equipo, con sus acciones (trasladar, cambio de componente, diagnóstico, baja).
-
-**Excepción:** quien escanee sin cuenta del sistema solo ve la pantalla de ingreso; no se muestra ningún dato del equipo.
-**Alternativo:** el equipo está dado de baja; la hoja de vida se muestra igual, con su estado y su historial.
+**Alternativo:** mantenimiento correctivo, sin programación, desde la hoja de vida.
 
 ---
 
 ## 11. Reportes y salidas
 
-El sistema produce dos formatos para firma (entrega y baja), que cubren casi todos los movimientos, y 15 reportes con filtros combinables y exportación a Excel y PDF; en diseño se priorizan con el jefe. Además, desde la versión 3 el sistema imprime etiquetas QR (sección 5.10), que no llevan firma.
+**Formatos para firma:** entrega, baja, **mantenimiento** (nuevo) y **acta de aceptación de activos** (nueva).
 
-### 11.1 Formatos para firma
+**Reportes:** se mantienen los 15 de v3 y se agregan:
 
-| Formato | Cuándo se usa | Contenido | Firmas |
-|---|---|---|---|
-| **Formato de entrega** | Alta con entrega, asignación, traslado (lado de quien recibe) | Datos del equipo (serial, código de activo, tipo, marca, modelo), componentes, responsable que recibe, ubicación, fecha | Quien recibe y el área de sistemas |
-| **Formato de baja** (v1.0 mejorado) | Traslado (lado de quien entrega), retiro del responsable, baja definitiva | Fecha de revisión, datos del equipo, responsable y cargo, diagnóstico, recomendaciones del área de sistemas | Ingeniero de soporte técnico y funcionario responsable |
-
-La hoja de vida completa (ficha, componentes e historial) se exporta como reporte, sin firma.
-
-### 11.2 Reportes
-
-| Reporte | Pregunta que responde |
+| Reporte | Pregunta |
 |---|---|
-| Inventario general | ¿Qué equipos hay, con todos sus datos? |
-| Equipos por dependencia | ¿Qué tiene cada dependencia? |
-| Equipos por sede y piso | ¿Qué hay en cada edificio? |
-| Equipos por funcionario | ¿Qué tiene a cargo cada persona (planta o contratista)? |
-| Equipos por tipo, marca y modelo | ¿Cómo está compuesto el parque? |
-| Equipos por estado | ¿Cuántos en servicio, sin asignar y dados de baja? |
-| Equipos de terceros | ¿Qué equipos no son de la Gobernación y de quién son? |
-| Equipos dados de baja | ¿Qué salió de servicio, cuándo y por qué? |
-| Obsolescencia por sistema operativo | ¿Cuántos equipos siguen con Windows 7 u 8? |
-| Equipos sin antivirus | ¿Qué equipos no están protegidos? |
-| Historial por equipo | ¿Qué se le ha hecho a este equipo? |
-| Cambios de componentes en un período | ¿Qué se agregó, cambió o quitó, y a qué equipos? |
-| Traslados en un período | ¿Qué se movió y a dónde? |
-| Pendientes de firma | ¿Qué movimientos aún no tienen sus documentos firmados? |
-| Calidad del inventario | ¿Cuántos sin serial, sin código, sin responsable, con código repetido o pendientes de verificar? Incluye los equipos que aún no tienen etiqueta QR impresa (nuevo en v3). |
+| Matriz de inventario de activos (FOR.01) | ¿Cómo queda la matriz oficial de un proceso o dependencia? |
+| Activos que requieren gestión de riesgos | ¿Qué activos deben pasar a la matriz de riesgos y por qué criterio? |
+| Activos por importancia | ¿Cuántos activos hay de importancia muy alta, alta, media y baja, por dependencia? |
+| Cumplimiento del plan de mantenimiento | ¿Qué se ha mantenido frente a lo programado, por mes? |
+| Historial de mantenimientos | ¿Qué mantenimientos tuvo un equipo o una dependencia? |
+| Garantías y vida útil | ¿Qué garantías vencen y qué equipos superaron su vida útil? |
+| Personas por retirarse con equipos a cargo | ¿Quién termina contrato y aún tiene equipos? |
+| Equipos por estructura | ¿Qué tiene cada secretaría, incluidas sus direcciones y áreas? |
 
 ---
 
-## 12. Carga inicial y depuración del inventario
+## 12. Carga de datos
 
-El inventario 2026 se carga completo desde el primer día y se depura después en el sistema, no antes en Excel: así ningún equipo queda por fuera y cada corrección deja rastro. Como el inventario no trae el serial del equipo principal, todos los equipos entran «Pendiente de verificar» hasta que se tome en sitio.
+Los Excel **no definen el modelo**; solo alimentan datos. Se hacen tres cargas, todas con vista previa, modo simulación y fila de origen:
 
-1. Respaldar el archivo original sin modificarlo; es la evidencia del levantamiento de marzo de 2026.
-2. Construir las tablas de equivalencias: 175 variantes de dependencia → lista oficial; sedes; pisos; marcas; sistemas operativos. Validar la lista oficial con Talento Humano o el organigrama.
-3. Normalizar códigos de activo: quitar espacios y guiones, cambiar «L1» por «I1», marcar como vacíos los textos («N/A», «No se ve») y mover a serial los valores que lo sean.
-4. Excluir los equipos marcados como personales y marcar los de terceros con su propietario.
-5. Dividir filas en equipos: cada bloque con tipo crea un equipo; teclado, mouse y sonido se crean como componentes del equipo de cómputo.
-6. Importar en un ambiente de pruebas, revisar el reporte y repetir hasta que no haya errores bloqueantes.
-7. Importar en producción.
-8. Verificar en sitio por sede, empezando por los 146 equipos sin código de activo, los 12 códigos repetidos y los 64 puestos marcados como malos o para baja; en cada visita se toma el serial, se completan RAM, disco y procesador, se confirma el responsable, se firma el formato de entrega y se pega la etiqueta QR impresa por lotes para esa sede, de modo que cada equipo verificado quede etiquetado en la misma visita.
+1. **Catálogos oficiales** (seeders, no Excel): procesos, árbol de dependencias con equivalencias, municipios, sedes y pisos, ubicación de dependencias, cargos y tipos de equipo, con los valores de [base-de-datos.md](./base-de-datos.md#5-valores-oficiales-de-los-catálogos-para-los-seeders).
+2. **Personas** desde las plantas de Talento Humano, Central y Educación, con solo las columnas permitidas (RNF-19).
+3. **Equipos** desde la plantilla oficial de carga. Para el inventario 2026 se publica la tabla de correspondencia de sus columnas con la plantilla; sus 175 variantes de dependencia se resuelven con la tabla de equivalencias.
+4. **Valoraciones** desde la matriz FOR.01 diligenciada por cada proceso (opcional; también se valora en pantalla).
+5. **Plan de mantenimiento** desde el Excel del PAMP.
 
-### Criterios de aceptación de la carga
+Todo lo cargado sin serial queda «Pendiente de verificar» y se verifica dentro de un levantamiento (CU-18), que es cuando se pega la etiqueta QR.
 
-- Equipos creados = equipos del archivo menos los personales, sin pérdidas.
-- Cada equipo conserva el número de fila de origen.
-- Los conteos por tipo y por sede coinciden con el archivo.
-- Ninguna dependencia, sede o piso queda como texto libre.
-- El reporte de calidad lista todos los equipos pendientes de verificar.
+**Criterios de aceptación:** ningún catálogo como texto libre; cada equipo con su fila de origen; conteos por sede y piso comparables con los del PAMP; ninguna columna sensible de la planta guardada.
 
 ---
 
 ## 13. Alcance por fases
 
-La primera versión debe dejar el inventario cargado, la hoja de vida funcionando con sus dos formatos firmados y cada equipo con su QR; tablero y mejoras vienen después. Toda idea nueva durante una fase se anota para la siguiente.
+| Fase | Alcance | RF |
+|---|---|---|
+| **1 — Cerrada** (oct-2026) | Inventario, hoja de vida, movimientos, formatos, QR, reportes, administración | 35 esenciales de v3 |
+| **2 — Reestructuración con fuentes oficiales** | Modelo v4, catálogos oficiales, personas desde la planta, ficha ampliada, valoración GT-M4, mantenimiento preventivo, matriz FOR.01, cargas nuevas, y los «importantes» de v3 que más pesan (RF-23, RF-47, RF-49, RF-51) | RF-01, 02, 04, 07, 09, 10, 12, 18, 19, 34, 37, 38, 39, 44, 45, 53 a 58, 60 a 62, 65 (esenciales), más RF-23, 47, 49, 51, 52, 59, 63, 64 |
+| **3 — Consolidación** | Puestos de trabajo, fotos, historial por fecha, tipos de evento configurables, tablero, anular baja | RF-05, 06, 13, 16, 17, 26, 27, 31, 33, 36, 42 |
+| **4 — Mejoras** | Firma en pantalla | RF-32 |
 
-| Fase | Alcance | Requerimientos | Resultado visible |
-|---|---|---|---|
-| **1 — Inventario, hoja de vida y QR** | Registro de equipos por serial y código de activo, carga y depuración, componentes y sus cambios, responsables, traslados con dos formatos, diagnóstico y baja, PDF y firmas, generación del QR, etiqueta individual y apertura por escaneo, reportes básicos, administrador y usuarios, auditoría | Los 35 esenciales | Todos los equipos consultables, con hoja de vida, formatos imprimibles y QR |
-| **2 — Consolidación** | Puestos de trabajo, fotos, historial de componentes por fecha, destino de lo retirado, tipos de evento configurables, paz y salvo, anulación de baja, listado de bajas, pendientes de firma, hoja de vida completa, tablero, cargas posteriores, restablecer contraseña, etiquetas por lotes y reimpresión | RF-05, RF-06, RF-13, RF-16, RF-17, RF-23, RF-26, RF-27, RF-31, RF-33, RF-36, RF-42, RF-47, RF-49, RF-51 | Trazabilidad completa, control de firmas pendientes y etiquetado masivo |
-| **3 — Mejoras** | Firma en pantalla | RF-32 | Trabajo en sitio sin papel |
-
-La verificación en sitio del inventario corre en paralelo desde la fase 1, porque el sistema solo es útil si sus datos son confiables; en esas visitas se pegan las etiquetas QR.
+El reparto de la Fase 2 está en [plan-fase2.md](./plan-fase2.md).
 
 ---
 
-## 14. Preguntas abiertas y próximos pasos
-
-Quedan 12 preguntas por cerrar; las tres primeras cambian el modelo de datos o los formatos, y las tres últimas (nuevas en v3) definen cómo funciona el QR. Todas deben resolverse antes de empezar los diseños definitivos.
+## 14. Preguntas abiertas
 
 | # | Pregunta | Supuesto actual | Qué cambia si es distinto |
 |---|---|---|---|
-| 1 | ¿El traslado seguirá con dos documentos (baja y entrega) o se unirá en uno solo? | Dos documentos; el sistema acepta ambas opciones | Cambia el diseño de los formatos y la regla RN-05. |
-| 2 | ¿Dónde está la plantilla actual del formato de entrega? Solo se tiene el formato de baja v1.0. | Se diseña a partir del formato de baja | Hay que conciliar campos y firmas con la plantilla real. |
-| 3 | ¿Qué componentes son obligatorios al registrar un equipo de cómputo (RAM, disco, procesador, periféricos)? | RAM, disco y procesador obligatorios; periféricos opcionales | Cambia el formulario de registro y la verificación en sitio. |
-| 4 | ¿Las series de código de 5 y 6 dígitos (I1-25646 e I1-025646) son la misma numeración? ¿Quién en Almacén valida los 146 sin código y los 12 repetidos? | Son distintas hasta que Almacén confirme | Afecta la normalización y la detección de duplicados. |
-| 5 | ¿Cómo se registra la salida de un equipo de tercero cuando se devuelve a su propietario? | Como baja con motivo «devolución al propietario» | Podría necesitar un evento propio. |
-| 6 | ¿Se cargan además hojas de vida antiguas? | Solo el inventario 2026 | Haría falta un formato de migración adicional. |
-| 7 | ¿Firma manuscrita escaneada o firma digital? | Manuscrita escaneada | La firma digital exige certificados y otro flujo. |
-| 8 | ¿Existe una lista oficial de dependencias y sedes? | Se construye desde el inventario | Cambia la tabla de equivalencias. |
-| 9 | ¿Dónde se alojará y con qué tecnología? | Servidor propio o intranet | Define la arquitectura en la fase de diseño. |
-| 10 | Al escanear el QR, ¿solo el personal TIC con sesión ve la hoja de vida, o se quiere una vista pública reducida (tipo, marca, serial, dependencia, sin cédulas ni historial)? | Solo con sesión iniciada (RN-18) | Una vista pública exige definir qué datos se muestran, revisión frente a la Ley 1581 y publicar parte del sistema fuera de la red interna. |
-| 11 | ¿El QR se pone solo a los PC o a todos los equipos? | A todos, empezando por los PC | Cambia la cantidad de etiquetas y el plan de etiquetado. |
-| 12 | ¿Hay impresora de etiquetas y qué material y tamaño se comprará? | Hojas adhesivas de poliéster tamaño carta en impresora láser | Cambia la plantilla de impresión por lotes y el costo. |
+| 1 | ¿Se confirma que el mantenimiento preventivo entra al alcance? | Sí (PAMP oficial) | Se quitan RF-60 a RF-64 y sus tablas. |
+| 2 | ¿Entran los equipos de las instituciones educativas? | No por ahora | Cientos de sedes nuevas en 71 municipios; carga y verificación mucho más grandes. |
+| 3 | ¿Solo hardware y soporte, o todos los tipos de activo del GT-M4? | Solo hardware y soporte | Haría falta una ficha de activo sin serial ni componentes. |
+| 4 | ¿El propietario y el custodio se registran como cargo o como persona? | Cargo en la valoración, persona en el acta | Cambia `valoraciones_activo`. |
+| 5 | Tipo de cada proceso según el mapa del SIG. | Tabla 5.1 de base-de-datos.md | Solo cambia el seeder. |
+| 6 | Tenencia de Morindó, Victoria Char, Places Mall; ¿Suricentro sigue en uso? | Por confirmar | Solo cambia el seeder. |
+| 7 | ¿De quién dependen Pensiones, Biblioparque y el Grupo Anticontrabando? | Ver base-de-datos.md 5.2 | Solo cambia el árbol. |
+| 8 | ¿Qué código del SIG llevarán los formatos (entrega, baja, mantenimiento, acta)? | Sin código | Encabezado de los PDF (RNF-21). |
+| 9 | ¿Quién suministra los datos de adquisición (Almacén) y en qué formato? | Excel de Almacén | Plantilla de carga. |
+| 10 | ¿El traslado sigue con dos documentos o uno? | Ambos | (Igual que en v3.) |
+| 11 | ¿Vista pública reducida al escanear el QR? | Solo con sesión | (Igual que en v3.) |
+| 12 | Funciones de la Dirección TICS y del Almacén General en el Decreto 608 (págs. 334 a 353). | No leídas: la herramienta solo extrajo las 80 primeras páginas de 639 | Podrían asignar responsabilidades del inventario y de la baja. |
 
-### Próximos pasos hacia el diseño
+### Próximos pasos
 
-- [ ] Revisar esta versión con el jefe y cerrar las preguntas 1 a 3 y 10 a 12.
-- [ ] Conseguir la plantilla del formato de entrega.
-- [ ] Pedir a Almacén la base de códigos de activo para conciliar.
-- [ ] Definir la lista oficial de dependencias y sedes.
-- [ ] Cotizar el material de las etiquetas y hacer una prueba de lectura del QR en equipos reales.
-- [ ] Diseñar el modelo físico de datos a partir de la sección 8.
-- [ ] Diseñar las pantallas: búsqueda, hoja de vida, traslado, cambio de componente, baja, importación, usuarios, reportes, impresión de etiquetas y apertura por QR.
-- [ ] Rediseñar los formatos de entrega y de baja (sección 11.1) y diseñar la etiqueta QR.
-- [ ] Elegir la tecnología según dónde se aloje y quién lo sostendrá.
+- [ ] Revisar v4 y el modelo de datos con el profesor y cerrar las preguntas 1 a 4.
+- [ ] Aprobar el modelo v4 y crear las migraciones (líder).
+- [ ] Pedir a Talento Humano el procedimiento de entrega de la planta (con autorización de tratamiento de datos).
+- [ ] Pedir a Almacén los datos de adquisición y la base de códigos de activo.
+- [ ] Leer las páginas 334 a 353 del Decreto 608.
+- [ ] Arrancar la Fase 2 según [plan-fase2.md](./plan-fase2.md).
 
 ---
 
-**Ver también:** [Plan de trabajo de dos semanas](./plan-2-semanas.md) · [Normas de trabajo](./normas-de-trabajo.md)
+**Ver también:** [Base de datos v4](./base-de-datos.md) · [Plan de Fase 2](./plan-fase2.md) · [Normas de trabajo](./normas-de-trabajo.md) · [Plan de la Fase 1](./plan-2-semanas.md)

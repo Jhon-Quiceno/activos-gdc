@@ -1,70 +1,52 @@
-# Anuar — Núcleo 2: Movimientos y formatos
+# Anuar — Núcleo 2: Movimientos y Mantenimiento
 
-**Sistema de Hoja de Vida de Equipos · Gobernación de Córdoba · Dirección TIC**
-Plan de dos semanas · Bloque: Núcleo 2
+**Sistema de Hoja de Vida de Activos Tecnológicos · Gobernación de Córdoba · Dirección TIC**
+Fase 2 · Bloques: Movimientos y Mantenimiento (nuevo) · Ver el [Plan de Fase 2](./plan-fase2.md)
 
 ## Rol
 
-Anuar lleva los **procesos que generan papel firmado**: traslados, diagnósticos, bajas y los dos formatos oficiales (entrega y baja) que la Dirección TIC necesita para cada movimiento de un equipo.
+Sigues con los procesos que generan papel firmado y sumas un bloque nuevo: el **mantenimiento preventivo y correctivo** del Programa Anual de Mantenimiento (PAMP). Primero adaptas los traslados a la persona y la ubicación oficiales; después construyes la ejecución del mantenimiento.
+
+## Heredado de la Fase 1
+
+- RF-22 (formato de entrega consolidado por persona): confirmar si `GestorAsignaciones::equiposACargo()` ya tiene pantalla; si no, sale junto con el paz y salvo (día 6).
+- Los 4 hallazgos menores del PR #6 (`TrasladoForm` no limpia `dependenciaId` en bodega, `descargarPrellenado()` sin validar el tipo, `ComponenteForm` fuera de `RegistroMovimientos`, `estaDadoDeBaja()` sin uso): corregirlos el día 1, que de todos modos tocas esos archivos.
 
 ## Tareas por día
 
 | Días | Tareas | Entregable |
 |---|---|---|
-| 1–2 | Plantillas PDF de los formatos de entrega y de baja (carta, legibles en blanco y negro, espacios de firma), a partir del formato actual mejorado. | Dos PDF de muestra. |
-| 3–4 | Responsables: crear persona, asignar a un equipo (una sola asignación abierta), dejar sin asignar. Traslado o cambio de responsable: cierra la asignación anterior, abre la nueva, crea el evento y genera los dos PDF. | Traslado completo con PDF. |
-| 5–6 | Subida de documentos firmados (PDF, JPG, PNG, máx. 10 MB); estado «Pendiente de firma» hasta que estén los dos; opción de documento único. | Evento que se completa al subir firmas. |
-| 7–8 | Diagnóstico y baja (motivo, recomendaciones, evidencia, formato de baja firmado → «Dado de baja»); bloquear eventos nuevos en equipos dados de baja salvo anulación. Formato de entrega consolidado por funcionario. | Baja funcionando. |
-| 9–10 | Pruebas de los flujos y corrección de errores. | Pruebas en verde. |
+| 1 | Persona v4 (RF-18): tipo y número de documento, nombres y apellidos, cargo del catálogo con grado y encargo, dependencia real, jefe inmediato, vinculación y provisión. Enmascaramiento RN-12 con el campo nuevo. Hallazgos del PR #6. | Crear persona con el modelo nuevo. |
+| 2 | Ubicación v4 en el traslado (RF-19, RF-20) con `x-ui.ubicacion-select`: sede → piso de esa sede → dependencia, proponiendo las dependencias de ese piso (`ubicaciones_dependencia`). Formatos de entrega y baja con cargo oficial y ubicación nueva; la dirección reservada nunca sale (RN-29). | Traslado completo con PDF sobre el modelo nuevo. |
+| 3–4 | **Mantenimiento (RF-61):** registrar un mantenimiento preventivo o correctivo desde la hoja de vida, con checklist (inspección, limpieza, actualización, revisión), hallazgos, insumos, duración, estado resultante y ejecutor; actualiza el estado de funcionamiento. Si cambia una pieza, ofrecer el cambio de componente en el mismo flujo (RN-08). | Mantenimiento correctivo funcionando. |
+| 5 | **Lista de trabajo (RF-62):** elegir una programación del mes y ver los equipos asignados hoy a esa dependencia y sede; registrar el mantenimiento de cada uno desde ahí; RN-28 si el equipo no corresponde. | Mantenimiento preventivo por programación. |
+| 6 | Formato de mantenimiento en PDF por equipo y por programación (RF-64). Paz y salvo (RF-23) y entrega consolidada (RF-22), con aviso de personas con `fecha_fin_vinculacion` próxima. | Dos PDF nuevos. |
+| 7–8 | Pruebas con el PAMP real cargado por Juan Camilo; ajustes con Alex para que el cumplimiento (RF-63) lea bien tus eventos. | Mantenimientos de un mes completo en pruebas. |
+| 9–10 | Prueba cruzada del bloque de Levantamientos (Manuel); correcciones. | Pest en verde. |
 
-## Requerimientos funcionales a cargo
+## Requerimientos a cargo
 
-RF-18, RF-19, RF-20, RF-21, RF-22, RF-24, RF-25, RF-28, RF-29, RF-30.
+RF-18, RF-19, RF-20, RF-22, RF-23, RF-61, RF-62, RF-64. Detalle en el [Análisis v4](./analisis-requerimientos.md), secciones 5.4 y 5.12, CU-20, y las tablas de mantenimiento en [base-de-datos.md §4.6](./base-de-datos.md#46-mantenimiento).
 
-Consulta el detalle completo de cada uno en el [Análisis de requerimientos](./analisis-requerimientos.md), secciones 5.4 a 5.6.
+## Pruebas mínimas
 
-## Estado al cierre de la Fase 1 (revisado por Jhon, 2026-10-08)
-
-| Días | Tarea | Estado |
-|---|---|---|
-| 1–2 | Plantillas PDF | ✅ Hecho (`FormatosPdf`, partials de entrega y baja). |
-| 3–4 | Responsables y traslado | ✅ Hecho (`GestorAsignaciones`, `TrasladoForm`), genera los dos PDF. |
-| 5–6 | Subida de firmados | ✅ Hecho (`GestorFirmas`, `DocumentosEvento`), "Pendiente de firma" y documento único funcionando. |
-| 7–8 | Diagnóstico, baja, bloqueo RN-10 | ✅ Hecho (`DiagnosticoForm`, `BajaForm`). ⚠️ **RF-22 (formato de entrega consolidado por funcionario)**: el método `GestorAsignaciones::equiposACargo()` existe, pero no encontré pantalla ni PDF consolidado que lo use — revisar si quedó pendiente o si cambiaste de enfoque. |
-| 9–10 | Pruebas | ✅ En verde. Fusionada hoy (PR #6) con 4 correcciones de condición de carrera que encontró una revisión de código: `GestorAsignaciones::asignar()` sin lock (RN-04, dos traslados simultáneos podían dejar dos asignaciones abiertas), el chequeo de RN-10 corría antes de abrir la transacción (el lock no protegía nada), `GestorFirmas::subirFirmado()` sin re-chequeo bloqueado, y `bajaEnTramite()` no veía una baja en trámite originada desde un diagnóstico. |
-
-**Hallazgos documentados sin corregir** (en el body de PR #6, no bloqueantes): `TrasladoForm` no limpia `dependenciaId` al marcar bodega; `DocumentosEvento::descargarPrellenado()` no valida el tipo de documento contra el evento; `ComponenteForm` no pasa por `RegistroMovimientos` como los demás movimientos; `ReglasMovimiento::estaDadoDeBaja()` no tiene callers (3 pantallas reimplementan el chequeo en memoria).
-
-**Para Anuar, si sigue en Fase 1:** cerrar RF-22 (o confirmar que no aplica) y revisar los hallazgos sin corregir arriba.
+- Un mantenimiento queda como evento `mantenimiento` a nombre del usuario y no se puede editar.
+- Un equipo dado de baja no admite mantenimientos (RN-10).
+- Si el mantenimiento cambia una pieza, quedan los dos eventos (mantenimiento y cambio de componente).
+- La dirección de la Casa Refugio no aparece en ningún PDF.
+- Un traslado a un piso de otra sede es rechazado (RN-21).
 
 ## Depende de / conecta con
 
-- **`HistorialService` y la hoja de vida de Juan José** — los botones de traslado, diagnóstico y baja viven en la vista de hoja de vida que construye Juan José; Anuar implementa la lógica detrás de esos botones.
-- **Alex** lee los eventos que genera este bloque (traslados, bajas, cambios) para construir sus reportes de movimientos.
-- Usa el paquete `barryvdh/laravel-dompdf` para generar los formatos PDF de entrega y baja (RNF-13: tamaño carta, legibles en blanco y negro, con espacio de firma).
+- **Jhon:** tablas de mantenimiento, tipo de evento, `x-ui.ubicacion-select`, ruta `/mantenimiento`.
+- **Juan Camilo** carga el plan y las programaciones desde el Excel del PAMP (RF-60). Mientras tanto, usa la programación de ejemplo del seeder.
+- **Manuel** tiene la pantalla de edición del plan; **Alex** reporta el cumplimiento a partir de tus eventos.
 
-## Recordatorio de las normas de trabajo
+## Normas
 
-- Ramas `feature/movimientos-<tarea>` creadas siempre desde `develop`, nunca desde `main`.
-- Nunca crear ni tocar migraciones: si falta un campo (por ejemplo en `Asignacion` o `Documento`), se pide a Jhon y lo agrega el mismo día.
-- Escribir solo en `app/Livewire/Movimientos`, `resources/views/livewire/movimientos` y `tests/Feature/Movimientos`.
-- Todo cambio sobre un equipo (traslado, diagnóstico, baja) pasa por `HistorialService::registrar()`. Nunca se inserta un evento a mano.
-- Trabajar siempre con `docker compose exec -u sail laravel.test php artisan migrate:fresh --seed`.
-- Antes de abrir un PR, correr `docker compose exec -u sail laravel.test ./vendor/bin/pest` y que pase en verde.
-
-### Cómo crear tu rama (copiar y pegar)
+Ramas `feature/movimientos-<tarea>` y `feature/mantenimiento-<tarea>` desde `develop`. Escribes en `app/Livewire/Movimientos`, `app/Livewire/Mantenimiento`, sus vistas y sus carpetas de `tests/Feature`. Todo pasa por `HistorialService::registrar()`. Detalle en [normas-de-trabajo.md](./normas-de-trabajo.md).
 
 ```bash
-git checkout develop
-git pull origin develop
-git checkout -b feature/movimientos-traslado   # cambia "traslado" por tu tarea
-# ...trabajar y commitear...
-git push -u origin feature/movimientos-traslado
-# abrir el Pull Request en GitHub apuntando a develop, nunca a main
+git checkout develop && git pull origin develop
+git checkout -b feature/mantenimiento-registro
 ```
-
-Para el detalle completo de estas reglas, ver [normas-de-trabajo.md](./normas-de-trabajo.md).
-
----
-
-**Para profundizar:** [Análisis de requerimientos](./analisis-requerimientos.md) · [Normas de trabajo](./normas-de-trabajo.md)

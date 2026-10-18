@@ -1,0 +1,769 @@
+// =====================================================================
+// Sistema de Hoja de Vida de Activos Tecnológicos
+// Gobernación de Córdoba · Dirección TIC · Modelo de datos v4
+// ---------------------------------------------------------------------
+// Fuentes oficiales: Manual GT-M4 (activos de información, 28/09/2023),
+// Formato FOR.01 inventario de activos v00, Programa Anual de
+// Mantenimiento Preventivo (vigencia 2026), Decretos 607, 608 y 609 de
+// 2023 (planta, manual de funciones, organigrama) y plantas de personal
+// Central (mar-2026) y Educación (may-2026).
+//
+// Cómo verlo: pegar todo este archivo en https://dbdiagram.io/d
+// Documentación completa: docs/base-de-datos.md
+// =====================================================================
+
+Project hoja_vida_activos {
+  database_type: 'MySQL'
+  Note: '''
+  Modelo v4. Reemplaza el modelo v3, que salía de las 53 columnas del
+  inventario 2026 (Microsoft Forms). Ese Excel ya no define la
+  estructura: solo se usa después, como fuente de datos para la carga.
+  '''
+}
+
+// ---------------------------------------------------------------------
+// ENUMS
+// ---------------------------------------------------------------------
+
+Enum tipo_proceso {
+  estrategico
+  misional
+  apoyo
+  evaluacion_control
+}
+
+Enum tipo_dependencia {
+  despacho [note: 'Despacho del Gobernador']
+  secretaria [note: 'Secretaría de Despacho (código 020)']
+  departamento_administrativo [note: 'Departamento Administrativo de Planeación (código 055)']
+  oficina [note: 'Oficina asesora o de control (códigos 006, 115)']
+  direccion [note: 'Dirección administrativa, financiera, técnica u operativa (código 009)']
+  area [note: 'Área o grupo interno sin cargo directivo propio (Nómina, Cobertura, RETHUS...)']
+}
+
+Enum planta_personal {
+  central
+  educacion
+}
+
+Enum nivel_impacto {
+  alto
+  medio
+  bajo
+}
+
+Enum tenencia_sede {
+  propia
+  arrendada
+  comodato
+  por_confirmar
+}
+
+Enum tipo_sede {
+  administrativa
+  salud [note: 'Laboratorio, CRUE']
+  social [note: 'Casa de la Mujer, Casa Refugio']
+  cultural [note: 'Biblioparque']
+  institucion_educativa [note: 'Fuera del alcance inicial']
+}
+
+Enum nivel_jerarquico {
+  directivo [note: 'Código 0xx (Decreto 607, art. 3)']
+  asesor [note: 'Código 1xx']
+  profesional [note: 'Código 2xx']
+  tecnico [note: 'Código 3xx']
+  asistencial [note: 'Código 4xx']
+}
+
+Enum tipo_vinculacion {
+  planta
+  contratista
+  pasante
+}
+
+Enum tipo_provision {
+  carrera_administrativa [note: 'C.A.']
+  libre_nombramiento [note: 'L.N.']
+  provisional [note: 'P.P. / PR']
+  temporal
+  periodo [note: 'E.P. (Gobernador)']
+  no_aplica [note: 'Contratistas y pasantes']
+}
+
+Enum tipo_documento_identidad {
+  CC
+  CE
+  PPT
+  PA
+  TI
+}
+
+Enum tipo_activo {
+  hardware [note: 'GT-M4 tabla 2: equipos de cómputo, comunicaciones y protección']
+  soporte [note: 'GT-M4 tabla 2: UPS, aire acondicionado, planta eléctrica. Sin clasificación de información']
+}
+
+Enum familia_equipo {
+  computo
+  video
+  impresion
+  digitalizacion
+  conectividad
+  seguridad_electronica
+  energia
+  climatizacion
+  proyeccion_audio
+  telefonia
+}
+
+Enum propiedad_equipo {
+  gobernacion
+  tercero
+}
+
+Enum figura_tercero {
+  comodato
+  convenio
+  proveedor
+  arrendamiento
+}
+
+Enum forma_ingreso {
+  compra
+  donacion
+  comodato
+  convenio
+  arrendamiento
+  carga_inicial [note: 'Equipos que ya existían al arrancar el sistema']
+}
+
+Enum estado_funcionamiento {
+  bueno
+  regular [note: 'Funciona, requiere mantenimiento']
+  malo [note: 'Requiere cambio de componentes']
+  no_funcional [note: 'Requiere ser dado de baja']
+}
+
+Enum estado_ciclo_vida {
+  en_servicio
+  sin_asignar
+  dado_de_baja
+}
+
+Enum estado_verificacion {
+  verificado
+  pendiente_de_verificar
+}
+
+Enum si_no_na {
+  si
+  no
+  no_aplica
+}
+
+Enum clasificacion_datos_personales {
+  publico
+  privado
+  semiprivado
+  sensible
+  reservado
+  clasificado
+  no_aplica
+}
+
+Enum tipo_ubicacion_activo {
+  fisico
+  electronico
+  fisico_electronico
+}
+
+Enum importancia_activo {
+  baja [note: 'Total CID 0 a 3']
+  media [note: 'Total CID 4 a 6']
+  alta [note: 'Total CID 7 a 9']
+  muy_alta [note: 'Total CID 10 a 12']
+}
+
+Enum tipo_evento {
+  alta
+  traslado_responsable
+  cambio_componente
+  mantenimiento [note: 'Nuevo en v4 (PAMP)']
+  diagnostico
+  valoracion [note: 'Nuevo en v4 (GT-M4): reclasificación CID']
+  baja
+  actualizacion_datos
+  anulacion_aclaracion
+}
+
+Enum estado_firma {
+  no_aplica
+  pendiente_de_firma
+  completo
+}
+
+Enum accion_componente {
+  agregar
+  cambiar
+  quitar
+}
+
+Enum destino_retirado {
+  bodega
+  otro_equipo
+  descarte
+}
+
+Enum tipo_mantenimiento {
+  preventivo
+  correctivo
+}
+
+Enum estado_plan {
+  borrador
+  aprobado
+  en_ejecucion
+  cerrado
+}
+
+Enum estado_levantamiento {
+  en_curso
+  pendiente_de_firma
+  aceptado
+}
+
+Enum tipo_documento_adjunto {
+  formato_entrega
+  formato_baja
+  formato_mantenimiento
+  acta_aceptacion_activos
+  foto
+  otro
+}
+
+Enum motivo_etiqueta {
+  primera_impresion
+  reposicion
+}
+
+Enum perfil_usuario {
+  administrador
+  usuario
+}
+
+// ---------------------------------------------------------------------
+// 1. ESTRUCTURA ORGANIZACIONAL (Decretos 607 y 609, plantas de personal)
+// ---------------------------------------------------------------------
+
+Table procesos {
+  id bigint [pk, increment]
+  nombre varchar(120) [not null, unique]
+  tipo tipo_proceso [not null]
+  activo boolean [not null, default: true]
+  created_at timestamp
+  updated_at timestamp
+  Note: 'Mapa de procesos del SIG. 17 procesos listados en la hoja "Datos" del formato FOR.01.'
+}
+
+Table dependencias {
+  id bigint [pk, increment]
+  padre_id bigint [ref: > dependencias.id, note: 'Null solo para el Despacho del Gobernador']
+  tipo tipo_dependencia [not null]
+  nombre varchar(160) [not null, note: 'Nombre oficial según Decreto 609 de 2023']
+  nombre_corto varchar(60) [note: 'Como se muestra en listas: "Dirección TIC"']
+  sigla varchar(20)
+  proceso_id bigint [ref: > procesos.id, note: 'Proceso al que pertenece (GT-M4 4.2.1)']
+  planta planta_personal [not null, default: 'central']
+  impacto_mantenimiento nivel_impacto [note: 'Impacto asignado en el PAMP']
+  acto_administrativo varchar(60) [note: 'Ej.: "Decreto 609 de 2023"']
+  activa boolean [not null, default: true]
+  created_at timestamp
+  updated_at timestamp
+
+  indexes {
+    (padre_id, nombre) [unique]
+  }
+  Note: 'Árbol: Despacho → Secretaría/Oficina/DAP → Dirección → Área. Reemplaza la lista plana de v3.'
+}
+
+Table dependencia_equivalencias {
+  id bigint [pk, increment]
+  dependencia_id bigint [not null, ref: > dependencias.id]
+  texto varchar(200) [not null, unique, note: 'Variante tal como llega en un Excel: "DIRECION DE SISTEMAS", "Sec Educación"']
+  origen varchar(60) [note: 'FOR.01, inventario 2026, PAMP, planta…']
+  created_at timestamp
+  Note: 'Tabla de equivalencias editable (RF-39). Incluye los nombres anteriores al Decreto 609.'
+}
+
+Table municipios {
+  id bigint [pk, increment]
+  codigo_dane char(5) [not null, unique]
+  nombre varchar(80) [not null, unique]
+  Note: 'Los 30 municipios de Córdoba (DIVIPOLA).'
+}
+
+Table sedes {
+  id bigint [pk, increment]
+  nombre varchar(120) [not null, unique]
+  direccion varchar(160) [note: 'Reservada en Casa Refugio: no se muestra en listados ni reportes']
+  barrio varchar(80)
+  municipio_id bigint [not null, ref: > municipios.id]
+  tipo tipo_sede [not null, default: 'administrativa']
+  tenencia tenencia_sede [not null, default: 'por_confirmar']
+  direccion_reservada boolean [not null, default: false]
+  activa boolean [not null, default: true]
+  created_at timestamp
+  updated_at timestamp
+  Note: 'GT-M4 lo llama "Sucursal". Valores reales en el PAMP 2026.'
+}
+
+Table pisos {
+  id bigint [pk, increment]
+  sede_id bigint [not null, ref: > sedes.id]
+  numero smallint [not null, note: '0 = planta baja o local único']
+  nombre varchar(60) [note: 'Ej.: "Local 44"']
+  created_at timestamp
+  updated_at timestamp
+
+  indexes {
+    (sede_id, numero) [unique]
+  }
+  Note: 'En v3 los pisos eran 1 a 8 para todas las sedes. Ahora cada sede tiene los suyos.'
+}
+
+Table ubicaciones_dependencia {
+  id bigint [pk, increment]
+  dependencia_id bigint [not null, ref: > dependencias.id]
+  piso_id bigint [not null, ref: > pisos.id]
+  created_at timestamp
+
+  indexes {
+    (dependencia_id, piso_id) [unique]
+  }
+  Note: 'En qué sede y piso funciona cada dependencia (tablas del PAMP). Sirve para prellenar traslados y validar ubicaciones.'
+}
+
+Table cargos {
+  id bigint [pk, increment]
+  codigo char(3) [note: 'Primer dígito = nivel (Decreto 607, art. 16). Null para contratistas']
+  denominacion varchar(120) [not null]
+  nivel nivel_jerarquico [not null]
+  created_at timestamp
+  updated_at timestamp
+
+  indexes {
+    (codigo, denominacion) [unique]
+  }
+  Note: 'Nomenclatura oficial de empleos (Decreto 607 de 2023).'
+}
+
+Table personas {
+  id bigint [pk, increment]
+  tipo_documento tipo_documento_identidad [not null, default: 'CC']
+  numero_documento varchar(20) [not null, unique, note: 'Dato personal (Ley 1581): enmascarado en listados']
+  nombres varchar(80) [not null]
+  apellidos varchar(80) [not null]
+  correo_institucional varchar(120)
+  cargo_id bigint [ref: > cargos.id]
+  grado char(2) [note: 'Grado salarial del empleo (01 a 10)']
+  encargo boolean [not null, default: false, note: 'Cargo ejercido en encargo (E)']
+  dependencia_id bigint [ref: > dependencias.id, note: 'Ubicación real ("REAL UBICACIÓN" de la planta)']
+  jefe_inmediato_id bigint [ref: > personas.id]
+  planta planta_personal
+  tipo_vinculacion tipo_vinculacion [not null]
+  tipo_provision tipo_provision [not null, default: 'no_aplica']
+  numero_contrato varchar(40) [note: 'Solo contratistas']
+  fecha_fin_vinculacion date [note: 'Fin de contrato o retiro: dispara el paz y salvo (RF-23)']
+  activa boolean [not null, default: true]
+  created_at timestamp
+  updated_at timestamp
+  Note: 'Minimización de datos (Ley 1581): de las 77 columnas de la planta solo se guardan las necesarias para responder por un equipo. No se guardan salario, RH, estado civil, etnia, dirección, hijos ni salud.'
+}
+
+// ---------------------------------------------------------------------
+// 2. CATÁLOGOS DEL ACTIVO
+// ---------------------------------------------------------------------
+
+Table tipos_equipo {
+  id bigint [pk, increment]
+  nombre varchar(80) [not null, unique]
+  familia familia_equipo [not null]
+  tipo_activo tipo_activo [not null, default: 'hardware']
+  usa_configuracion_computo boolean [not null, default: false, note: 'Muestra SO, antivirus, red y componentes internos']
+  campos_aplicables json [note: 'Claves de equipos.caracteristicas que aplican: pulgadas, VA, puertos, lúmenes…']
+  vida_util_meses smallint [note: 'Valor sugerido para equipos nuevos']
+  activo boolean [not null, default: true]
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table marcas {
+  id bigint [pk, increment]
+  nombre varchar(60) [not null, unique]
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table modelos {
+  id bigint [pk, increment]
+  marca_id bigint [not null, ref: > marcas.id]
+  tipo_equipo_id bigint [not null, ref: > tipos_equipo.id]
+  nombre varchar(100) [not null]
+  created_at timestamp
+  updated_at timestamp
+
+  indexes {
+    (marca_id, tipo_equipo_id, nombre) [unique]
+  }
+  Note: 'Nuevo en v4: el modelo deja de ser texto libre.'
+}
+
+Table sistemas_operativos {
+  id bigint [pk, increment]
+  nombre varchar(60) [not null, unique]
+  fin_soporte date [note: 'Fecha de fin de soporte del fabricante: alimenta el reporte de obsolescencia']
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table tipos_componente {
+  id bigint [pk, increment]
+  nombre varchar(60) [not null, unique]
+  es_periferico boolean [not null, default: false]
+  obligatorio_en_computo boolean [not null, default: false, note: 'RAM, disco y procesador']
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table motivos_baja {
+  id bigint [pk, increment]
+  nombre varchar(80) [not null, unique]
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table proveedores {
+  id bigint [pk, increment]
+  nit varchar(20) [unique]
+  razon_social varchar(160) [not null]
+  telefono varchar(30)
+  correo varchar(120)
+  created_at timestamp
+  updated_at timestamp
+  Note: 'Quien vendió, donó o presta el equipo, y outsourcing de mantenimiento.'
+}
+
+// ---------------------------------------------------------------------
+// 3. EQUIPO Y SU HOJA DE VIDA
+// ---------------------------------------------------------------------
+
+Table equipos {
+  id bigint [pk, increment]
+  qr_uuid char(36) [not null, unique, note: 'Identificador permanente del QR (RN-19)']
+  numero_activo int [not null, unique, note: 'Consecutivo "ID ACTIVO" del FOR.01, lo asigna el sistema']
+  serial varchar(80) [not null, unique, note: 'PENDIENTE-REG-###### si aún no se ha tomado (RN-02)']
+  codigo_activo varchar(20) [note: 'Placa de Almacén I1-######. Índice no único: RN-03']
+  codigo_activo_justificacion text
+  tipo_equipo_id bigint [not null, ref: > tipos_equipo.id]
+  marca_id bigint [not null, ref: > marcas.id]
+  modelo_id bigint [ref: > modelos.id]
+  descripcion varchar(255) [note: '"Descripción Activo" del FOR.01']
+  caracteristicas json [note: 'Valores según tipos_equipo.campos_aplicables']
+  proceso_id bigint [ref: > procesos.id, note: 'Proceso al que da soporte (FOR.01)']
+  propiedad propiedad_equipo [not null, default: 'gobernacion']
+  proveedor_tercero_id bigint [ref: > proveedores.id, note: 'Dueño si propiedad = tercero']
+  figura_tercero figura_tercero
+  forma_ingreso forma_ingreso [not null]
+  fecha_adquisicion date
+  valor_adquisicion decimal(15,2) [note: 'COP']
+  proveedor_id bigint [ref: > proveedores.id, note: 'A quién se compró']
+  numero_contrato varchar(40)
+  numero_factura varchar(40)
+  fecha_fin_garantia date
+  vida_util_meses smallint
+  estado_funcionamiento estado_funcionamiento [not null, default: 'bueno']
+  estado_ciclo_vida estado_ciclo_vida [not null, default: 'sin_asignar']
+  verificacion estado_verificacion [not null, default: 'pendiente_de_verificar']
+  puesto_trabajo_id bigint [ref: > puestos_trabajo.id]
+  importacion_id bigint [ref: > importaciones.id]
+  fila_origen_importacion int
+  observaciones text
+  created_at timestamp
+  updated_at timestamp
+
+  indexes {
+    codigo_activo
+    (estado_ciclo_vida, tipo_equipo_id)
+  }
+  Note: 'Centro del modelo. Ubicación y responsable actuales viven en asignaciones (la abierta).'
+}
+
+Table valoraciones_activo {
+  id bigint [pk, increment]
+  equipo_id bigint [not null, ref: > equipos.id]
+  evento_id bigint [ref: - eventos.id, note: 'Evento "valoracion" que la creó']
+  levantamiento_id bigint [ref: > levantamientos_activos.id]
+  contiene_datos_personales si_no_na [not null]
+  clasificacion_datos clasificacion_datos_personales [not null, default: 'no_aplica']
+  infraestructura_critica si_no_na [not null]
+  continuidad_negocio si_no_na [not null]
+  propietario_cargo varchar(120) [not null, note: 'Director o líder del proceso (GT-M4 4.2.3)']
+  custodio_cargo varchar(120) [not null, note: 'Cargo que administra el activo: "Ingeniero de Soporte"']
+  tipo_ubicacion tipo_ubicacion_activo [not null, default: 'fisico']
+  tiempo_retencion varchar(40) [note: '"Indeterminado", "6 meses", "1 año"']
+  confidencialidad tinyint [not null, note: '1 a 4 (GT-M4 tabla 3)']
+  integridad tinyint [not null, note: '1 a 4 (tabla 4)']
+  disponibilidad tinyint [not null, note: '1 a 4 (tabla 5)']
+  total tinyint [not null, note: 'Columna generada: C + I + D']
+  importancia importancia_activo [not null, note: 'Calculada con la tabla 6']
+  requiere_gestion_riesgo boolean [not null, note: 'Algún criterio = 4, o importancia alta/muy alta (GT-M4 4.2.6)']
+  controles_monitoreo varchar(200) [note: 'Cámaras, sensor de humo, temperatura, humedad (hoja "Datos")']
+  vigente boolean [not null, default: true, note: 'Solo una vigente por equipo']
+  fecha date [not null]
+  usuario_id bigint [not null, ref: > users.id]
+  created_at timestamp
+  Note: 'Valoración CID del Manual GT-M4. Histórica: un incidente o el líder del proceso pueden reclasificarla. Solo aplica a tipo_activo = hardware.'
+}
+
+Table configuraciones_computo {
+  id bigint [pk, increment]
+  equipo_id bigint [not null, unique, ref: - equipos.id]
+  sistema_operativo_id bigint [ref: > sistemas_operativos.id]
+  licencia_so varchar(80)
+  ofimatica varchar(80) [note: 'Ej.: Office Home and Business']
+  licencia_ofimatica varchar(80)
+  tiene_antivirus boolean [not null, default: false]
+  antivirus_producto varchar(80)
+  nombre_equipo varchar(60) [note: 'Hostname']
+  dominio varchar(60)
+  direccion_ip varchar(45)
+  direccion_mac varchar(17)
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table componentes {
+  id bigint [pk, increment]
+  equipo_id bigint [not null, ref: > equipos.id]
+  tipo_componente_id bigint [not null, ref: > tipos_componente.id]
+  capacidad_caracteristica varchar(80)
+  marca varchar(60)
+  modelo varchar(80)
+  serial varchar(80)
+  estado estado_funcionamiento
+  fecha_instalacion date
+  fecha_retiro date [note: 'Null = instalado']
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table puestos_trabajo {
+  id bigint [pk, increment]
+  codigo varchar(30) [not null, unique]
+  piso_id bigint [not null, ref: > pisos.id]
+  dependencia_id bigint [ref: > dependencias.id]
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table asignaciones {
+  id bigint [pk, increment]
+  equipo_id bigint [not null, ref: > equipos.id]
+  persona_id bigint [ref: > personas.id, note: 'Null = sin responsable (bodega)']
+  piso_id bigint [not null, ref: > pisos.id, note: 'El piso ya define la sede']
+  dependencia_id bigint [ref: > dependencias.id]
+  puesto_trabajo_id bigint [ref: > puestos_trabajo.id]
+  fecha_inicio date [not null]
+  fecha_fin date [note: 'Null = asignación actual']
+  evento_origen_id bigint [ref: > eventos.id]
+  created_at timestamp
+  updated_at timestamp
+  Note: 'Una sola abierta por equipo (RN-04).'
+}
+
+// ---------------------------------------------------------------------
+// 4. EVENTOS (historial inmutable)
+// ---------------------------------------------------------------------
+
+Table eventos {
+  id bigint [pk, increment]
+  equipo_id bigint [not null, ref: > equipos.id]
+  tipo tipo_evento [not null]
+  fecha datetime [not null]
+  es_historico boolean [not null, default: false, note: 'Alta de carga inicial: exento de RN-13']
+  descripcion text
+  valores json [note: '{antes: {...}, despues: {...}}']
+  usuario_id bigint [not null, ref: > users.id, note: 'Autor, nunca cambia (RF-11)']
+  estado_firma estado_firma [not null, default: 'no_aplica']
+  evento_anulado_id bigint [ref: > eventos.id]
+  created_at timestamp
+  updated_at timestamp
+  Note: 'Solo se escribe vía HistorialService::registrar(). update()/delete() bloqueados.'
+}
+
+Table cambios_componente {
+  id bigint [pk, increment]
+  evento_id bigint [not null, unique, ref: - eventos.id]
+  accion accion_componente [not null]
+  componente_retirado_id bigint [ref: > componentes.id]
+  serial_retirado varchar(80)
+  componente_instalado_id bigint [ref: > componentes.id]
+  serial_instalado varchar(80)
+  motivo text
+  destino_retirado destino_retirado
+  equipo_destino_id bigint [ref: > equipos.id, note: 'Si destino = otro_equipo']
+  created_at timestamp
+}
+
+Table diagnosticos {
+  id bigint [pk, increment]
+  evento_id bigint [not null, unique, ref: - eventos.id]
+  estado_encontrado text [not null]
+  causa text
+  recomendaciones text
+  es_baja boolean [not null, default: false]
+  motivo_baja_id bigint [ref: > motivos_baja.id]
+  created_at timestamp
+}
+
+Table documentos {
+  id bigint [pk, increment]
+  evento_id bigint [not null, ref: > eventos.id]
+  tipo tipo_documento_adjunto [not null]
+  consecutivo varchar(30)
+  archivo_path varchar(255) [not null]
+  firmado boolean [not null, default: false]
+  fecha date [not null]
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table etiquetas_qr {
+  id bigint [pk, increment]
+  equipo_id bigint [not null, ref: > equipos.id]
+  fecha_impresion datetime [not null]
+  usuario_id bigint [not null, ref: > users.id]
+  motivo motivo_etiqueta [not null]
+  lote varchar(40)
+  created_at timestamp
+}
+
+// ---------------------------------------------------------------------
+// 5. MANTENIMIENTO PREVENTIVO (Programa Anual de Mantenimiento, PAMP)
+// ---------------------------------------------------------------------
+
+Table planes_mantenimiento {
+  id bigint [pk, increment]
+  vigencia smallint [not null, unique, note: 'Año: 2026']
+  codigo varchar(30)
+  version varchar(10)
+  fecha_documento date
+  objetivo text
+  alcance text
+  horas_por_dispositivo decimal(4,2) [not null, default: 2.5, note: 'Parámetro del PAMP']
+  estado estado_plan [not null, default: 'borrador']
+  usuario_id bigint [not null, ref: > users.id]
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table programaciones_mantenimiento {
+  id bigint [pk, increment]
+  plan_id bigint [not null, ref: > planes_mantenimiento.id]
+  dependencia_id bigint [not null, ref: > dependencias.id]
+  sede_id bigint [not null, ref: > sedes.id]
+  mes tinyint [not null, note: '1 a 12. Si una dependencia va en dos meses, son dos filas']
+  impacto nivel_impacto [not null]
+  responsable varchar(120) [not null, default: 'Director TIC o a quien este designe']
+  equipo_ejecutor varchar(200) [note: 'Ingenieros, técnicos, pasantes de soporte']
+  personas_asignadas tinyint [note: 'El PAMP proyecta 5 personas por actividad']
+  equipos_estimados smallint
+  impresoras_estimadas smallint
+  observaciones text
+  created_at timestamp
+  updated_at timestamp
+
+  indexes {
+    (plan_id, dependencia_id, sede_id, mes) [unique]
+  }
+}
+
+Table mantenimientos {
+  id bigint [pk, increment]
+  evento_id bigint [not null, unique, ref: - eventos.id]
+  tipo tipo_mantenimiento [not null]
+  programacion_id bigint [ref: > programaciones_mantenimiento.id, note: 'Null en correctivos']
+  actividades json [not null, note: 'Checklist: inspeccion, limpieza, actualizacion, revision']
+  hallazgos text
+  insumos text
+  duracion_minutos smallint
+  estado_resultante estado_funcionamiento [not null]
+  ejecutor_proveedor_id bigint [ref: > proveedores.id, note: 'Si lo hizo un tercero (outsourcing)']
+  created_at timestamp
+  Note: 'Extiende Evento. Si el mantenimiento cambia una pieza, se registra además un cambio_componente.'
+}
+
+// ---------------------------------------------------------------------
+// 6. LEVANTAMIENTO Y ACEPTACIÓN DE ACTIVOS (GT-M4 4.1)
+// ---------------------------------------------------------------------
+
+Table levantamientos_activos {
+  id bigint [pk, increment]
+  codigo varchar(30) [not null, unique]
+  dependencia_id bigint [not null, ref: > dependencias.id]
+  proceso_id bigint [ref: > procesos.id]
+  sede_id bigint [not null, ref: > sedes.id]
+  fecha_inicio date [not null]
+  fecha_aceptacion date
+  propietario_persona_id bigint [ref: > personas.id, note: 'Director o líder del proceso']
+  custodio_persona_id bigint [ref: > personas.id]
+  estado estado_levantamiento [not null, default: 'en_curso']
+  acta_path varchar(255) [note: 'Acta de identificación y aceptación firmada']
+  usuario_id bigint [not null, ref: > users.id]
+  created_at timestamp
+  updated_at timestamp
+  Note: 'La matriz de activos por proceso y su acta firmada (GT-M4 4.1 c y 4.1.2). Reemplaza la "verificación en sitio" informal de v3.'
+}
+
+// ---------------------------------------------------------------------
+// 7. SISTEMA: usuarios, auditoría, importación
+// ---------------------------------------------------------------------
+
+Table users {
+  id bigint [pk, increment]
+  name varchar(255) [not null]
+  email varchar(255) [not null, unique]
+  password varchar(255) [not null]
+  persona_id bigint [ref: - personas.id, note: 'Funcionario o contratista TIC que usa el sistema']
+  perfil perfil_usuario [not null, default: 'usuario']
+  activo boolean [not null, default: true]
+  debe_cambiar_contrasena boolean [not null, default: true]
+  remember_token varchar(100)
+  created_at timestamp
+  updated_at timestamp
+}
+
+Table auditorias {
+  id bigint [pk, increment]
+  usuario_id bigint [ref: > users.id]
+  accion varchar(60) [not null]
+  entidad varchar(60) [not null]
+  entidad_id bigint
+  valor_anterior json
+  valor_nuevo json
+  ip varchar(45)
+  created_at timestamp [not null]
+  Note: 'Inmutable, mínimo 5 años (RNF-10).'
+}
+
+Table importaciones {
+  id bigint [pk, increment]
+  tipo varchar(30) [not null, note: 'equipos | personas | valoraciones']
+  archivo varchar(255) [not null]
+  fecha datetime [not null]
+  usuario_id bigint [not null, ref: > users.id]
+  filas int [not null]
+  errores json
+  created_at timestamp
+  updated_at timestamp
+}

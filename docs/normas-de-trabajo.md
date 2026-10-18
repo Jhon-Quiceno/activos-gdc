@@ -26,6 +26,8 @@ Cinco personas tocando el mismo repositorio en paralelo solo funciona si cada un
 | Alex | Reportes | `feature/reportes-<tarea>` |
 | Manuel | Administración | `feature/admin-<tarea>` |
 | Manuel | Etiquetas QR | `feature/qr-<tarea>` |
+| Anuar | Mantenimiento (Fase 2) | `feature/mantenimiento-<tarea>` |
+| Manuel | Levantamientos (Fase 2) | `feature/levantamientos-<tarea>` |
 
 ### Flujo paso a paso (copiar y pegar, cambiando el nombre de la rama)
 
