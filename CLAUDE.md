@@ -55,6 +55,11 @@ Detalle completo en `docs/normas-de-trabajo.md`. Resumen:
 - Cada bloque escribe solo en sus carpetas: `app/Livewire/<Bloque>`,
   `resources/views/livewire/<bloque>`, `tests/Feature/<Bloque>`. Lo compartido (componentes
   `x-ui.*`, el layout, `HistorialService`) lo cambia solo el líder.
+- **Migración en dos tiempos (Fase 2):** las columnas viejas `personas.nombre/cedula/cargo`,
+  `equipos.modelo/propietario_tercero` y `asignaciones.sede_id` siguen existiendo hasta el
+  cierre del día 2, pero el código nuevo usa siempre las nuevas (ver
+  `docs/base-de-datos.md` §6). La valoración GT-M4 se crea solo con
+  `ValoracionActivo::registrar()`.
 - **Todo cambio sobre un equipo pasa por `HistorialService::registrar()`.** Nunca se
   inserta un `Evento` a mano — el modelo lo bloquea a propósito (`update()`/`delete()`
   lanzan excepción, ver `app/Models/Evento.php`).
@@ -76,8 +81,8 @@ Bloques y a quién pertenecen (ver `docs/<nombre>.md` de cada persona):
 | Movimientos (Anuar) | `app/Livewire/Movimientos` | `/movimientos` |
 | Importación (Juan Camilo) | `app/Livewire/Importacion` | `/importacion` |
 | Reportes (Alex) | `app/Livewire/Reportes` | `/reportes` |
-| Administración (Manuel) | `app/Livewire/Admin` | `/admin` |
-| Etiquetas QR (Manuel) | `app/Livewire/Qr` | `/qr` |
+| Administración e Inicio (Manuel) | `app/Livewire/Admin`, `dashboard` | `/admin`, `/dashboard` |
+| Etiquetas QR (Juan José desde el 9 oct) | `app/Livewire/Qr` | `/qr` |
 | Levantamientos (Anuar, nuevo en Fase 2) | `app/Livewire/Levantamientos` | `/levantamientos` |
 
 ## Sistema de diseño

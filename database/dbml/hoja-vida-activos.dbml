@@ -106,7 +106,7 @@ Enum familia_equipo {
   seguridad_electronica
   energia
   climatizacion
-  proyeccion_audio
+  proyeccion [note: 'Video beam y audio']
   telefonia
 }
 
@@ -353,7 +353,7 @@ Table personas {
   tipo_provision tipo_provision [not null, default: 'no_aplica']
   numero_contrato varchar(40) [note: 'Solo contratistas']
   fecha_fin_vinculacion date [note: 'Fin de contrato o retiro: dispara el paz y salvo (RF-23)']
-  activa boolean [not null, default: true]
+  activo boolean [not null, default: true]
   created_at timestamp
   updated_at timestamp
   Note: 'Minimización de datos (Ley 1581): de las 77 columnas de la planta solo se guardan las necesarias para responder por un equipo. No se guardan salario, RH, estado civil, etnia, dirección, hijos ni salud.'
@@ -461,7 +461,7 @@ Table equipos {
   fecha_fin_garantia date
   vida_util_meses smallint
   estado_funcionamiento estado_funcionamiento [not null, default: 'bueno']
-  estado_ciclo_vida estado_ciclo_vida [not null, default: 'sin_asignar']
+  estado_ciclo_vida estado_ciclo_vida [not null, default: 'en_servicio']
   verificacion estado_verificacion [not null, default: 'pendiente_de_verificar']
   puesto_trabajo_id bigint [ref: > puestos_trabajo.id]
   importacion_id bigint [ref: > importaciones.id]
@@ -508,7 +508,7 @@ Table configuraciones_computo {
   id bigint [pk, increment]
   equipo_id bigint [not null, unique, ref: - equipos.id]
   sistema_operativo_id bigint [ref: > sistemas_operativos.id]
-  licencia_so varchar(80)
+  licencia varchar(80) [note: 'Licencia del sistema operativo']
   ofimatica varchar(80) [note: 'Ej.: Office Home and Business']
   licencia_ofimatica varchar(80)
   tiene_antivirus boolean [not null, default: false]
@@ -538,7 +538,7 @@ Table componentes {
 
 Table puestos_trabajo {
   id bigint [pk, increment]
-  codigo varchar(30) [not null, unique]
+  nombre_o_codigo varchar(255) [not null]
   piso_id bigint [not null, ref: > pisos.id]
   dependencia_id bigint [ref: > dependencias.id]
   created_at timestamp

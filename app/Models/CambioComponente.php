@@ -18,6 +18,7 @@ class CambioComponente extends Model
         'serial_instalado',
         'motivo',
         'destino_retirado',
+        'equipo_destino_id',
     ];
 
     public function evento(): BelongsTo
@@ -33,5 +34,11 @@ class CambioComponente extends Model
     public function componenteInstalado(): BelongsTo
     {
         return $this->belongsTo(Componente::class, 'componente_instalado_id');
+    }
+
+    /** Equipo que recibió lo retirado, si el destino es «otro_equipo» (RF-17). */
+    public function equipoDestino(): BelongsTo
+    {
+        return $this->belongsTo(Equipo::class, 'equipo_destino_id');
     }
 }

@@ -4,6 +4,7 @@ namespace Database\Factories;
 
 use App\Models\Equipo;
 use App\Models\Marca;
+use App\Models\Proveedor;
 use App\Models\TipoEquipo;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -29,6 +30,9 @@ class EquipoFactory extends Factory
             'modelo' => fake()->bothify('Modelo ??-####'),
             'propiedad' => fake()->randomElement(['gobernacion', 'tercero']),
             'propietario_tercero' => null,
+            'forma_ingreso' => fake()->randomElement(['compra', 'compra', 'carga_inicial', 'donacion']),
+            'fecha_adquisicion' => fake()->dateTimeBetween('-8 years', '-1 month')->format('Y-m-d'),
+            'valor_adquisicion' => fake()->numberBetween(800, 6000) * 1000,
             'estado_funcionamiento' => fake()->randomElement(['Bueno', 'Regular', 'Malo']),
             'estado_ciclo_vida' => 'en_servicio',
             'verificacion' => fake()->randomElement(['verificado', 'pendiente_de_verificar']),
@@ -42,7 +46,9 @@ class EquipoFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'propiedad' => 'tercero',
-            'propietario_tercero' => fake('es_ES')->company(),
+            'proveedor_tercero_id' => Proveedor::factory(),
+            'figura_tercero' => fake()->randomElement(['comodato', 'convenio', 'proveedor']),
+            'forma_ingreso' => 'comodato',
         ]);
     }
 

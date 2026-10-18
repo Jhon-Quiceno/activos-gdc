@@ -18,6 +18,7 @@ class Componente extends Model
         'tipo_componente_id',
         'capacidad_caracteristica',
         'marca',
+        'modelo',
         'serial',
         'estado',
         'fecha_instalacion',

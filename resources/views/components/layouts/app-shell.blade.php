@@ -11,6 +11,8 @@
         ['label' => 'Traslados', 'route' => 'movimientos.traslados.index', 'pattern' => 'movimientos.traslado*', 'icon' => 'movimientos'],
         ['label' => 'Bajas', 'route' => 'movimientos.bajas.index', 'pattern' => 'movimientos.baja*', 'icon' => 'bajas'],
         ['label' => 'Importar inventario', 'route' => 'importacion.index', 'pattern' => 'importacion.*', 'icon' => 'importacion'],
+        // Fase 2 (GT-M4): no está en el prototipo; reusa el ícono «listas».
+        ['label' => 'Levantamientos', 'route' => 'levantamientos.index', 'pattern' => 'levantamientos.*', 'icon' => 'listas'],
         ['label' => 'Reportes', 'route' => 'reportes.index', 'pattern' => 'reportes.*', 'icon' => 'reportes'],
     ];
 

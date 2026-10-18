@@ -12,12 +12,14 @@ class TipoComponente extends Model
     protected $fillable = [
         'nombre',
         'es_periferico',
+        'obligatorio_en_computo',
     ];
 
     protected function casts(): array
     {
         return [
             'es_periferico' => 'boolean',
+            'obligatorio_en_computo' => 'boolean',
         ];
     }
 

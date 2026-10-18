@@ -1,7 +1,7 @@
 # Base de datos — Modelo v4
 
 **Sistema de Hoja de Vida de Activos Tecnológicos · Gobernación de Córdoba · Dirección TIC**
-Versión 4.1 · 17 de octubre de 2026 · sin mantenimiento · Jhon (líder) · Rama `docs/reestructuracion-fuentes-oficiales`
+Versión 4.2 · 17 de octubre de 2026 · sin mantenimiento · migraciones aplicadas (primer tiempo) · Jhon (líder) · Rama `docs/reestructuracion-fuentes-oficiales`
 
 > Este documento es la referencia del modelo de datos. Acompaña al [Análisis de requerimientos v4](./analisis-requerimientos.md).
 > Los dos archivos fuente están en [database/dbml/](../database/dbml/):
@@ -42,7 +42,7 @@ El **modelo actual (v3)** es el que corre hoy en `develop`: 22 tablas propias, m
 | Sedes | 11 inventadas («Sede Alcaldía Mayor», «Edificio San Jerónimo»…) | 11 reales con dirección y municipio (10 confirmadas en el PAMP + Suricentro por confirmar) |
 | Pisos | 8 globales (1 a 8 para todas las sedes) | Propios de cada sede |
 | Cargo del responsable | Texto libre | Catálogo oficial del Decreto 607 (21 empleos con código y nivel) + grado |
-| Tipos de equipo | 12 | 23, clasificados en hardware o soporte (GT-M4) |
+| Tipos de equipo | 12 | 24, clasificados en hardware o soporte (GT-M4) |
 | Valoración del activo (GT-M4) | No existe | Datos personales, criticidad, propietario, custodio, CID 1 a 4 e importancia, con historial |
 | Datos de adquisición y garantía | No existen | Forma de ingreso, fecha, valor, proveedor, contrato, factura, garantía, vida útil |
 | Levantamiento con acta firmada | No existe | Por dependencia y proceso (GT-M4 4.1) |
@@ -56,17 +56,17 @@ El **modelo actual (v3)** es el que corre hoy en `develop`: 22 tablas propias, m
 | `sedes` | Modificada | + `direccion`, `barrio`, `municipio_id`, `tipo`, `tenencia`, `direccion_reservada`, `activa`. |
 | `pisos` | Modificada | + `sede_id` y `nombre`. El único pasa de `numero` a `(sede_id, numero)`: cada sede tiene sus pisos. |
 | `dependencias` | Modificada | + `padre_id` (árbol), `tipo`, `nombre_corto`, `sigla`, `proceso_id`, `planta`, `acto_administrativo`, `activa`. El único pasa de `nombre` a `(padre_id, nombre)`. |
-| `tipos_equipo` | Modificada | `familia` pasa de 7 a 10 valores (+ `seguridad_electronica`, `climatizacion`, `telefonia`; `proyeccion` → `proyeccion_audio`). + `tipo_activo`, `usa_configuracion_computo`, `vida_util_meses`, `activo`. |
+| `tipos_equipo` | Modificada | `familia` pasa de 7 a 10 valores (+ `seguridad_electronica`, `climatizacion`, `telefonia`). + `tipo_activo`, `usa_configuracion_computo`, `vida_util_meses`, `activo`. |
 | `marcas` | Igual | — |
 | `sistemas_operativos` | Modificada | + `fin_soporte` (reporte de obsolescencia). |
 | `motivos_baja` | Igual | Solo cambian los valores del seeder. |
 | `tipos_componente` | Modificada | + `obligatorio_en_computo`. |
-| `puestos_trabajo` | Modificada | `nombre_o_codigo` → `codigo` (único). Se quita `sede_id`: la da el piso. |
-| `personas` | Modificada | `nombre` → `nombres` + `apellidos`; `cedula` (opcional) → `tipo_documento` + `numero_documento` (obligatorio y único); `cargo` (texto) → `cargo_id` + `grado` + `encargo`; `tipo_vinculacion` obligatorio y + `pasante`; + `correo_institucional`, `jefe_inmediato_id`, `planta`, `tipo_provision`, `numero_contrato`, `fecha_fin_vinculacion`; `activo` → `activa`. |
+| `puestos_trabajo` | Modificada | Se quita `sede_id`: la da el piso (en el segundo tiempo). |
+| `personas` | Modificada | `nombre` → `nombres` + `apellidos`; `cedula` (opcional) → `tipo_documento` + `numero_documento` (obligatorio y único); `cargo` (texto) → `cargo_id` + `grado` + `encargo`; `tipo_vinculacion` obligatorio y + `pasante`; + `correo_institucional`, `jefe_inmediato_id`, `planta`, `tipo_provision`, `numero_contrato`, `fecha_fin_vinculacion`; `tipo_documento`, `nombres`, `apellidos` y `numero_documento` nuevos. |
 | `users` | Modificada | + `persona_id`. |
 | `importaciones` | Modificada | + `tipo` (equipos, personas, valoraciones). |
-| `equipos` | Modificada | + `numero_activo`, `descripcion`, `proceso_id`, `forma_ingreso`, `fecha_adquisicion`, `valor_adquisicion`, `proveedor_id`, `numero_contrato`, `numero_factura`, `fecha_fin_garantia`, `vida_util_meses`. `modelo` (texto) → `modelo_id`; `propietario_tercero` (texto) → `proveedor_tercero_id`; `figura_tercero` + `arrendamiento`; `estado_funcionamiento` de texto a lista (`bueno`, `regular`, `malo`, `no_funcional`); `estado_ciclo_vida` arranca en `sin_asignar` hasta la primera asignación. |
-| `configuraciones_computo` | Modificada | `licencia` → `licencia_so`; + `ofimatica`, `licencia_ofimatica`, `dominio`, `direccion_ip`, `direccion_mac`. |
+| `equipos` | Modificada | + `numero_activo`, `descripcion`, `proceso_id`, `forma_ingreso`, `fecha_adquisicion`, `valor_adquisicion`, `proveedor_id`, `numero_contrato`, `numero_factura`, `fecha_fin_garantia`, `vida_util_meses`. `modelo` (texto) → `modelo_id`; `propietario_tercero` (texto) → `proveedor_tercero_id`; `figura_tercero` + `arrendamiento`; `estado_funcionamiento` de texto a lista (`bueno`, `regular`, `malo`, `no_funcional`). |
+| `configuraciones_computo` | Modificada | `licencia` (del sistema operativo) se conserva; + `ofimatica`, `licencia_ofimatica`, `dominio`, `direccion_ip`, `direccion_mac`. |
 | `componentes` | Modificada | + `modelo`; `estado` de texto a la misma lista del equipo. |
 | `asignaciones` | Modificada | Se quita `sede_id` (la da el piso); + `puesto_trabajo_id`. |
 | `eventos` | Modificada | `tipo` + `valoracion`; + `es_historico` (altas de carga inicial). |
@@ -95,9 +95,7 @@ El **modelo actual (v3)** es el que corre hoy en `develop`: 22 tablas propias, m
 | `personas.nombre` | `personas.nombres` + `personas.apellidos` |
 | `personas.cedula` | `personas.tipo_documento` + `personas.numero_documento` |
 | `personas.cargo` | `personas.cargo_id` → `cargos` + `personas.grado` |
-| `configuraciones_computo.licencia` | `configuraciones_computo.licencia_so` |
 | `asignaciones.sede_id`, `puestos_trabajo.sede_id` | Se deducen de `piso_id` → `pisos.sede_id` |
-| `puestos_trabajo.nombre_o_codigo` | `puestos_trabajo.codigo` |
 
 ### 2.4 Lo que no cambia
 
@@ -432,15 +430,16 @@ El texto escaneado del art. 19 del Decreto 607 le asigna el código 430 al Auxil
 | Videograbador (DVR/NVR) | seguridad_electronica | hardware | no |
 | Cámara de vigilancia | seguridad_electronica | hardware | no |
 | Control de acceso (biométrico) | seguridad_electronica | hardware | no |
-| Video beam | proyeccion_audio | hardware | no |
-| Parlante / sistema de audio | proyeccion_audio | hardware | no |
+| Video beam | proyeccion | hardware | no |
+| Parlante / sistema de audio | proyeccion | hardware | no |
 | Teléfono IP | telefonia | hardware | no |
 | Planta telefónica | telefonia | hardware | no |
 | UPS | energia | soporte | no |
 | Planta eléctrica | energia | soporte | no |
 | Aire acondicionado (cuarto técnico) | climatizacion | soporte | no |
+| Otro | computo | hardware | no |
 
-Sale de los activos de ejemplo del FOR.01 (NAS, videograbadores, control de acceso, equipos de comunicación, servidores, recurso audiovisual) y de la tabla 2 del GT-M4 (soporte: UPS, aire acondicionado, planta eléctrica).
+«Otro» es el respaldo del importador cuando un tipo no coincide. El resto sale de los activos de ejemplo del FOR.01 (NAS, videograbadores, control de acceso, equipos de comunicación, servidores, recurso audiovisual) y de la tabla 2 del GT-M4 (soporte: UPS, aire acondicionado, planta eléctrica).
 
 ### 5.8 Otros catálogos
 
@@ -451,22 +450,42 @@ Sale de los activos de ejemplo del FOR.01 (NAS, videograbadores, control de acce
 
 ---
 
-## 6. Plan de migración (de v3 a v4)
+## 6. Migración en dos tiempos
 
-Las migraciones solo las crea el líder (normas de trabajo). Como el proyecto todavía no tiene datos reales cargados en producción, se propone **reescribir el esquema con migraciones nuevas** en vez de encadenar `ALTER TABLE`, y probar todo con `migrate:fresh --seed`.
+Renombrar o borrar columnas de una vez habría roto los bloques de todos antes de que empezaran. Por eso la migración va en dos tiempos (patrón *expand/contract*):
 
-| Paso | Qué | Impacto en código |
+### 6.1 Primer tiempo — hecho (rama `feature/nucleo-modelo-v4`)
+
+Quince migraciones `2026_10_18_1000xx_*` que **solo agregan**: las 9 tablas nuevas y todas las columnas nuevas. Las columnas viejas siguen existiendo y los modelos las mantienen sincronizadas, así el código que todavía las usa funciona igual. Con eso pasan las 212 pruebas que ya existían, más 28 nuevas del núcleo (`tests/Feature/ModeloV4Test.php`).
+
+| Columna vieja (sigue existiendo) | Columna nueva (usar en código nuevo) | Quién las sincroniza |
 |---|---|---|
-| 1 | Nuevas: `procesos`, `municipios`, `cargos`, `modelos`, `proveedores`, `dependencia_equivalencias`, `ubicaciones_dependencia`, `valoraciones_activo`, `levantamientos_activos`. | Modelos y seeders nuevos. |
-| 2 | `dependencias` + `padre_id`, `tipo`, `nombre_corto`, `sigla`, `proceso_id`, `planta`, `acto_administrativo`, `activa`; se quita `unique(nombre)` y se pone `unique(padre_id, nombre)`. | Selectores de dependencia en árbol (Movimientos, Reportes, Admin). |
-| 3 | `sedes` + dirección, municipio, tipo, tenencia; `pisos` + `sede_id` (`unique(sede_id, numero)`). | Selector sede → piso dependiente. |
-| 4 | `asignaciones` y `puestos_trabajo`: se quita `sede_id` (lo da el piso). | `GestorAsignaciones`, reportes por sede (join por piso). |
-| 5 | `personas`: `nombre` → `nombres` + `apellidos`, `cedula` → `tipo_documento` + `numero_documento` (único), `cargo` → `cargo_id`, + grado, jefe, planta, provisión, fechas. | Formularios de persona, enmascaramiento (RN-12), formatos PDF. |
-| 6 | `equipos`: + numero_activo, modelo_id, descripción, proceso, datos de adquisición; `propietario_tercero` → `proveedor_tercero_id`; `estado_funcionamiento` a enum. | Registro y edición de equipo, hoja de vida, PDF. |
-| 7 | `eventos.tipo` + `valoracion`; + `es_historico`. `documentos.tipo` + `acta_aceptacion_activos`. `cambios_componente` + `equipo_destino_id`. | `HistorialService::registrar()` acepta el tipo nuevo. |
-| 8 | `configuraciones_computo` + ofimática, licencias, dominio, IP, MAC; `sistemas_operativos` + `fin_soporte`. | Formulario de cómputo, reporte de obsolescencia. |
-| 9 | `users` + `persona_id`; `importaciones` + `tipo`. | Admin de usuarios, importador. |
-| 10 | Reescribir `CatalogosSeeder` con los valores de la sección 5 y ajustar `EquiposDemoSeeder`. | Todas las pruebas que asumen sedes o dependencias inventadas. |
+| `personas.nombre` | `personas.nombres` + `personas.apellidos` | `Persona::sincronizarCamposViejos()` |
+| `personas.cedula` | `personas.numero_documento` (+ `tipo_documento`) | `Persona` |
+| `personas.cargo` (texto) | `personas.cargo_id` → `cargos` (+ `grado`, `encargo`) | `Persona` |
+| `equipos.modelo` (texto) | `equipos.modelo_id` → `modelos` | `Equipo::sincronizarCamposViejos()` |
+| `equipos.propietario_tercero` (texto) | `equipos.proveedor_tercero_id` → `proveedores` | `Equipo` |
+| `asignaciones.sede_id` | `asignaciones.piso_id` → `pisos.sede_id` | `Asignacion` (copia la sede del piso) |
+| `puestos_trabajo.sede_id` | `puestos_trabajo.piso_id` → `pisos.sede_id` | `PuestoTrabajo` |
+
+Además quedan opcionales mientras dure la transición: `pisos.sede_id` y `sedes.municipio_id` (las pruebas viejas crean sedes y pisos sueltos), y `equipos.estado_funcionamiento` sigue siendo texto («Bueno», «Regular», «Malo»).
+
+Se conservaron cuatro nombres de v3 en lugar de renombrarlos, porque cambiarlos no aportaba nada y rompía código: `personas.activo`, `configuraciones_computo.licencia` (es la del sistema operativo), `puestos_trabajo.nombre_o_codigo` y el valor `proyeccion` de `tipos_equipo.familia`. El DBML y el SQL ya usan esos nombres.
+
+### 6.2 Segundo tiempo — al cerrar el día 2 (Jhon)
+
+Cuando todos los bloques usen las columnas nuevas (días 1 y 2 del plan), Jhon crea la migración de cierre:
+
+1. Borra `personas.nombre`, `personas.cedula`, `personas.cargo`, `equipos.modelo`, `equipos.propietario_tercero`, `asignaciones.sede_id` y `puestos_trabajo.sede_id`.
+2. Vuelve obligatorios `pisos.sede_id`, `sedes.municipio_id` y `personas.numero_documento`.
+3. Normaliza `equipos.estado_funcionamiento` y `componentes.estado` a la lista `bueno`, `regular`, `malo`, `no_funcional`, y los convierte en enum.
+4. Quita de los modelos la sincronización de los campos viejos.
+
+**Antes de abrir el PR de cierre**, cada dueño confirma que su bloque ya no usa ninguna columna vieja:
+
+```bash
+grep -rnE "cedula|propietario_tercero|->cargo\b|'cargo'|->modelo\b|'modelo'|sede_id" app/Livewire/<Bloque> resources/views/livewire/<bloque>
+```
 
 ---
 
@@ -607,7 +626,7 @@ Enum familia_equipo {
   seguridad_electronica
   energia
   climatizacion
-  proyeccion_audio
+  proyeccion [note: 'Video beam y audio']
   telefonia
 }
 
@@ -854,7 +873,7 @@ Table personas {
   tipo_provision tipo_provision [not null, default: 'no_aplica']
   numero_contrato varchar(40) [note: 'Solo contratistas']
   fecha_fin_vinculacion date [note: 'Fin de contrato o retiro: dispara el paz y salvo (RF-23)']
-  activa boolean [not null, default: true]
+  activo boolean [not null, default: true]
   created_at timestamp
   updated_at timestamp
   Note: 'Minimización de datos (Ley 1581): de las 77 columnas de la planta solo se guardan las necesarias para responder por un equipo. No se guardan salario, RH, estado civil, etnia, dirección, hijos ni salud.'
@@ -962,7 +981,7 @@ Table equipos {
   fecha_fin_garantia date
   vida_util_meses smallint
   estado_funcionamiento estado_funcionamiento [not null, default: 'bueno']
-  estado_ciclo_vida estado_ciclo_vida [not null, default: 'sin_asignar']
+  estado_ciclo_vida estado_ciclo_vida [not null, default: 'en_servicio']
   verificacion estado_verificacion [not null, default: 'pendiente_de_verificar']
   puesto_trabajo_id bigint [ref: > puestos_trabajo.id]
   importacion_id bigint [ref: > importaciones.id]
@@ -1009,7 +1028,7 @@ Table configuraciones_computo {
   id bigint [pk, increment]
   equipo_id bigint [not null, unique, ref: - equipos.id]
   sistema_operativo_id bigint [ref: > sistemas_operativos.id]
-  licencia_so varchar(80)
+  licencia varchar(80) [note: 'Licencia del sistema operativo']
   ofimatica varchar(80) [note: 'Ej.: Office Home and Business']
   licencia_ofimatica varchar(80)
   tiene_antivirus boolean [not null, default: false]
@@ -1039,7 +1058,7 @@ Table componentes {
 
 Table puestos_trabajo {
   id bigint [pk, increment]
-  codigo varchar(30) [not null, unique]
+  nombre_o_codigo varchar(255) [not null]
   piso_id bigint [not null, ref: > pisos.id]
   dependencia_id bigint [ref: > dependencias.id]
   created_at timestamp
