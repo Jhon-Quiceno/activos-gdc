@@ -416,9 +416,9 @@ Todo lo cargado sin serial queda «Pendiente de verificar» y se verifica dentro
 
 | Fase | Alcance | RF |
 |---|---|---|
-| **1 — Por cerrar** (oct-2026) | Inventario, hoja de vida, movimientos, formatos, QR, reportes, administración. Faltan fusionar los PR #9 y #10 (paso 1 de [plan-fase2.md](./plan-fase2.md)). | 35 esenciales de v3 |
-| **2 — Reestructuración con fuentes oficiales** | Modelo v4, catálogos oficiales, personas desde la planta, ficha ampliada, valoración GT-M4, levantamiento con acta, matriz FOR.01, cargas nuevas, y los «importantes» de v3 que más pesan | RF-01, 02, 04, 07, 09, 10, 12, 18, 19, 34, 37, 38, 39, 44, 45, 53 a 58, 60 (esenciales), más RF-23, 26, 33, 36, 47, 49, 51, 52, 59 |
-| **3 — Consolidación** | Puestos de trabajo, fotos, historial por fecha, tipos de evento configurables, destino de lo retirado, listado de bajas, cargas posteriores | RF-05, 06, 13, 16, 17, 27, 31, 42 |
+| **1 — Cerrada** (oct-2026, `v1.0`) | Inventario, hoja de vida, movimientos, formatos, QR, reportes, administración. | 35 esenciales de v3 |
+| **2 — Reestructuración con fuentes oficiales** | Modelo v4, catálogos oficiales, personas desde la planta, ficha ampliada, valoración GT-M4, levantamiento con acta, matriz FOR.01, cargas nuevas, y los «importantes» de v3 que más pesan | RF-01, 02, 04, 07, 09, 10, 12, 18, 19, 34, 37, 38, 39, 44, 45, 53 a 58, 60 (esenciales), más RF-23, 27, 36, 47, 52, 59. RF-22, 26, 33, 49 y 51 ya entraron con los PR #9 y #10 |
+| **3 — Consolidación** | Puestos de trabajo, fotos, historial por fecha, tipos de evento configurables, destino de lo retirado, pendientes de firma, cargas posteriores | RF-05, 06, 13, 16, 17, 31, 42 |
 | **4 — Mejoras** | Firma en pantalla | RF-32 |
 
 El reparto de la Fase 2 está en [plan-fase2.md](./plan-fase2.md).

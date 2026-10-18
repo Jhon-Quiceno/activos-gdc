@@ -25,7 +25,8 @@ Cinco personas tocando el mismo repositorio en paralelo solo funciona si cada un
 | Juan Camilo | Carga del inventario | `feature/importacion-<tarea>` |
 | Alex | Reportes | `feature/reportes-<tarea>` |
 | Manuel | Administración | `feature/admin-<tarea>` |
-| Manuel | Etiquetas QR | `feature/qr-<tarea>` |
+| Juan José (desde el 9 oct) | Etiquetas QR | `feature/qr-<tarea>` |
+| Manuel | Inicio / tablero (Fase 2) | `feature/inicio-<tarea>` |
 | Anuar | Levantamientos (Fase 2) | `feature/levantamientos-<tarea>` |
 
 ### Flujo paso a paso (copiar y pegar, cambiando el nombre de la rama)
@@ -137,7 +138,8 @@ Cada bloque (persona) escribe exclusivamente en sus propias carpetas. Estos son 
 | Importación (Juan Camilo) | `app/Livewire/Importacion` | `resources/views/livewire/importacion` | `tests/Feature/Importacion` | `/importacion` |
 | Reportes (Alex) | `app/Livewire/Reportes` | `resources/views/livewire/reportes` | `tests/Feature/Reportes` | `/reportes` |
 | Administración (Manuel) | `app/Livewire/Admin` | `resources/views/livewire/admin` | `tests/Feature/Admin` | `/admin` |
-| Etiquetas QR (Manuel) | `app/Livewire/Qr` | `resources/views/livewire/qr` | `tests/Feature/Qr` | `/qr` |
+| Etiquetas QR (Juan José) | `app/Livewire/Qr` | `resources/views/livewire/qr` | `tests/Feature/Qr` | `/qr` |
+| Levantamientos (Anuar) | `app/Livewire/Levantamientos` | `resources/views/livewire/levantamientos` | `tests/Feature/Levantamientos` | `/levantamientos` |
 
 Cada carpeta de pruebas va dentro de `tests/Feature/` (no suelta en `tests/`) porque así está configurado `tests/Pest.php` para que los tests tomen automáticamente la clase base correcta.
 

@@ -7,45 +7,42 @@ Fase 2 · Bloque: Apoyo · Ver el [Plan de Fase 2](./plan-fase2.md)
 
 El Excel del inventario 2026 **dejó de ser la base del sistema**: ahora es solo una fuente de datos más. Tu bloque pasa de «importar ese Excel» a **cargar datos en el modelo oficial**: equipos con una plantilla propia, personas desde la planta de Talento Humano, valoraciones desde la matriz FOR.01 y datos de adquisición desde Almacén.
 
-## Heredado de la Fase 1
+## Lo que ya te dejó Jhon
 
-- El emparejamiento por similitud (Levenshtein) sin umbral para sede y dependencia **se reemplaza**: ahora todo se resuelve con la tabla `dependencia_equivalencias` (RF-39), y si no hay equivalencia, la fila queda con error en vez de asociarse en silencio.
-- Los 14 códigos de activo repetidos dentro del Excel 2026 siguen pendientes; se resuelven al mapear ese archivo a la plantilla nueva (día 7).
+- **`DependenciaEquivalencia::resolver($texto)`**: devuelve la dependencia oficial por nombre, nombre corto o equivalencia, sin importar mayúsculas, tildes ni espacios, y `null` si no hay coincidencia exacta. Reemplaza el emparejamiento por similitud (Levenshtein): sin coincidencia, la fila queda con error.
+- 26 equivalencias sembradas, entre ellas los nombres anteriores al Decreto 609 («DIRECION DE SISTEMAS», «Nómina Central»…).
+- `importaciones.tipo` (`equipos`, `personas`, `valoraciones`) y `eventos.es_historico` para las altas de carga inicial.
+- `Cargo` (código + denominación) para resolver los cargos de la planta, y `Persona` con los campos permitidos (RNF-19).
+- `ValoracionActivo::registrar()` para crear valoraciones con su evento y sus reglas.
 
 ## Tareas por día
 
 | Días | Tareas | Entregable |
 |---|---|---|
-| 1 | Diseñar la **plantilla oficial de carga de equipos** (`.xlsx` descargable desde la pantalla): columnas del modelo v4 (tipo, marca, modelo, serial, código de activo, sede, piso, dependencia, responsable por documento, propiedad, adquisición) y, opcional, las de valoración del FOR.01. Lista desplegable en cada catálogo. | Plantilla publicada. |
-| 2–3 | Reescribir el importador sobre la plantilla (RF-38): vista previa, modo simulación, errores por fila, fila de origen, «Pendiente de verificar» (RF-41). Resolver sede → piso → dependencia con el modelo nuevo y con `dependencia_equivalencias` (RF-39); sin equivalencia = error de fila. | Importar la plantilla en la base de pruebas. |
-| 4–5 | **Carga de personas desde la planta (RF-55):** leer los Excel de planta Central y Educación, tomar **solo** documento, nombres, cargo (código + denominación + grado), dependencia real, jefe inmediato, planta, vinculación, provisión y correo institucional; descartar en memoria todas las demás columnas (RNF-19). Resolver cargos contra el catálogo del Decreto 607 y dependencias contra las equivalencias. | Personas cargadas sin datos sensibles. |
-| 6 | **Carga de valoraciones** desde una matriz FOR.01 diligenciada: cruzar cada fila con su equipo, convertir las respuestas de C, I y D a 1–4 y crear la valoración por el mismo camino que la pantalla (evento `valoracion`). | Valoraciones de una dependencia cargadas. |
-| 7 | **Correspondencia del inventario 2026 con la plantilla:** script o pantalla que convierte el Excel de Forms a la plantilla (divide filas en equipos, normaliza códigos como ya hacías) para cargarlo por el flujo normal. Llenar `dependencia_equivalencias` con sus 175 variantes, junto a Manuel. | Inventario 2026 cargado por la plantilla. |
-| 8 | **Carga de datos de adquisición** desde el archivo de Almacén (fecha, valor, proveedor, contrato, factura), cruzando por código de activo; los que no crucen se listan. Verificar los criterios de aceptación de la §12 del análisis y comparar los conteos por sede y piso con los del PAMP. | Reporte de la carga. |
+| 1–2 | **Adaptar el importador** (paso 3 del plan): resolver dependencias con `DependenciaEquivalencia::resolver()` (sin coincidencia = error de fila), sede → piso de esa sede (un piso que no existe en la sede = error), y escribir personas y equipos con los campos nuevos (`nombres`, `numero_documento`, `modelo_id`…), no con los viejos. Altas con `es_historico = true`. | Importador sin columnas viejas. |
+| 3 | **Plantilla oficial de carga de equipos** (`.xlsx` descargable): columnas del modelo v4 con listas desplegables de los catálogos. | Plantilla publicada. |
+| 4–5 | **Carga de personas desde la planta (RF-55):** de las plantas Central y Educación solo se toman documento, nombres, cargo (código y grado), dependencia real, jefe inmediato, planta, vinculación, provisión y correo institucional. El resto de columnas se descarta en memoria y nunca se guarda (RNF-19). | Personas cargadas sin datos sensibles. |
+| 6 | **Carga de valoraciones** desde una matriz FOR.01: cruzar cada fila con su equipo, pasar las respuestas de C, I y D a 1–4 y crear con `ValoracionActivo::registrar()`. | Valoraciones de una dependencia. |
+| 7 | **Inventario 2026 por la plantilla:** convertir el Excel de Forms a la plantilla (dividir filas en equipos y normalizar códigos, como ya hacías) y cargarlo por el flujo normal. Llenar las equivalencias de sus 175 variantes de dependencia junto a Manuel. | Inventario 2026 cargado. |
+| 8 | **Datos de adquisición** desde Almacén (fecha, valor, proveedor, contrato, factura), cruzando por código de activo; listar los que no crucen. Revisar los criterios de la §12 del análisis. | Reporte de la carga. |
 | 9–10 | Prueba cruzada del bloque de Equipos y valoración (Juan José); correcciones. | Pest en verde. |
 
 ## Requerimientos a cargo
 
-RF-38, RF-39, RF-40, RF-41, RF-55, más las cargas de valoraciones y de datos de adquisición (§12 del análisis). Detalle en el [Análisis v4.1](./analisis-requerimientos.md), secciones 5.8 y 12.
+RF-38, RF-39, RF-40, RF-41, RF-55 y las cargas de valoraciones y de adquisición (§12 del [Análisis v4.1](./analisis-requerimientos.md)).
 
 ## Pruebas mínimas
 
 - Una carga de planta con columnas de salario, RH o dirección no guarda ninguna de ellas (comprobado en la base).
-- Una dependencia escrita con su nombre anterior al Decreto 609 se resuelve por equivalencia; una desconocida da error de fila.
+- Una dependencia escrita con su nombre anterior al Decreto 609 se resuelve; una desconocida da error de fila.
 - Un piso que no existe en la sede indicada da error de fila (RN-21).
-- **Nunca** se usan las plantas reales en tests ni se suben al repositorio: los tests usan Excel sintéticos con las mismas cabeceras.
-
-## Depende de / conecta con
-
-- **Jhon:** modelo v4, catálogos oficiales sembrados.
-- **Manuel:** pantalla de equivalencias (tú la llenas; él la administra).
-- **Anuar** usa las personas que cargas (fecha de fin de vinculación) para el paz y salvo; **Alex** revisa los conteos en el reporte de calidad.
+- **Nunca** se usan las plantas reales en pruebas ni se suben al repositorio: las pruebas usan Excel sintéticos con las mismas cabeceras.
 
 ## Normas
 
-Rama `feature/importacion-<tarea>` desde `develop`; escribes en `app/Livewire/Importacion`, sus vistas y `tests/Feature/Importacion`. El alta histórica pasa por `HistorialService::registrar()` (`es_historico = true`). Detalle en [normas-de-trabajo.md](./normas-de-trabajo.md).
+Rama `feature/importacion-<tarea>` desde `develop`; escribes en `app/Livewire/Importacion`, sus vistas y `tests/Feature/Importacion`. Detalle en [normas-de-trabajo.md](./normas-de-trabajo.md).
 
 ```bash
 git checkout develop && git pull origin develop
-git checkout -b feature/importacion-plantilla-v4
+git checkout -b feature/importacion-modelo-v4
 ```

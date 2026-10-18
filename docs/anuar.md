@@ -5,43 +5,38 @@ Fase 2 · Bloques: Movimientos y Levantamientos (nuevo) · Ver el [Plan de Fase 
 
 ## Rol
 
-Sigues con los procesos que generan papel firmado. Primero adaptas los traslados a la persona y la ubicación oficiales; después construyes el bloque nuevo de **Levantamientos**: el inventario de activos por dependencia y proceso, con acta de identificación y aceptación firmada, que exige el Manual GT-M4 (4.1 y 4.1.2). Es el mismo tipo de flujo que ya dominas: documento prellenado, firma y carga del firmado.
+Sigues con los procesos que generan papel firmado. Primero pasas responsables y traslados a la persona y la ubicación oficiales; después construyes el bloque nuevo de **Levantamientos**: el inventario de activos por dependencia y proceso, con acta de aceptación firmada (Manual GT-M4, 4.1 y 4.1.2). RF-22 (entrega consolidada) y RF-26 (anular baja) ya quedaron hechos en la Fase 1.
 
-## Heredado de la Fase 1
+## Lo que ya te dejó Jhon
 
-- RF-22 (formato de entrega consolidado por persona): confirmar si `GestorAsignaciones::equiposACargo()` ya tiene pantalla; si no, sale junto con el paz y salvo (día 3).
-- Los 4 hallazgos menores del PR #6 (`TrasladoForm` no limpia `dependenciaId` en bodega, `descargarPrellenado()` sin validar el tipo, `ComponenteForm` fuera de `RegistroMovimientos`, `estaDadoDeBaja()` sin uso): corregirlos el día 1, que de todos modos tocas esos archivos.
+- `personas` con `tipo_documento`, `numero_documento`, `nombres`, `apellidos`, `correo_institucional`, `cargo_id` (catálogo del Decreto 607), `grado`, `encargo`, `jefe_inmediato_id`, `planta`, `tipo_provision`, `numero_contrato` y `fecha_fin_vinculacion`. Constantes `Persona::TIPOS_DOCUMENTO`, `VINCULACIONES` y `PROVISIONES`; ayudas `nombreCompleto()` y `cargoTexto()`.
+- `<x-ui.ubicacion-select sede="sedeId" piso="pisoId" dependencia="dependenciaId" />`: el piso solo ofrece los de la sede, y la dependencia propone primero las que funcionan en ese piso.
+- `Sede::direccionVisible()`: nunca devuelve la dirección de la Casa Refugio (RN-28).
+- `LevantamientoActivos` (tabla `levantamientos_activos`), la ruta `/levantamientos`, el menú y la pantalla de arranque `app/Livewire/Levantamientos/Index.php`.
+- `ValoracionActivo::registrar(..., levantamiento: $levantamiento)` enlaza la valoración con el levantamiento.
 
 ## Tareas por día
 
 | Días | Tareas | Entregable |
 |---|---|---|
-| 1 | Persona v4 (RF-18): tipo y número de documento, nombres y apellidos, cargo del catálogo con grado y encargo, dependencia real, jefe inmediato, vinculación y provisión. Enmascaramiento RN-12 con el campo nuevo. Hallazgos del PR #6. | Crear persona con el modelo nuevo. |
-| 2 | Ubicación v4 en el traslado (RF-19, RF-20) con `x-ui.ubicacion-select`: sede → piso de esa sede → dependencia, proponiendo las dependencias de ese piso (`ubicaciones_dependencia`). Formatos de entrega y baja con cargo oficial y ubicación nueva; la dirección reservada nunca sale (RN-28). | Traslado completo con PDF sobre el modelo nuevo. |
-| 3 | Paz y salvo (RF-23) y entrega consolidada (RF-22), con aviso de personas con `fecha_fin_vinculacion` próxima que aún tienen equipos. | Dos PDF. |
-| 4–5 | **Levantamientos, parte 1 (RF-59):** crear un levantamiento por dependencia, proceso y sede; listar sus equipos (con subdependencias) y marcar los que no tienen valoración o están pendientes de verificar; desde cada equipo, abrir el formulario de valoración de Juan José. | Levantamiento con su lista de equipos. |
-| 6–7 | **Levantamientos, parte 2:** acta de identificación y aceptación prellenada en PDF (propietario, custodios, lista de activos con su importancia); matriz FOR.01 del levantamiento con la exportación de Alex; subir el acta firmada y pasar a «Aceptado». | Levantamiento completo de una dependencia. |
-| 8 | Anular una baja registrada por error (RF-26), con evento justificado que devuelve el equipo a su estado anterior. | Anulación de baja. |
+| 1 | **Adaptar responsables** (paso 3 del plan): crear y editar persona con los campos nuevos y el cargo del catálogo; enmascarar `numero_documento` (RN-12) con la clase `Cedula` que ya existe. Dejar de usar `nombre`, `cedula` y `cargo` en Movimientos y en los PDF. | Personas sin columnas viejas. |
+| 2 | **Adaptar el traslado** con `x-ui.ubicacion-select` (RF-19, RF-20) y quitar el uso de `asignacion->sede_id`: la sede sale del piso. Formatos de entrega y baja con cargo oficial y `direccionVisible()`. | Traslado sobre el modelo nuevo. |
+| 3 | Paz y salvo (RF-23): equipos a cargo de una persona en un PDF, y aviso de quienes tienen `fecha_fin_vinculacion` próxima y aún tienen equipos. | Paz y salvo. |
+| 4–5 | **Levantamientos, parte 1 (RF-59):** crear un levantamiento por dependencia, proceso y sede; listar sus equipos con subdependencias (`Dependencia::idsDeRama`) y marcar los que no tienen valoración o están pendientes de verificar. | Levantamiento con su lista de equipos. |
+| 6–7 | **Levantamientos, parte 2:** valorar desde el levantamiento (formulario de Juan José), acta de identificación y aceptación prellenada en PDF, matriz FOR.01 (exportación de Alex), subir el acta firmada y pasar a «Aceptado». | Un levantamiento completo. |
+| 8 | Listado de bajas en un período para la dependencia que tramita la baja administrativa (RF-27). | Listado en PDF y Excel. |
 | 9–10 | Prueba cruzada del bloque de Administración (Manuel); correcciones. | Pest en verde. |
 
 ## Requerimientos a cargo
 
-RF-18, RF-19, RF-20, RF-22, RF-23, RF-26, RF-59. Detalle en el [Análisis v4.1](./analisis-requerimientos.md), secciones 5.4, 5.5 y 5.11, CU-18, y la tabla `levantamientos_activos` en [base-de-datos.md](./base-de-datos.md).
+RF-18, RF-19, RF-20, RF-22 (adaptar), RF-23, RF-27, RF-59. Detalle en el [Análisis v4.1](./analisis-requerimientos.md), secciones 5.4, 5.5 y 5.11, y CU-18.
 
 ## Pruebas mínimas
 
 - Un levantamiento no pasa a «Aceptado» sin acta firmada.
-- La lista del levantamiento de una secretaría incluye los equipos de sus direcciones y áreas.
+- La lista de un levantamiento de una secretaría incluye sus direcciones y áreas.
 - La dirección de la Casa Refugio no aparece en ningún PDF.
-- Un traslado a un piso de otra sede es rechazado (RN-21).
-- Anular una baja devuelve el equipo al estado que tenía, y la anulación queda como evento.
-
-## Depende de / conecta con
-
-- **Jhon:** tablas nuevas, `x-ui.ubicacion-select`, ruta `/levantamientos`.
-- **Juan José:** formulario de valoración (días 4–5), que se abre desde el levantamiento.
-- **Alex:** exportación de la matriz FOR.01 (días 3–4), que reutilizas para el levantamiento.
-- **Juan Camilo:** personas cargadas con su fecha de fin de vinculación, para el paz y salvo.
+- Un traslado guarda el piso elegido, y la sede es la de ese piso.
 
 ## Normas
 
