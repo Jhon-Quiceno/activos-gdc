@@ -2,9 +2,12 @@
 
 Gobernación de Córdoba · Dirección TIC. Lleva el ciclo de vida completo de cada equipo
 tecnológico (registro, componentes, traslados, diagnóstico, baja) con formatos PDF
-firmados y código QR por equipo. Ver `docs/analisis-requerimientos.md` para el detalle
-funcional completo (35 RF esenciales, modelo de dominio, reglas de negocio, casos de uso)
-y `docs/plan-2-semanas.md` para el plan y reparto de trabajo del equipo.
+firmados y código QR por equipo. Desde la v4 el análisis se basa en la documentación
+oficial de la Gobernación (Manual GT-M4, formato FOR.01, Decretos 607/608/609 de 2023 y el
+Programa Anual de Mantenimiento solo como fuente de sedes y pisos); el Excel del inventario
+2026 solo se usa para cargar datos. El mantenimiento sigue fuera del alcance.
+Ver `docs/analisis-requerimientos.md` (v4), `docs/base-de-datos.md` (modelo de datos v4)
+y `docs/plan-fase2.md` (plan y reparto de trabajo actual).
 
 ## Stack
 
@@ -75,6 +78,7 @@ Bloques y a quién pertenecen (ver `docs/<nombre>.md` de cada persona):
 | Reportes (Alex) | `app/Livewire/Reportes` | `/reportes` |
 | Administración (Manuel) | `app/Livewire/Admin` | `/admin` |
 | Etiquetas QR (Manuel) | `app/Livewire/Qr` | `/qr` |
+| Levantamientos (Anuar, nuevo en Fase 2) | `app/Livewire/Levantamientos` | `/levantamientos` |
 
 ## Sistema de diseño
 
@@ -110,11 +114,13 @@ colores, tamaños ni íconos que no estén ya en `tailwind.config.js` o en los c
 
 ## Documentación completa
 
-- `docs/analisis-requerimientos.md` — requerimientos, modelo de dominio, reglas de negocio.
-- `docs/plan-2-semanas.md` — plan de trabajo de la Fase 1.
+- `docs/analisis-requerimientos.md` — análisis v4: fuentes oficiales, requerimientos,
+  reglas de negocio, casos de uso (versión Word en `docs/analisis-requerimientos-v4.docx`).
+- `docs/base-de-datos.md` — modelo de datos v4, diccionario, valores oficiales de los
+  catálogos y plan de migración. DBML (dbdiagram.io) y SQL en `database/dbml/`.
+- `docs/plan-fase2.md` — plan y reparto de la Fase 2 (reestructuración).
 - `docs/normas-de-trabajo.md` — reglas de ramas/carpetas/eventos en detalle.
-- `docs/juan-jose.md`, `docs/anuar.md`, `docs/juan-camilo.md` — tareas
-  específicas de cada integrante (los de Alex y Manuel se retiraron al
-  quedar sus bloques completos, ver `docs/plan-2-semanas.md` sección 0).
+- `docs/juan-jose.md`, `docs/anuar.md`, `docs/juan-camilo.md`, `docs/alex.md`,
+  `docs/manuel.md` — tareas de la Fase 2 de cada integrante.
 - `odd/tasks/bootstrap-hoja-vida-equipos.md` — historial del bootstrap inicial del
   proyecto (qué se construyó, decisiones tomadas, problemas de entorno encontrados).

@@ -3,7 +3,7 @@
 **Gobernación de Córdoba · Dirección TIC**
 Sistema de Hoja de Vida de Equipos
 
-> Reglas de la sección 5 del [Plan de dos semanas](./plan-2-semanas.md) ("Reglas para no estorbarse"), explicadas para que cualquiera del equipo las aplique sin ambigüedad.
+> Reglas de trabajo del equipo, explicadas para que cualquiera las aplique sin ambigüedad. Valen para todas las fases; el plan actual es el [Plan de Fase 2](./plan-fase2.md).
 
 Cinco personas tocando el mismo repositorio en paralelo solo funciona si cada una sabe exactamente dónde puede escribir y qué no debe tocar. Estas normas existen para eso: evitar choques de migraciones, archivos pisados y eventos registrados de forma inconsistente.
 
@@ -26,6 +26,7 @@ Cinco personas tocando el mismo repositorio en paralelo solo funciona si cada un
 | Alex | Reportes | `feature/reportes-<tarea>` |
 | Manuel | Administración | `feature/admin-<tarea>` |
 | Manuel | Etiquetas QR | `feature/qr-<tarea>` |
+| Anuar | Levantamientos (Fase 2) | `feature/levantamientos-<tarea>` |
 
 ### Flujo paso a paso (copiar y pegar, cambiando el nombre de la rama)
 
@@ -212,4 +213,4 @@ Lo que el usuario final ve (textos de pantalla, mensajes de validación, correos
 
 ---
 
-**Ver también:** [Análisis de requerimientos](./analisis-requerimientos.md) · [Plan de dos semanas](./plan-2-semanas.md)
+**Ver también:** [Análisis de requerimientos](./analisis-requerimientos.md) · [Plan de Fase 2](./plan-fase2.md)

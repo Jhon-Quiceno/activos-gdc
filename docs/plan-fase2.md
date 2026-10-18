@@ -1,120 +1,110 @@
-# Plan de Fase 2
+# Plan de Fase 2 — Reestructuración con fuentes oficiales
 
 **Gobernación de Córdoba · Dirección TIC**
-Sistema de Hoja de Vida de Equipos — Fase 2
-Basado en el [Análisis de Requerimientos v3](./analisis-requerimientos.md) (sección 13,
-«Alcance por fases») y en el estado real de cierre de la Fase 1 ([plan-2-semanas.md](./plan-2-semanas.md), sección 0)
+Sistema de Hoja de Vida de Activos Tecnológicos — Fase 2
+Basado en el [Análisis de requerimientos v4.1](./analisis-requerimientos.md) y el [modelo de datos v4](./base-de-datos.md)
 
-Jhon (líder) · Octubre de 2026 · Versión 1.0
-
----
-
-## 0. Antes de empezar: cerrar la Fase 1
-
-Dos cosas de la Fase 1 quedaron abiertas y bloquean dar por cerrado el inventario real.
-No son Fase 2, pero van primero:
-
-| # | Pendiente | Qué hace falta | Bloquea |
-|---|---|---|---|
-| 1 | Fusionar PR #9 y #10 (Juan José) | Edición de equipo, QR real, filtros avanzados de hoja de vida/movimientos. Revisar el conflicto esperado con `feature/equipos-serial-provisional` (ya fusionada) en `Crear.php`/`page-crear.blade.php` — son las mismas líneas de `sinCodigoActivo`/`sinSerial`, debería ser chico. | RF-08, RF-48, RF-50 (QR, esenciales de Fase 1 pero sin fusionar). |
-| 2 | Corregir y recargar el inventario 2026 real | El Excel de Almacén trae 14 códigos de activo repetidos **dentro del propio archivo**; hoy el importador bloquea la confirmación completa porque RN-03 solo permite justificar un duplicado contra un equipo *ya existente*, no dos duplicados en el mismo lote. Dos salidas: (a) Almacén corrige esos 14 códigos en el Excel, o (b) se extiende la justificación de RN-03 a este caso. Mientras no se decida, el inventario real sigue sin cargar completo. | Criterios de aceptación de la carga (sección 12 del análisis): «equipos creados = equipos del archivo menos los personales, sin pérdidas». |
+Jhon (líder) · Juan José y Anuar (núcleo) · Juan Camilo, Alex y Manuel (apoyo) · 10 días hábiles
+Versión 2.2 · 17 de octubre de 2026
 
 ---
 
-## 1. Qué entra en Fase 2
+## 0. Qué cambia
 
-Los 15 requerimientos «importantes» que quedaron fuera de la Fase 1 a propósito (ver
-`analisis-requerimientos.md`, sección 13), agrupados por para qué sirven. Ninguno es
-bloqueante: el sistema ya es usable sin ellos.
+El análisis ya no sale del Excel del inventario 2026 sino de la documentación oficial: Manual GT-M4, formato FOR.01, Decretos 607, 608 y 609 de 2023 y plantas de personal. Del Programa Anual de Mantenimiento solo se toman sedes, pisos y ubicaciones. El Excel queda solo para cargar datos. **El mantenimiento sigue fuera del alcance.**
 
-### 1.1 Trazabilidad más fina
-
-| ID | Requerimiento | Por qué importa | Bloque natural |
-|---|---|---|---|
-| RF-16 | Consultar el historial de cada componente y la configuración que tenía el equipo en una fecha dada. | Hoy se ve el evento de cambio, pero no "qué RAM tenía este PC el 3 de marzo". | Equipos |
-| RF-17 | Registrar el destino del componente retirado: bodega, otro equipo, descarte. | El modelo `CambioComponente` ya tiene la columna `destino_retirado`; falta exigirla y mostrarla. | Movimientos |
-| RF-13 | Permitir configurar nuevos tipos de evento sin desarrollo. | Hoy los 7 tipos de evento son un enum fijo en la migración de `eventos`. Pasar a tabla editable es un cambio de modelo — lo aprueba Jhon. | Núcleo / Jhon |
-
-### 1.2 Puestos de trabajo y fotos
-
-| ID | Requerimiento | Por qué importa | Bloque natural |
-|---|---|---|---|
-| RF-05 | Agrupar equipos en un puesto de trabajo y trasladar el puesto completo o un equipo suelto. | El modelo `PuestoTrabajo` ya existe (la importación lo usa para ubicación), pero no hay pantalla para agruparlo ni trasladarlo como unidad. | Equipos / Movimientos |
-| RF-06 | Adjuntar fotografías al equipo (chasis, etiqueta, serial). | Útil para la verificación en sitio del inventario 2026 (sección 12). | Equipos |
-
-### 1.3 Responsables y bajas
-
-| ID | Requerimiento | Por qué importa | Bloque natural |
-|---|---|---|---|
-| RF-23 | Generar el paz y salvo o listado de devolución cuando un funcionario se retira. | Anuar ya tiene `GestorAsignaciones::equiposACargo()`; falta la pantalla/PDF consolidado (quedó como hallazgo abierto de Anuar, ver su documento). | Movimientos |
-| RF-26 | Anular una baja registrada por error mediante un evento justificado. | RN-10 ya dice que un equipo dado de baja no admite nuevos eventos salvo anulación; falta el flujo específico de baja (el de diagnóstico ya existe). | Movimientos |
-| RF-27 | Generar el listado de equipos dados de baja en un período, para la dependencia que tramita la baja administrativa. | El reporte "Dados de baja" (Fase 1, ya hecho) cubre la consulta; falta el formato de entrega específico para esa dependencia, si lo pide el jefe. | Reportes |
-
-### 1.4 Firmas y seguimiento
-
-| ID | Requerimiento | Por qué importa | Bloque natural |
-|---|---|---|---|
-| RF-31 | Listar los eventos pendientes de firma. | El reporte "Pendientes de firma" (Fase 1, ya hecho) cubre esto — **revisar si ya satisface el requerimiento o falta una vista operativa aparte** (con acción directa de "subir firmado" desde ahí). | Reportes / Movimientos |
-| RF-36 | Mostrar un tablero con totales por tipo, estado, sede y dependencia. | Primer vistazo al llegar al sistema; hoy no existe pantalla de inicio con KPIs. | Reportes |
-
-### 1.5 Importación y administración
-
-| ID | Requerimiento | Por qué importa | Bloque natural |
-|---|---|---|---|
-| RF-42 | Permitir cargas posteriores desde Excel para nuevos levantamientos o equipos nuevos. | Hoy el importador asume que es la carga inicial; una segunda carga necesita detectar equipos que ya existen (por serial/código) y no duplicarlos. | Importación |
-| RF-47 | Permitir al Administrador restablecer la contraseña de un usuario. | `UsuariosPanel::restablecerContrasena()` ya existe como TODO explícito; falta la lógica real (probablemente generar una temporal + `debe_cambiar_contrasena = true`, reusando el middleware de Fase 1). | Administración |
-
-### 1.6 Etiquetas QR por lotes
-
-| ID | Requerimiento | Por qué importa | Bloque natural |
-|---|---|---|---|
-| RF-49 | Imprimir etiquetas QR por lotes, filtrando por sede, piso, dependencia o tipo. | Necesario para la verificación en sitio (sección 12): cada visita etiqueta todos los equipos de esa sede de una vez. | QR |
-| RF-51 | Reimprimir la etiqueta de un equipo por daño o pérdida, registrando quién y cuándo. | El modelo `EtiquetaQR` ya guarda `motivo` y `lote` para esto. | QR |
-
-### 1.7 Fase 3 (solo si sobra tiempo)
-
-| ID | Requerimiento |
-|---|---|
-| RF-32 | Capturar la firma en pantalla (tableta o celular) en vez de imprimir y escanear. |
+Frente al modelo que corre hoy ([comparación completa](./base-de-datos.md#2-comparación-modelo-actual-v3-frente-al-modelo-nuevo-v4)) se modifican 17 de las 22 tablas, se agregan 9 y ninguna se elimina. Llegan dos módulos nuevos: **valoración del activo** (GT-M4) y **levantamiento con acta de aceptación**. Lo construido en la Fase 1 no se tira: se adapta al modelo nuevo.
 
 ---
 
-## 2. Prioridad sugerida
+## 1. Lo que se debe cumplir antes de empezar algo nuevo
 
-No todo pesa igual. Orden sugerido si hay que elegir:
+Va **en este orden**. Nadie arranca su bloque de la Fase 2 hasta que los pasos 1 y 2 estén en `develop`.
 
-1. **RF-49 y RF-51** (etiquetas QR por lotes/reimpresión) — depende de que primero se
-   fusione el PR #10 (QR real). Sin esto, la verificación en sitio del inventario 2026
-   (que ya debería estar en marcha según la sección 12 del análisis) etiqueta equipo por
-   equipo en vez de por sede.
-2. **RF-47** (restablecer contraseña) — ya está marcado como TODO explícito en el código;
-   es chico y cierra un hueco de usabilidad real para el Administrador.
-3. **RF-42** (cargas posteriores de Excel) — Juan Camilo ya conoce el importador a fondo;
-   es la continuación natural de lo que ya hizo.
-4. **RF-36** (tablero) — alto impacto visual para el jefe, bajo riesgo (solo lectura).
-5. El resto, según lo que priorice la Dirección TIC al ver la demo de Fase 1.
+### Paso 1 — Cerrar lo pendiente de la Fase 1 (Jhon y Juan José)
 
-## 3. Reparto sugerido
+| # | Pendiente | Qué hacer | Por qué antes de la base de datos |
+|---|---|---|---|
+| 1.1 | **PR #9** (edición de equipo) | Revisar y fusionar. | Toca `Crear.php`, `Editar.php` y la hoja de vida, que cambian con el modelo nuevo. Si se migra primero, el PR deja de funcionar y hay que rehacerlo. |
+| 1.2 | **PR #10** (formato oficial, QR, filtros, traslados y bajas) | Revisar y fusionar después del #9: comparten archivos y habrá conflictos chicos. | Toca Equipos, Movimientos, los PDF y el QR: casi todo lo que el modelo nuevo modifica. Ninguno de los dos PR trae migraciones, así que no chocan con el esquema. |
+| 1.3 | Pest en verde en `develop` y etiqueta `v1.0` en `main`. | Correr la suite completa. | Deja una versión estable a la que volver si algo de la Fase 2 sale mal. |
 
-Los bloques de Alex (Reportes) y Manuel (Administración) quedaron libres al cerrar sus
-tareas de Fase 1. Sugerido, a decidir por Jhon:
+**Lo que NO se hace ahora:** cargar el inventario 2026 con el importador actual. Ese importador trabaja con las sedes, pisos y dependencias inventadas del modelo viejo, que desaparecen. La carga real se hace en la Fase 2 con la plantilla nueva (Juan Camilo, día 7). Lo que sí sigue en pie es pedirle a Almacén que corrija los 14 códigos de activo repetidos dentro del archivo.
 
-| Persona | Qué ya conoce | Tomaría en Fase 2 |
+### Paso 2 — Cambiar la base de datos (Jhon, «día 0»)
+
+| # | Tarea | Desbloquea a |
 |---|---|---|
-| Alex | Los 15 reportes, exportación Excel/PDF | RF-36 (tablero), RF-31 si falta algo además del reporte |
-| Manuel | Usuarios, listas, cambio de contraseña, auditoría, y QR si se suma al PR #10 | RF-47 (restablecer contraseña), RF-49/RF-51 (etiquetas por lotes) |
-| Juan Camilo | El importador completo, de punta a punta | RF-42 (cargas posteriores) |
-| Juan José | Equipos, hoja de vida, componentes | RF-05 (puestos de trabajo), RF-06 (fotos), RF-16 |
-| Anuar | Movimientos, formatos, firmas | RF-23 (paz y salvo), RF-26 (anular baja), RF-17 (destino de lo retirado) |
+| 2.1 | Revisar con el profesor el análisis v4.1 y el modelo v4; cerrar las preguntas abiertas 1 a 3 (instituciones educativas, tipos de activo, propietario y custodio). | Todos |
+| 2.2 | Migraciones v4 según [base-de-datos.md §6](./base-de-datos.md#6-plan-de-migración-de-v3-a-v4), con sus modelos de Eloquent y las reglas de la §7. | Todos |
+| 2.3 | Reescribir `CatalogosSeeder` con los valores oficiales ([base-de-datos.md §5](./base-de-datos.md#5-valores-oficiales-de-los-catálogos-para-los-seeders)) y ajustar `EquiposDemoSeeder` y las factories. | Todos |
+| 2.4 | `HistorialService::registrar()` con el tipo de evento `valoracion`. | Juan José |
+| 2.5 | Componentes compartidos: `x-ui.dependencia-select` (árbol, RF-60) y `x-ui.ubicacion-select` (sede → piso → dependencia, RF-19). | Todos los formularios |
+| 2.6 | Ruta y menú vacíos de `/levantamientos`. | Anuar |
+| 2.7 | Dejar Pest en verde sobre el modelo nuevo. Lo que no se pueda arreglar sin tocar un bloque se marca como `todo()` con el nombre del dueño. | Todos |
 
-## 4. Reglas
+**Hecho cuando:** `migrate:fresh --seed` corre con los catálogos oficiales y Pest pasa.
 
-Las mismas de la Fase 1 ([normas-de-trabajo.md](./normas-de-trabajo.md)): ramas
-`feature/<bloque>-<tarea>` desde `develop`, PR obligatorio, solo Jhon crea migraciones,
-`migrate:fresh --seed` siempre, pest en verde antes de abrir PR, commits en español con
-prefijo Conventional Commit en inglés.
+### Paso 3 — Adaptar lo que ya existe (todos, días 1–2)
+
+Cada uno pone su bloque de la Fase 1 a funcionar sobre el modelo nuevo **antes** de construir algo nuevo: personas y ubicación (Anuar), ficha del equipo (Juan José), filtros de reportes (Alex), catálogos (Manuel), importador (Juan Camilo). El detalle está en el documento de cada persona.
 
 ---
 
-**Ver también:** [Análisis de requerimientos](./analisis-requerimientos.md) ·
-[Plan de la Fase 1](./plan-2-semanas.md) · [Normas de trabajo](./normas-de-trabajo.md)
+## 2. Reparto
+
+| Persona | Bloque | RF a cargo | Detalle |
+|---|---|---|---|
+| **Jhon** | Líder: base de datos, piezas compartidas, revisión de PR | Pasos 1 y 2; RF-12 | Esta página |
+| **Juan José** | Equipos, hoja de vida y valoración | RF-01, 02, 04, 07, 09, 33, 52, 56, 57, 58 | [juan-jose.md](./juan-jose.md) |
+| **Anuar** | Movimientos y Levantamientos (nuevo) | RF-18, 19, 20, 22, 23, 26, 59 | [anuar.md](./anuar.md) |
+| **Juan Camilo** | Carga de datos | RF-38, 39, 40, 41, 55; cargas de valoraciones y de adquisición | [juan-camilo.md](./juan-camilo.md) |
+| **Alex** | Reportes | RF-34, 35, 36, 37, 53, 54 y los reportes nuevos | [alex.md](./alex.md) |
+| **Manuel** | Administración y QR | RF-44, 45, 47, 49, 51, 60 | [manuel.md](./manuel.md) |
+
+---
+
+## 3. Calendario
+
+| Días | Meta | Hito |
+|---|---|---|
+| Antes | Pasos 1 y 2 de la sección 1. | PR #9 y #10 fusionados; base nueva con catálogos oficiales y Pest en verde. |
+| 1–2 | Paso 3: adaptar lo existente. | Lo de la Fase 1 funciona otra vez sobre el modelo nuevo. |
+| 3–5 | Valoración, catálogos editables, cargas de personas y equipos, matriz FOR.01. | Demo: equipo → valoración → matriz FOR.01. |
+| 6–8 | Levantamiento con acta, paz y salvo, anular baja, QR por lotes, tablero, carga de datos reales. | Datos reales cargados y un levantamiento aceptado. |
+| 9 | No se agrega nada más; pruebas cruzadas. | Lista de errores priorizada. |
+| 10 | Correcciones, manuales, demo al profesor. | `v2.0` en `main`. |
+
+**Pruebas cruzadas del día 9:** Juan José → Levantamientos (Anuar) · Anuar → Administración (Manuel) · Juan Camilo → Equipos (Juan José) · Alex → Carga (Juan Camilo) · Manuel → Reportes (Alex).
+
+---
+
+## 4. Dependencias y riesgos
+
+```
+Jhon (PR de Fase 1 → base de datos → selectores)
+ ├─► Juan José: ficha y valoración ──► Alex: matriz FOR.01 y riesgos
+ │                                 └─► Anuar: levantamiento
+ ├─► Manuel: catálogos y equivalencias ──► Juan Camilo: cargas
+ └─► Juan Camilo: personas cargadas ──► Anuar: paz y salvo
+```
+
+- **Riesgo principal:** la valoración de Juan José la necesitan Alex y Anuar. Si el día 4 no se puede valorar un equipo, Alex le ayuda, y Anuar empieza el levantamiento por el acta.
+- **Riesgo secundario:** sin los catálogos editables de Manuel, Juan Camilo trabaja con las equivalencias que vienen en los datos de prueba.
+
+---
+
+## 5. Reglas
+
+Las de [normas-de-trabajo.md](./normas-de-trabajo.md), más dos para esta fase:
+
+- **Nada de datos personales de más:** de la planta solo se guardan los campos de RF-18, y las plantas reales nunca se usan en pruebas ni se suben al repositorio.
+- **Nombres oficiales:** si falta una dependencia, sede o cargo, se le pide a Jhon; no se inventa.
+
+---
+
+## 6. Después de la Fase 2
+
+- **Fase 3:** puestos de trabajo (RF-05), fotos (RF-06), tipos de evento configurables (RF-13), configuración por fecha (RF-16), destino de lo retirado (RF-17), listado de bajas (RF-27), vista de pendientes de firma (RF-31), cargas posteriores (RF-42).
+- **Fase 4:** firma en pantalla (RF-32).
+- **Fuera del alcance:** mantenimiento preventivo y correctivo (RN-08).
