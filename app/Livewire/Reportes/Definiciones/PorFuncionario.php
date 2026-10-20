@@ -15,16 +15,17 @@ class PorFuncionario extends ReporteDefinicion
     {
         return $this->unirAsignacionActual($q)
             ->whereNotNull('asig.persona_id')
-            ->orderBy('per.nombre')
+            ->orderBy('per.apellidos')
+            ->orderBy('per.nombres')
             ->orderBy('equipos.id');
     }
 
     public function columnas(): array
     {
         return [
-            'Responsable'      => fn ($e) => $e->asignacionActual?->persona?->nombre,
-            'Cédula'           => fn ($e) => $this->enmascararCedula($e->asignacionActual?->persona?->cedula),
-            'Cargo'            => fn ($e) => $e->asignacionActual?->persona?->cargo,
+            'Responsable'      => fn ($e) => $e->asignacionActual?->persona?->nombreCompleto(),
+            'Cédula'           => fn ($e) => $this->enmascararCedula($e->asignacionActual?->persona?->numero_documento),
+            'Cargo'            => fn ($e) => $e->asignacionActual?->persona?->cargoTexto(),
             'Vinculación'      => fn ($e) => $e->asignacionActual?->persona?->tipo_vinculacion,
             'Dependencia'      => fn ($e) => $e->asignacionActual?->dependencia?->nombre,
             'Serial'           => fn ($e) => $e->serial,

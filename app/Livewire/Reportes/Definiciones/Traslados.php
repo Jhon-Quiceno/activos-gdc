@@ -16,7 +16,7 @@ class Traslados extends ReporteEventoDefinicion
         return parent::consultaBase()
             ->where('eventos.tipo', 'traslado_responsable')
             ->with([
-                'asignacionesOrigen.sede',
+                'asignacionesOrigen.piso.sede',
                 'asignacionesOrigen.piso',
                 'asignacionesOrigen.dependencia',
                 'asignacionesOrigen.persona',
@@ -32,10 +32,10 @@ class Traslados extends ReporteEventoDefinicion
             ['Fecha' => fn ($e) => $this->fechaEvento($e)],
             $this->columnasEquipo(),
             [
-                'Nueva sede'        => fn ($e) => $destino($e)?->sede?->nombre,
+                'Nueva sede'        => fn ($e) => $destino($e)?->piso?->sede?->nombre,
                 'Nuevo piso'        => fn ($e) => $destino($e)?->piso?->numero,
                 'Nueva dependencia' => fn ($e) => $destino($e)?->dependencia?->nombre,
-                'Nuevo responsable' => fn ($e) => $destino($e)?->persona?->nombre,
+                'Nuevo responsable' => fn ($e) => $destino($e)?->persona?->nombreCompleto(),
                 'Detalle'           => fn ($e) => $this->resumenValores($e->valores),
                 'Descripción'       => fn ($e) => $e->descripcion,
                 'Estado de firma'   => fn ($e) => $e->estado_firma,

@@ -13,8 +13,9 @@ class PorSedePiso extends ReporteDefinicion
 
     protected function organizar(Builder $q): Builder
     {
+        // La sede sale del piso (RN-21): basta con que la asignación tenga piso.
         return $this->unirAsignacionActual($q)
-            ->whereNotNull('asig.sede_id')
+            ->whereNotNull('asig.piso_id')
             ->orderBy('sed.nombre')
             ->orderBy('pis.numero')
             ->orderBy('dep.nombre')
@@ -24,7 +25,7 @@ class PorSedePiso extends ReporteDefinicion
     public function columnas(): array
     {
         return [
-            'Sede'             => fn ($e) => $e->asignacionActual?->sede?->nombre,
+            'Sede'             => fn ($e) => $e->asignacionActual?->piso?->sede?->nombre,
             'Piso'             => fn ($e) => $e->asignacionActual?->piso?->numero,
             'Dependencia'      => fn ($e) => $e->asignacionActual?->dependencia?->nombre,
             'Serial'           => fn ($e) => $e->serial,
@@ -32,7 +33,7 @@ class PorSedePiso extends ReporteDefinicion
             'Tipo'             => fn ($e) => $e->tipoEquipo?->nombre,
             'Marca'            => fn ($e) => $e->marca?->nombre,
             'Estado'           => fn ($e) => $this->etiquetaEstado($e->estado_ciclo_vida),
-            'Responsable'      => fn ($e) => $e->asignacionActual?->persona?->nombre,
+            'Responsable'      => fn ($e) => $e->asignacionActual?->persona?->nombreCompleto(),
         ];
     }
 }

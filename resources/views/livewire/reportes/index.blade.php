@@ -144,7 +144,7 @@
                     <select wire:model.live="filtroPersona" class="mt-1 h-11 w-full rounded-lg border-line-input text-[14px] text-ink focus:border-primary focus:ring-primary">
                         <option value="">{{ __('Todos') }}</option>
                         @foreach ($personas as $persona)
-                            <option value="{{ $persona->id }}">{{ $persona->nombre }}</option>
+                            <option value="{{ $persona->id }}">{{ $persona->nombreCompleto() }}</option>
                         @endforeach
                     </select>
                 </div>

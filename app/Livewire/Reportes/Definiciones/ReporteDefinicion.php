@@ -32,8 +32,9 @@ abstract class ReporteDefinicion
         return Equipo::query()->with([
             'tipoEquipo',
             'marca',
-            'asignacionActual.sede',
-            'asignacionActual.piso',
+            // La sede sale del piso (RN-21): la columna asignaciones.sede_id se
+            // borra en la migración de cierre, así que nunca se carga directo.
+            'asignacionActual.piso.sede',
             'asignacionActual.dependencia',
             'asignacionActual.persona',
         ]);
@@ -60,8 +61,9 @@ abstract class ReporteDefinicion
             ->when(filled($f['desde'] ?? null), fn ($q) => $q->whereDate('equipos.created_at', '>=', $f['desde']))
             ->when(filled($f['hasta'] ?? null), fn ($q) => $q->whereDate('equipos.created_at', '<=', $f['hasta']))
             // Ubicación y responsable: siempre sobre la asignación actual (fecha_fin nulo)
+            // La sede se filtra por el piso, no por asignaciones.sede_id (RN-21).
             ->when(filled($f['sede'] ?? null), fn ($q) => $q->whereHas(
-                'asignacionActual', fn ($a) => $a->where('sede_id', $f['sede'])
+                'asignacionActual.piso', fn ($p) => $p->where('sede_id', $f['sede'])
             ))
             ->when(filled($f['piso'] ?? null), fn ($q) => $q->whereHas(
                 'asignacionActual', fn ($a) => $a->where('piso_id', $f['piso'])
@@ -88,8 +90,9 @@ abstract class ReporteDefinicion
                 ->on('asig.equipo_id', '=', 'equipos.id')
                 ->whereNull('asig.fecha_fin'))
             ->leftJoin((new Dependencia)->getTable().' as dep', 'dep.id', '=', 'asig.dependencia_id')
-            ->leftJoin((new Sede)->getTable().' as sed', 'sed.id', '=', 'asig.sede_id')
             ->leftJoin((new Piso)->getTable().' as pis', 'pis.id', '=', 'asig.piso_id')
+            // La sede se une a través del piso (RN-21), no de asignaciones.sede_id.
+            ->leftJoin((new Sede)->getTable().' as sed', 'sed.id', '=', 'pis.sede_id')
             ->leftJoin((new Persona)->getTable().' as per', 'per.id', '=', 'asig.persona_id');
     }
 

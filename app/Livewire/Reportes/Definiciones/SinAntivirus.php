@@ -27,9 +27,9 @@ class SinAntivirus extends ReporteDefinicion
             'Marca'            => fn ($e) => $e->marca?->nombre,
             'Sistema operativo'=> fn ($e) => $e->configuracionComputo?->sistemaOperativo?->nombre,
             'Estado'           => fn ($e) => $this->etiquetaEstado($e->estado_ciclo_vida),
-            'Sede'             => fn ($e) => $e->asignacionActual?->sede?->nombre,
+            'Sede'             => fn ($e) => $e->asignacionActual?->piso?->sede?->nombre,
             'Dependencia'      => fn ($e) => $e->asignacionActual?->dependencia?->nombre,
-            'Responsable'      => fn ($e) => $e->asignacionActual?->persona?->nombre,
+            'Responsable'      => fn ($e) => $e->asignacionActual?->persona?->nombreCompleto(),
         ];
     }
 }

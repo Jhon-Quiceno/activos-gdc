@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Reportes\Definiciones;
 
+use App\Models\ModeloEquipo;
 use Illuminate\Database\Eloquent\Builder;
 
 class PorTipoMarcaModelo extends ReporteDefinicion
@@ -13,10 +14,13 @@ class PorTipoMarcaModelo extends ReporteDefinicion
 
     protected function organizar(Builder $q): Builder
     {
+        // El modelo sale del catálogo (modelo_id): se une para ordenar por su
+        // nombre, ya que la columna de texto equipos.modelo se borra en el cierre.
         return $this->unirTipoYMarca($q)
+            ->leftJoin((new ModeloEquipo)->getTable().' as mod', 'mod.id', '=', 'equipos.modelo_id')
             ->orderBy('tip.nombre')
             ->orderBy('mar.nombre')
-            ->orderBy('equipos.modelo')
+            ->orderBy('mod.nombre')
             ->orderBy('equipos.id');
     }
 
@@ -25,7 +29,7 @@ class PorTipoMarcaModelo extends ReporteDefinicion
         return [
             'Tipo'             => fn ($e) => $e->tipoEquipo?->nombre,
             'Marca'            => fn ($e) => $e->marca?->nombre,
-            'Modelo'           => fn ($e) => $e->modelo,
+            'Modelo'           => fn ($e) => $e->modeloEquipo?->nombre,
             'Serial'           => fn ($e) => $e->serial,
             'Código de activo' => fn ($e) => $e->codigo_activo,
             'Estado'           => fn ($e) => $this->etiquetaEstado($e->estado_ciclo_vida),

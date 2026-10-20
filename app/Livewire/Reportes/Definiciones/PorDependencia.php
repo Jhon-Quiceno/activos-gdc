@@ -24,15 +24,15 @@ class PorDependencia extends ReporteDefinicion
     {
         return [
             'Dependencia'      => fn ($e) => $e->asignacionActual?->dependencia?->nombre,
-            'Sede'             => fn ($e) => $e->asignacionActual?->sede?->nombre,
+            'Sede'             => fn ($e) => $e->asignacionActual?->piso?->sede?->nombre,
             'Piso'             => fn ($e) => $e->asignacionActual?->piso?->numero,
             'Serial'           => fn ($e) => $e->serial,
             'Código de activo' => fn ($e) => $e->codigo_activo,
             'Tipo'             => fn ($e) => $e->tipoEquipo?->nombre,
             'Marca'            => fn ($e) => $e->marca?->nombre,
-            'Modelo'           => fn ($e) => $e->modelo,
+            'Modelo'           => fn ($e) => $e->modeloEquipo?->nombre,
             'Estado'           => fn ($e) => $this->etiquetaEstado($e->estado_ciclo_vida),
-            'Responsable'      => fn ($e) => $e->asignacionActual?->persona?->nombre,
+            'Responsable'      => fn ($e) => $e->asignacionActual?->persona?->nombreCompleto(),
         ];
     }
 }
