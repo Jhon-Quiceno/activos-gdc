@@ -49,7 +49,7 @@ class VerificarPanel extends Component
             return null;
         }
 
-        return Equipo::with(['tipoEquipo', 'marca', 'asignacionActual.persona', 'asignacionActual.dependencia'])
+        return Equipo::with(['tipoEquipo', 'marca', 'modeloEquipo', 'asignacionActual.persona', 'asignacionActual.dependencia'])
             ->where('serial', 'like', "%{$termino}%")
             ->orWhere('codigo_activo', 'like', "%{$termino}%")
             ->first();

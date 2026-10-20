@@ -3,10 +3,14 @@
 namespace App\Livewire\Equipos;
 
 use App\Livewire\Equipos\Concerns\CaracteristicasPorFamilia;
+use App\Livewire\Equipos\Concerns\CatalogoDelEquipo;
+use App\Livewire\Equipos\Concerns\DatosDeAdquisicion;
 use App\Livewire\Equipos\Concerns\NormalizaIdentificadores;
+use App\Livewire\Equipos\Soporte\TextosEquipo;
 use App\Models\ConfiguracionComputo;
 use App\Models\Equipo;
 use App\Models\Marca;
+use App\Models\Proceso;
 use App\Models\SistemaOperativo;
 use App\Services\HistorialService;
 use Closure;
@@ -32,13 +36,23 @@ use Livewire\Component;
 class Editar extends Component
 {
     use CaracteristicasPorFamilia;
+    use CatalogoDelEquipo;
+    use DatosDeAdquisicion;
     use NormalizaIdentificadores;
 
     #[Locked]
     public Equipo $equipo;
 
+    /** El tipo no se edita; se guarda para filtrar los modelos del catálogo. */
+    #[Locked]
+    public ?int $tipoEquipoId = null;
+
     #[Locked]
     public ?string $familiaSeleccionada = null;
+
+    /** Ver Crear::$usaConfiguracionComputo. */
+    #[Locked]
+    public bool $usaConfiguracionComputo = false;
 
     // --- Identificación ---
     public string $serial = '';
@@ -51,14 +65,12 @@ class Editar extends Component
 
     public ?int $marcaId = null;
 
-    public string $modelo = '';
+    // Modelo, descripción, proceso y propietario tercero: ver el trait CatalogoDelEquipo.
 
     public string $estadoFuncionamiento = '';
 
     // --- Propiedad ---
     public string $propiedad = 'gobernacion';
-
-    public string $propietarioTercero = '';
 
     public string $figura = '';
 
@@ -80,8 +92,11 @@ class Editar extends Component
         'codigo_activo_justificacion' => 'Justificación del código de activo',
         'marca' => 'Marca',
         'modelo' => 'Modelo',
+        'descripcion' => 'Descripción',
+        'proceso' => 'Proceso',
         'estado_funcionamiento' => 'Estado de funcionamiento',
         'propiedad' => 'Propiedad',
+        // La clave se conserva para que el historial anterior siga mostrándose igual.
         'propietario_tercero' => 'Propietario',
         'figura_tercero' => 'Figura del tercero',
         'caracteristicas' => 'Características',
@@ -89,29 +104,45 @@ class Editar extends Component
         'sistema_operativo' => 'Sistema operativo',
         'antivirus' => 'Antivirus',
         'nombre_red' => 'Nombre de red',
+        'ofimatica' => 'Ofimática',
+        'licencia_ofimatica' => 'Licencia de ofimática',
+        'dominio' => 'Dominio',
+        'direccion_ip' => 'Dirección IP',
+        'direccion_mac' => 'Dirección MAC',
+        'forma_ingreso' => 'Forma de ingreso',
+        'fecha_adquisicion' => 'Fecha de adquisición',
+        'valor_adquisicion' => 'Valor de adquisición',
+        'proveedor' => 'Proveedor',
+        'numero_contrato' => 'N.º de contrato',
+        'numero_factura' => 'N.º de factura',
+        'fecha_fin_garantia' => 'Fin de la garantía',
+        'vida_util_meses' => 'Vida útil',
     ];
 
     private const PROPIEDAD_LABELS = ['gobernacion' => 'Gobernación', 'tercero' => 'Tercero'];
 
-    private const FIGURA_LABELS = ['comodato' => 'Comodato', 'convenio' => 'Convenio', 'proveedor' => 'Proveedor'];
-
     public function mount(Equipo $equipo): void
     {
         $this->equipo = $equipo->load(['tipoEquipo', 'configuracionComputo']);
+        $this->tipoEquipoId = $equipo->tipo_equipo_id;
         $this->familiaSeleccionada = $equipo->tipoEquipo?->familia;
+        $this->usaConfiguracionComputo = (bool) $equipo->tipoEquipo?->usa_configuracion_computo;
 
         $this->serial = $equipo->serial;
         $this->codigoActivo = (string) $equipo->codigo_activo;
         $this->sinCodigoActivo = $equipo->codigo_activo === null;
         $this->codigoActivoJustificacion = (string) $equipo->codigo_activo_justificacion;
         $this->marcaId = $equipo->marca_id;
-        $this->modelo = (string) $equipo->modelo;
+        $this->modeloId = $equipo->modelo_id;
+        $this->descripcion = (string) $equipo->descripcion;
+        $this->procesoId = $equipo->proceso_id;
         $this->estadoFuncionamiento = (string) $equipo->estado_funcionamiento;
         $this->propiedad = $equipo->propiedad;
-        $this->propietarioTercero = (string) $equipo->propietario_tercero;
+        $this->proveedorTerceroId = $equipo->proveedor_tercero_id;
         $this->figura = (string) $equipo->figura_tercero;
         $this->observaciones = (string) $equipo->observaciones;
         $this->llenarCaracteristicas($equipo->caracteristicas);
+        $this->llenarAdquisicion($equipo);
 
         if ($configuracion = $equipo->configuracionComputo) {
             $this->sistemaOperativoId = $configuracion->sistema_operativo_id;
@@ -145,18 +176,12 @@ class Editar extends Component
                 'max:1000',
             ],
             'marcaId' => ['required', 'exists:marcas,id'],
-            'modelo' => ['nullable', 'string', 'max:255'],
             'estadoFuncionamiento' => ['required', 'string'],
             'propiedad' => ['required', 'in:gobernacion,tercero'],
             'observaciones' => ['nullable', 'string', 'max:2000'],
-        ] + $this->reglasCaracteristicas();
+        ] + $this->reglasCatalogo() + $this->reglasAdquisicion() + $this->reglasCaracteristicas();
 
-        if ($this->propiedad === 'tercero') {
-            $rules['propietarioTercero'] = ['required', 'string', 'max:255'];
-            $rules['figura'] = ['required', 'in:comodato,convenio,proveedor'];
-        }
-
-        if ($this->familiaSeleccionada === 'computo') {
+        if ($this->usaConfiguracionComputo) {
             $rules['sistemaOperativoId'] = ['nullable', 'exists:sistemas_operativos,id'];
             $rules['antivirusProducto'] = ['nullable', 'string', 'max:255'];
             $rules['nombreRed'] = ['nullable', 'string', 'max:255'];
@@ -171,7 +196,7 @@ class Editar extends Component
             'codigoActivo.required' => __('Escribe el código de activo o marca «El equipo no tiene código de activo».'),
             'codigoActivo.regex' => __('El código de activo debe tener el formato I1-###### (por ejemplo, I1-024147).'),
             'codigoActivoJustificacion.required' => __('Este código de activo ya está en otro equipo: escribe por qué se repite (RN-03).'),
-        ];
+        ] + $this->mensajesCatalogo() + $this->mensajesAdquisicion();
     }
 
     protected function validationAttributes(): array
@@ -182,12 +207,10 @@ class Editar extends Component
             'codigoActivoJustificacion' => __('justificación'),
             'marcaId' => __('marca'),
             'estadoFuncionamiento' => __('estado de funcionamiento'),
-            'propietarioTercero' => __('propietario'),
-            'figura' => __('figura'),
             'numTomas' => __('número de tomas'),
             'numPuertos' => __('número de puertos'),
             'observaciones' => __('observaciones'),
-        ];
+        ] + $this->atributosCatalogo() + $this->atributosAdquisicion();
     }
 
     /**
@@ -259,10 +282,11 @@ class Editar extends Component
 
         $this->serial = $this->normalizarSerial($this->serial);
         $this->codigoActivo = $this->sinCodigoActivo ? '' : $this->normalizarCodigoActivo($this->codigoActivo);
+        $this->normalizarAdquisicion();
 
         $this->validate();
 
-        $equipo = $this->equipo->fresh(['marca', 'configuracionComputo.sistemaOperativo']);
+        $equipo = $this->equipo->fresh(['marca', 'modeloEquipo', 'proceso', 'proveedorTercero', 'asignacionActual', 'configuracionComputo.sistemaOperativo']);
         $antes = $this->valoresDe($equipo);
         $despues = $this->valoresDelFormulario();
 
@@ -284,22 +308,24 @@ class Editar extends Component
                     'codigo_activo' => $this->codigoActivo !== '' ? $this->codigoActivo : null,
                     'codigo_activo_justificacion' => $this->equipoConMismoCodigo() && $justificacion !== '' ? $justificacion : null,
                     'marca_id' => $this->marcaId,
-                    'modelo' => trim($this->modelo) !== '' ? trim($this->modelo) : null,
+                    'modelo_id' => $this->resolverModeloId(),
+                    'descripcion' => trim($this->descripcion) !== '' ? trim($this->descripcion) : null,
+                    'proceso_id' => $this->procesoParaGuardar($equipo->asignacionActual?->dependencia_id),
                     'estado_funcionamiento' => $this->estadoFuncionamiento,
                     'propiedad' => $this->propiedad,
-                    'propietario_tercero' => $this->propiedad === 'tercero' ? trim($this->propietarioTercero) : null,
+                    'proveedor_tercero_id' => $this->resolverProveedorTerceroId(),
                     'figura_tercero' => $this->propiedad === 'tercero' ? $this->figura : null,
                     'caracteristicas' => $this->caracteristicas(),
                     'observaciones' => trim($this->observaciones) !== '' ? trim($this->observaciones) : null,
-                ]);
+                ] + $this->columnasAdquisicion());
 
-                if ($this->familiaSeleccionada === 'computo') {
+                if ($this->usaConfiguracionComputo) {
                     ConfiguracionComputo::updateOrCreate(['equipo_id' => $equipo->id], [
                         'sistema_operativo_id' => $this->sistemaOperativoId,
                         'tiene_antivirus' => $this->tieneAntivirus === 'si',
                         'antivirus_producto' => $this->tieneAntivirus === 'si' && trim($this->antivirusProducto) !== '' ? trim($this->antivirusProducto) : null,
                         'nombre_red' => trim($this->nombreRed) !== '' ? trim($this->nombreRed) : null,
-                    ]);
+                    ] + $this->columnasRedYOfimatica());
                 }
 
                 app(HistorialService::class)->registrar(
@@ -343,19 +369,37 @@ class Editar extends Component
             'codigo_activo' => $equipo->codigo_activo,
             'codigo_activo_justificacion' => $equipo->codigo_activo_justificacion,
             'marca' => $equipo->marca?->nombre,
-            'modelo' => $equipo->modelo,
+            'modelo' => $equipo->modeloEquipo?->nombre,
+            'descripcion' => $equipo->descripcion,
+            'proceso' => $equipo->proceso?->nombre,
             'estado_funcionamiento' => $equipo->estado_funcionamiento,
             'propiedad' => self::PROPIEDAD_LABELS[$equipo->propiedad] ?? $equipo->propiedad,
-            'propietario_tercero' => $equipo->propietario_tercero,
-            'figura_tercero' => $equipo->figura_tercero ? (self::FIGURA_LABELS[$equipo->figura_tercero] ?? $equipo->figura_tercero) : null,
+            'propietario_tercero' => $equipo->proveedorTercero?->razon_social,
+            'figura_tercero' => $equipo->figura_tercero ? (TextosEquipo::FIGURAS_TERCERO[$equipo->figura_tercero] ?? $equipo->figura_tercero) : null,
             'caracteristicas' => self::textoCaracteristicas($equipo->caracteristicas),
             'observaciones' => $equipo->observaciones,
-            'sistema_operativo' => $this->familiaSeleccionada === 'computo' ? $configuracion?->sistemaOperativo?->nombre : null,
-            'antivirus' => $this->familiaSeleccionada === 'computo' && $configuracion
-                ? $this->textoAntivirus($configuracion->tiene_antivirus, $configuracion->antivirus_producto)
+            'sistema_operativo' => $this->usaConfiguracionComputo ? $configuracion?->sistemaOperativo?->nombre : null,
+            // Sin configuración de cómputo guardada, el equipo no tiene antivirus
+            // registrado: equivale a «No» (así no aparece como un cambio falso).
+            'antivirus' => $this->usaConfiguracionComputo
+                ? $this->textoAntivirus((bool) $configuracion?->tiene_antivirus, $configuracion?->antivirus_producto)
                 : null,
-            'nombre_red' => $this->familiaSeleccionada === 'computo' ? $configuracion?->nombre_red : null,
-        ]);
+            'nombre_red' => $this->usaConfiguracionComputo ? $configuracion?->nombre_red : null,
+            'ofimatica' => $this->usaConfiguracionComputo ? $configuracion?->ofimatica : null,
+            'licencia_ofimatica' => $this->usaConfiguracionComputo ? $configuracion?->licencia_ofimatica : null,
+            'dominio' => $this->usaConfiguracionComputo ? $configuracion?->dominio : null,
+            'direccion_ip' => $this->usaConfiguracionComputo ? $configuracion?->direccion_ip : null,
+            'direccion_mac' => $this->usaConfiguracionComputo ? $configuracion?->direccion_mac : null,
+        ] + $this->textosAdquisicion(
+            $equipo->forma_ingreso,
+            $equipo->fecha_adquisicion?->toDateString(),
+            $equipo->valor_adquisicion,
+            $equipo->proveedor_id,
+            $equipo->numero_contrato,
+            $equipo->numero_factura,
+            $equipo->fecha_fin_garantia?->toDateString(),
+            $equipo->vida_util_meses !== null ? (string) $equipo->vida_util_meses : null,
+        ));
     }
 
     /**
@@ -364,25 +408,42 @@ class Editar extends Component
     private function valoresDelFormulario(): array
     {
         $tercero = $this->propiedad === 'tercero';
-        $computo = $this->familiaSeleccionada === 'computo';
+        $computo = $this->usaConfiguracionComputo;
         $justificacion = trim($this->codigoActivoJustificacion);
+        $dependenciaId = $this->equipo->asignacionActual()->value('dependencia_id');
 
         return $this->sinVacios([
             'serial' => $this->serial,
             'codigo_activo' => $this->codigoActivo,
             'codigo_activo_justificacion' => $this->equipoConMismoCodigo() ? $justificacion : null,
             'marca' => Marca::find($this->marcaId)?->nombre,
-            'modelo' => trim($this->modelo),
+            'modelo' => $this->nombreModeloDelFormulario(),
+            'descripcion' => trim($this->descripcion),
+            'proceso' => Proceso::query()->whereKey($this->procesoParaGuardar($dependenciaId))->value('nombre'),
             'estado_funcionamiento' => $this->estadoFuncionamiento,
             'propiedad' => self::PROPIEDAD_LABELS[$this->propiedad] ?? $this->propiedad,
-            'propietario_tercero' => $tercero ? trim($this->propietarioTercero) : null,
-            'figura_tercero' => $tercero ? (self::FIGURA_LABELS[$this->figura] ?? $this->figura) : null,
+            'propietario_tercero' => $this->nombreProveedorDelFormulario(),
+            'figura_tercero' => $tercero ? (TextosEquipo::FIGURAS_TERCERO[$this->figura] ?? $this->figura) : null,
             'caracteristicas' => self::textoCaracteristicas($this->caracteristicas()),
             'observaciones' => trim($this->observaciones),
             'sistema_operativo' => $computo ? SistemaOperativo::find($this->sistemaOperativoId)?->nombre : null,
             'antivirus' => $computo ? $this->textoAntivirus($this->tieneAntivirus === 'si', trim($this->antivirusProducto)) : null,
             'nombre_red' => $computo ? trim($this->nombreRed) : null,
-        ]);
+            'ofimatica' => $computo ? trim($this->ofimatica) : null,
+            'licencia_ofimatica' => $computo ? trim($this->licenciaOfimatica) : null,
+            'dominio' => $computo ? trim($this->dominio) : null,
+            'direccion_ip' => $computo ? trim($this->direccionIp) : null,
+            'direccion_mac' => $computo ? trim($this->direccionMac) : null,
+        ] + $this->textosAdquisicion(
+            $this->formaIngreso,
+            $this->fechaAdquisicion,
+            $this->valorAdquisicion,
+            $this->proveedorId,
+            trim($this->numeroContrato),
+            trim($this->numeroFactura),
+            $this->fechaFinGarantia,
+            $this->vidaUtilMeses,
+        ));
     }
 
     private function textoAntivirus(bool $tiene, ?string $producto): string
@@ -411,6 +472,8 @@ class Editar extends Component
             'marcas' => Marca::orderBy('nombre')->get(),
             'sistemasOperativos' => SistemaOperativo::orderBy('nombre')->get(),
             'bloqueado' => $this->dadoDeBaja(),
-        ]);
+            'formasIngreso' => Equipo::FORMAS_INGRESO,
+            'vidaUtilDelTipo' => $this->equipo->tipoEquipo?->vida_util_meses,
+        ] + $this->datosCatalogo());
     }
 }

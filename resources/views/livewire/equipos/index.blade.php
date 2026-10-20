@@ -14,6 +14,7 @@
 
         <thead>
             <tr>
+                <th>{{ __('N.º') }}</th>
                 <th>{{ __('Serial') }}</th>
                 <th>{{ __('Código de activo') }}</th>
                 <th>{{ __('Tipo') }}</th>
@@ -36,6 +37,7 @@
                     onclick="window.location.href='{{ route('equipos.show', $equipo) }}'"
                     class="cursor-pointer"
                 >
+                    <td class="font-mono text-ink-muted">{{ $equipo->numero_activo }}</td>
                     <td class="font-mono">
                         {{ $equipo->serial }}
                         @if (str_starts_with($equipo->serial, 'PENDIENTE-'))
@@ -44,24 +46,25 @@
                     </td>
                     <td class="font-mono">{{ $equipo->codigo_activo ?? __('Sin código') }}</td>
                     <td>{{ $equipo->tipoEquipo?->nombre }}</td>
-                    <td>{{ $equipo->marca?->nombre }}{{ $equipo->modelo ? ' '.$equipo->modelo : '' }}</td>
+                    <td>{{ $equipo->marca?->nombre }}{{ $equipo->modeloEquipo ? ' '.$equipo->modeloEquipo->nombre : '' }}</td>
                     <td>
                         @if($asignacion?->persona)
-                            {{ $asignacion->persona->nombre }}
+                            {{ $asignacion->persona->nombreCompleto() }}
                         @else
                             <span class="text-ink-muted">—</span>
                         @endif
                     </td>
                     <td>
                         @if($asignacion?->dependencia)
-                            {{ $asignacion->dependencia->nombre }}
+                            {{ $asignacion->dependencia->nombre_corto ?: $asignacion->dependencia->nombre }}
                         @else
                             <span class="text-ink-muted">—</span>
                         @endif
                     </td>
                     <td>
-                        @if($asignacion?->sede)
-                            {{ $asignacion->sede->nombre }}
+                        @if($asignacion?->piso?->sede)
+                            {{ $asignacion->piso->sede->nombre }}
+                            <span class="block text-[12px] text-ink-muted">{{ $asignacion->piso->etiqueta() }}</span>
                         @else
                             <span class="text-ink-muted">—</span>
                         @endif
@@ -81,7 +84,7 @@
                 </tr>
             @empty
                 <tr>
-                    <td colspan="9" class="py-10 text-center text-ink-muted">
+                    <td colspan="10" class="py-10 text-center text-ink-muted">
                         {{ __('No se encontraron equipos con esa búsqueda y filtros.') }}
                     </td>
                 </tr>

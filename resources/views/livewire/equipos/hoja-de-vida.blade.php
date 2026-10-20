@@ -23,32 +23,65 @@
     $dadoDeBaja = $equipo->estado_ciclo_vida === 'dado_de_baja';
 
     $asignacion = $equipo->asignacionActual;
+    $persona = $asignacion?->persona;
+    $sedeActual = $asignacion?->piso?->sede;
 
-    $vinculacionLabels = [
-        'planta' => __('Planta'),
-        'contratista' => __('Contratista'),
-    ];
+    // RF-18: documento con su tipo (CC, CE, PA…).
+    $documento = $persona?->numero_documento
+        ? trim(($persona->tipo_documento ?? '').' '.$persona->numero_documento)
+        : '—';
 
     $responsableUbicacion = [
-        __('Responsable') => $asignacion?->persona?->nombre ?? __('Sin asignar'),
-        __('Cédula') => $asignacion?->persona?->cedula ?? '—',
-        __('Cargo') => $asignacion?->persona?->cargo ?? '—',
-        __('Dependencia') => $asignacion?->dependencia?->nombre ?? $asignacion?->persona?->dependencia?->nombre ?? '—',
-        __('Vinculación') => $asignacion?->persona?->tipo_vinculacion
-            ? ($vinculacionLabels[$asignacion->persona->tipo_vinculacion] ?? $asignacion->persona->tipo_vinculacion)
+        __('Responsable') => $persona?->nombreCompleto() ?? __('Sin asignar'),
+        __('Documento') => $documento,
+        __('Cargo') => $persona?->cargoTexto() ?? '—',
+        __('Dependencia') => $asignacion?->dependencia?->ruta() ?? $persona?->dependencia?->nombre ?? '—',
+        __('Vinculación') => $persona?->tipo_vinculacion
+            ? __(\App\Models\Persona::VINCULACIONES[$persona->tipo_vinculacion] ?? $persona->tipo_vinculacion)
             : '—',
-        __('Sede') => $asignacion?->sede?->nombre ?? '—',
-        __('Piso') => $asignacion?->piso?->numero ? __('Piso :numero', ['numero' => $asignacion->piso->numero]) : '—',
+        __('Sede') => $sedeActual
+            ? $sedeActual->nombre.($sedeActual->direccionVisible() ? ' · '.$sedeActual->direccionVisible() : '')
+            : '—',
+        __('Piso') => $asignacion?->piso?->etiqueta() ?? '—',
     ];
 
     $configuracion = $equipo->configuracionComputo;
-    $softwareItems = $configuracion ? [
+    $softwareItems = $configuracion ? array_filter([
         __('Sistema operativo') => $configuracion->sistemaOperativo?->nombre ?? '—',
         __('Antivirus') => $configuracion->tiene_antivirus
             ? ($configuracion->antivirus_producto ? __('Sí (:producto)', ['producto' => $configuracion->antivirus_producto]) : __('Sí'))
             : __('No'),
+        __('Ofimática') => trim($configuracion->ofimatica.($configuracion->licencia_ofimatica ? ' · '.__('licencia').' '.$configuracion->licencia_ofimatica : '')) ?: null,
         __('Nombre de red') => $configuracion->nombre_red ?? '—',
-    ] : [];
+        __('Dominio') => $configuracion->dominio,
+        __('Dirección IP') => $configuracion->direccion_ip,
+        __('Dirección MAC') => $configuracion->direccion_mac,
+    ], fn ($valor) => $valor !== null) : [];
+
+    // RF-52: adquisición, con avisos de garantía por vencer y vida útil superada.
+    $pesos = fn ($valor) => \App\Livewire\Equipos\Soporte\TextosEquipo::pesos($valor);
+    $vidaUtil = $equipo->vida_util_meses ?? $equipo->tipoEquipo?->vida_util_meses;
+    $adquisicion = array_filter([
+        __('Forma de ingreso') => $equipo->forma_ingreso ? __(\App\Models\Equipo::FORMAS_INGRESO[$equipo->forma_ingreso] ?? $equipo->forma_ingreso) : null,
+        __('Fecha de adquisición') => $equipo->fecha_adquisicion?->format('d/m/Y'),
+        __('Valor') => $pesos($equipo->valor_adquisicion),
+        __('Proveedor') => $equipo->proveedor?->razon_social,
+        __('N.º de contrato') => $equipo->numero_contrato,
+        __('N.º de factura') => $equipo->numero_factura,
+        __('Fin de la garantía') => $equipo->fecha_fin_garantia?->format('d/m/Y'),
+        __('Vida útil') => $vidaUtil
+            ? __(':n meses', ['n' => $vidaUtil]).($equipo->vida_util_meses === null ? ' '.__('(la del tipo)') : '')
+            : null,
+    ], fn ($valor) => $valor !== null);
+    $garantiaPorVencer = $equipo->garantiaPorVencer();
+    $garantiaVencida = $equipo->fecha_fin_garantia?->isPast() ?? false;
+    $vidaUtilSuperada = $equipo->vidaUtilSuperada();
+
+    // RF-56 a RF-58: valoración del activo (GT-M4).
+    $valoracionVigente = $equipo->valoraciones->firstWhere('vigente', true);
+    $importanciaEstilos = ['baja' => 'neutral', 'media' => 'info', 'alta' => 'warning', 'muy_alta' => 'danger'];
+    $importancias = \App\Models\ValoracionActivo::IMPORTANCIAS;
+    $esSoporte = (bool) $equipo->tipoEquipo?->esSoporte();
 
     $estadoComponenteEstilos = [
         'bueno' => 'success',
@@ -75,12 +108,8 @@
         'descarte' => __('Descarte'),
     ];
 
-    // RF-04: mismas opciones que el enum `equipos.figura_tercero` (ver Crear.php).
-    $figuraLabels = [
-        'comodato' => __('Comodato'),
-        'convenio' => __('Convenio'),
-        'proveedor' => __('Proveedor'),
-    ];
+    // RF-04: mismas opciones que el enum `equipos.figura_tercero`.
+    $figuraLabels = \App\Livewire\Equipos\Soporte\TextosEquipo::FIGURAS_TERCERO;
 
     // Etiquetas de las claves que `equipos.caracteristicas` puede traer según la
     // familia del tipo de equipo (ver Crear::caracteristicas()).
@@ -106,12 +135,24 @@
     // un código de activo duplicado (RN-03) y observaciones libres.
     $datosEquipo = [];
 
+    if (trim((string) $equipo->descripcion) !== '') {
+        $datosEquipo[__('Descripción')] = $equipo->descripcion;
+    }
+
+    if ($equipo->proceso) {
+        $datosEquipo[__('Proceso')] = $equipo->proceso->nombre;
+    }
+
     foreach (($equipo->caracteristicas ?? []) as $clave => $valor) {
         $datosEquipo[$caracteristicaLabels[$clave] ?? $clave] = $valor;
     }
 
-    if ($equipo->propiedad === 'tercero' && $equipo->figura_tercero) {
-        $datosEquipo[__('Figura del tercero')] = $figuraLabels[$equipo->figura_tercero] ?? $equipo->figura_tercero;
+    if ($equipo->propiedad === 'tercero') {
+        $datosEquipo[__('Propietario')] = $equipo->proveedorTercero?->razon_social ?? '—';
+
+        if ($equipo->figura_tercero) {
+            $datosEquipo[__('Figura del tercero')] = __($figuraLabels[$equipo->figura_tercero] ?? $equipo->figura_tercero);
+        }
     }
 
     if (trim((string) $equipo->codigo_activo_justificacion) !== '') {
@@ -142,7 +183,7 @@
                     <svg class="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.129V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25m18 0A2.25 2.25 0 0018.75 3H5.25A2.25 2.25 0 003 5.25m18 0V12a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 12V5.25" />
                     </svg>
-                    <span>{{ $equipo->tipoEquipo?->nombre }} · {{ $equipo->marca?->nombre }} {{ $equipo->modelo }}</span>
+                    <span>{{ $equipo->tipoEquipo?->nombre }} · {{ $equipo->marca?->nombre }} {{ $equipo->modeloEquipo?->nombre }}</span>
                 </div>
 
                 <h1 class="mt-1 font-display text-[26px] font-semibold leading-tight text-ink">
@@ -153,9 +194,22 @@
                 </h1>
 
                 <div class="mt-3 flex flex-wrap items-center gap-2">
+                    {{-- RN-27: consecutivo del FOR.01, asignado por el sistema. --}}
+                    <x-ui.badge variant="info">{{ __('N.º de activo :n', ['n' => $equipo->numero_activo ?? '—']) }}</x-ui.badge>
                     <x-ui.badge :variant="$ciclo['variant']">{{ $ciclo['label'] }}</x-ui.badge>
                     <x-ui.badge :variant="$verificacion['variant']">{{ $verificacion['label'] }}</x-ui.badge>
                     <x-ui.badge variant="neutral">{{ $propiedadLabel }}</x-ui.badge>
+                    @if($valoracionVigente)
+                        <x-ui.badge :variant="$importanciaEstilos[$valoracionVigente->importancia] ?? 'neutral'">
+                            {{ __('Importancia :nivel', ['nivel' => __($importancias[$valoracionVigente->importancia] ?? $valoracionVigente->importancia)]) }}
+                        </x-ui.badge>
+                    @endif
+                    @if($garantiaPorVencer)
+                        <x-ui.badge variant="warning">{{ __('Garantía por vencer') }}</x-ui.badge>
+                    @endif
+                    @if($vidaUtilSuperada)
+                        <x-ui.badge variant="warning">{{ __('Vida útil superada') }}</x-ui.badge>
+                    @endif
                 </div>
             </div>
 
@@ -206,6 +260,30 @@
             <x-ui.card>
                 <p class="section-title">{{ __('Responsable y ubicación') }}</p>
                 <x-ui.definition-list :items="$responsableUbicacion" class="mt-2" />
+            </x-ui.card>
+
+            {{-- RF-52: datos de adquisición y avisos. --}}
+            <x-ui.card>
+                <p class="section-title">{{ __('Adquisición') }}</p>
+                @if($garantiaPorVencer)
+                    <p class="mt-3 rounded-lg bg-warning-bg px-3 py-2 text-[13px] text-warning-text">
+                        {{ __('La garantía vence el :fecha (en :dias días).', ['fecha' => $equipo->fecha_fin_garantia->format('d/m/Y'), 'dias' => (int) now()->startOfDay()->diffInDays($equipo->fecha_fin_garantia)]) }}
+                    </p>
+                @elseif($garantiaVencida)
+                    <p class="mt-3 rounded-lg bg-app-bg px-3 py-2 text-[13px] text-ink-muted">
+                        {{ __('Garantía vencida desde el :fecha.', ['fecha' => $equipo->fecha_fin_garantia->format('d/m/Y')]) }}
+                    </p>
+                @endif
+                @if($vidaUtilSuperada)
+                    <p class="mt-3 rounded-lg bg-warning-bg px-3 py-2 text-[13px] text-warning-text">
+                        {{ __('Superó su vida útil de :meses meses (adquirido el :fecha).', ['meses' => $vidaUtil, 'fecha' => $equipo->fecha_adquisicion->format('d/m/Y')]) }}
+                    </p>
+                @endif
+                @if($adquisicion)
+                    <x-ui.definition-list :items="$adquisicion" class="mt-2" />
+                @else
+                    <p class="mt-3 text-[14px] text-ink-muted">{{ __('Sin datos de adquisición registrados.') }}</p>
+                @endif
             </x-ui.card>
 
             <x-ui.card>
@@ -269,6 +347,99 @@
             </x-ui.table>
         </x-ui.card>
     </div>
+
+    {{-- RF-56 a RF-58: valoración del activo (Manual GT-M4) y su historial. --}}
+    <x-ui.card>
+        <div class="flex flex-wrap items-start justify-between gap-3">
+            <div>
+                <p class="section-title">{{ __('Valoración del activo (GT-M4)') }}</p>
+                <p class="mt-1 text-[13px] text-ink-muted">{{ __('Confidencialidad, integridad y disponibilidad de 1 a 4. Cada reclasificación queda en el historial.') }}</p>
+            </div>
+            @if(! $dadoDeBaja && ! $esSoporte)
+                <x-ui.button variant="primary" size="sm" type="button" x-on:click="$dispatch('open-modal', 'valorar-activo')">
+                    {{ $valoracionVigente ? __('Reclasificar') : __('Valorar activo') }}
+                </x-ui.button>
+            @endif
+        </div>
+
+        @if($esSoporte)
+            <p class="mt-3 rounded-lg bg-info-bg px-3 py-2 text-[13px] text-info-text">
+                {{ __('Los activos de soporte (UPS, aires, plantas) no se valoran según el Manual GT-M4 (RN-25).') }}
+            </p>
+        @elseif($valoracionVigente)
+            <div class="mt-4 rounded-lg border border-primary/40 bg-info-bg/40 px-4 py-3">
+                <div class="flex flex-wrap items-center gap-3">
+                    <x-ui.badge variant="success">{{ __('Vigente') }}</x-ui.badge>
+                    <span class="text-[14px] text-ink">
+                        {{ __('C :c · I :i · D :d', ['c' => $valoracionVigente->confidencialidad, 'i' => $valoracionVigente->integridad, 'd' => $valoracionVigente->disponibilidad]) }}
+                        = <span class="font-display text-[20px] font-semibold">{{ $valoracionVigente->total }}</span>
+                    </span>
+                    <x-ui.badge :variant="$importanciaEstilos[$valoracionVigente->importancia] ?? 'neutral'">
+                        {{ __('Importancia :nivel', ['nivel' => __($importancias[$valoracionVigente->importancia] ?? $valoracionVigente->importancia)]) }}
+                    </x-ui.badge>
+                    @if($valoracionVigente->requiere_gestion_riesgo)
+                        <x-ui.badge variant="danger">{{ __('Pasa a gestión de riesgos') }}</x-ui.badge>
+                    @endif
+                </div>
+                <x-ui.definition-list class="mt-2" :items="array_filter([
+                    __('Datos personales') => __(\App\Livewire\Equipos\ValorarActivo::SI_NO[$valoracionVigente->contiene_datos_personales] ?? $valoracionVigente->contiene_datos_personales)
+                        .($valoracionVigente->contiene_datos_personales === 'si' ? ' · '.__(\App\Models\ValoracionActivo::CLASIFICACIONES_DATOS[$valoracionVigente->clasificacion_datos] ?? $valoracionVigente->clasificacion_datos) : ''),
+                    __('Infraestructura crítica') => __(\App\Livewire\Equipos\ValorarActivo::SI_NO[$valoracionVigente->infraestructura_critica] ?? $valoracionVigente->infraestructura_critica),
+                    __('Continuidad del negocio') => __(\App\Livewire\Equipos\ValorarActivo::SI_NO[$valoracionVigente->continuidad_negocio] ?? $valoracionVigente->continuidad_negocio),
+                    __('Propietario (cargo)') => $valoracionVigente->propietario_cargo,
+                    __('Custodio (cargo)') => $valoracionVigente->custodio_cargo,
+                    __('Ubicación') => __(\App\Livewire\Equipos\ValorarActivo::TIPOS_UBICACION[$valoracionVigente->tipo_ubicacion] ?? $valoracionVigente->tipo_ubicacion),
+                    __('Retención') => $valoracionVigente->tiempo_retencion,
+                    __('Controles de monitoreo') => $valoracionVigente->controles_monitoreo,
+                    __('Valorado') => __(':fecha por :usuario', ['fecha' => $valoracionVigente->fecha?->format('d/m/Y'), 'usuario' => $valoracionVigente->usuario?->name ?? '—']),
+                ])" />
+            </div>
+        @else
+            <p class="mt-3 text-[14px] text-ink-muted">{{ __('Este activo aún no tiene valoración.') }}</p>
+        @endif
+
+        {{-- RF-58: historial de reclasificaciones (la vigente arriba, destacada). --}}
+        @if($equipo->valoraciones->count() > 1)
+            <div class="mt-4 overflow-x-auto rounded-lg border border-line">
+                <table class="min-w-full divide-y divide-line text-[13px]">
+                    <thead class="bg-[#F8FAFC]">
+                        <tr>
+                            <th class="px-3 py-2 text-left font-semibold text-ink-muted">{{ __('Fecha') }}</th>
+                            <th class="px-3 py-2 text-center font-semibold text-ink-muted">C</th>
+                            <th class="px-3 py-2 text-center font-semibold text-ink-muted">I</th>
+                            <th class="px-3 py-2 text-center font-semibold text-ink-muted">D</th>
+                            <th class="px-3 py-2 text-center font-semibold text-ink-muted">{{ __('Total') }}</th>
+                            <th class="px-3 py-2 text-left font-semibold text-ink-muted">{{ __('Importancia') }}</th>
+                            <th class="px-3 py-2 text-left font-semibold text-ink-muted">{{ __('Riesgos') }}</th>
+                            <th class="px-3 py-2 text-left font-semibold text-ink-muted">{{ __('Por') }}</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-line">
+                        @foreach($equipo->valoraciones as $valoracion)
+                            <tr wire:key="valoracion-{{ $valoracion->id }}" @class(['bg-info-bg/40 font-semibold' => $valoracion->vigente, 'text-ink-muted' => ! $valoracion->vigente])>
+                                <td class="px-3 py-2">
+                                    {{ $valoracion->fecha?->format('d/m/Y') }}
+                                    @if($valoracion->vigente)
+                                        <x-ui.badge variant="success" class="ml-1">{{ __('Vigente') }}</x-ui.badge>
+                                    @endif
+                                    @if($valoracion->levantamiento)
+                                        <span class="block text-[12px] font-normal">{{ __('Desde un levantamiento') }}</span>
+                                    @endif
+                                </td>
+                                <td class="px-3 py-2 text-center">{{ $valoracion->confidencialidad }}</td>
+                                <td class="px-3 py-2 text-center">{{ $valoracion->integridad }}</td>
+                                <td class="px-3 py-2 text-center">{{ $valoracion->disponibilidad }}</td>
+                                <td class="px-3 py-2 text-center">{{ $valoracion->total }}</td>
+                                <td class="px-3 py-2">{{ __($importancias[$valoracion->importancia] ?? $valoracion->importancia) }}</td>
+                                <td class="px-3 py-2">{{ $valoracion->requiere_gestion_riesgo ? __('Sí') : __('No') }}</td>
+                                <td class="px-3 py-2">{{ $valoracion->usuario?->name ?? '—' }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        @endif
+    </x-ui.card>
 
     <x-ui.card>
         <p class="section-title">{{ __('Historial') }}</p>
@@ -358,6 +529,27 @@
                         </dl>
                     @endif
 
+                    {{-- RF-58: valoración o reclasificación, con la anterior si la había. --}}
+                    @if($evento->tipo === 'valoracion' && ! empty($evento->valores['despues']))
+                        @php
+                            $textoValoracion = fn (?array $v) => $v
+                                ? __('C :c · I :i · D :d = :total (:importancia)', [
+                                    'c' => $v['confidencialidad'] ?? '—',
+                                    'i' => $v['integridad'] ?? '—',
+                                    'd' => $v['disponibilidad'] ?? '—',
+                                    'total' => $v['total'] ?? '—',
+                                    'importancia' => __($importancias[$v['importancia'] ?? ''] ?? ($v['importancia'] ?? '—')),
+                                ]).(! empty($v['requiere_gestion_riesgo']) ? ' · '.__('pasa a gestión de riesgos') : '')
+                                : null;
+                        @endphp
+                        <dl class="mt-2 space-y-1 rounded-lg bg-app-bg px-4 py-3 text-[13px]">
+                            @if(! empty($evento->valores['antes']))
+                                <div><dt class="inline font-semibold text-ink-label">{{ __('Antes') }}:</dt> <dd class="inline text-ink-muted line-through">{{ $textoValoracion($evento->valores['antes']) }}</dd></div>
+                            @endif
+                            <div><dt class="inline font-semibold text-ink-label">{{ ! empty($evento->valores['antes']) ? __('Ahora') : __('Valoración') }}:</dt> <dd class="inline text-ink">{{ $textoValoracion($evento->valores['despues']) }}</dd></div>
+                        </dl>
+                    @endif
+
                     @if($detalleCambio)
                         <dl class="mt-2 grid grid-cols-1 gap-x-6 gap-y-1 rounded-lg bg-app-bg px-4 py-3 text-[13px] sm:grid-cols-2">
                             <div><dt class="inline font-semibold text-ink-label">{{ __('Acción') }}:</dt> <dd class="inline text-ink">{{ $accionLabels[$detalleCambio->accion] ?? $detalleCambio->accion }}</dd></div>
@@ -430,6 +622,15 @@
         transformación (animación de entrada) y, dentro de un elemento transformado,
         position:fixed queda atado a él en vez de a la pantalla.
     --}}
+    @teleport('body')
+    {{-- Valoración GT-M4: componente reutilizable (también lo usa el levantamiento, RF-59). --}}
+    <x-ui.modal name="valorar-activo" :title="$valoracionVigente ? __('Reclasificar el activo') : __('Valorar el activo')" max-width="2xl">
+        @if(! $dadoDeBaja)
+            <livewire:equipos.valorar-activo :equipo="$equipo" :key="'valorar-'.$equipo->id.'-'.($valoracionVigente?->id ?? 0)" />
+        @endif
+    </x-ui.modal>
+    @endteleport
+
     @teleport('body')
     {{-- Formatos para firmar y documentos firmados del evento (panel de Movimientos). --}}
     <x-ui.modal name="formatos-evento" :title="__('Formatos y firmas')">

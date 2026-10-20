@@ -12,6 +12,7 @@ use App\Models\Piso;
 use App\Models\Sede;
 use App\Models\TipoEquipo;
 use App\Models\User;
+use App\Services\HistorialService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -35,8 +36,6 @@ class ListadoEquiposTest extends TestCase
 
     private Dependencia $tic;
 
-    private Piso $piso;
-
     private Marca $marca;
 
     protected function setUp(): void
@@ -49,11 +48,16 @@ class ListadoEquiposTest extends TestCase
         $this->palacio = Sede::create(['nombre' => 'Palacio Naín']);
         $this->morindo = Sede::create(['nombre' => 'Morindo']);
         $this->tic = Dependencia::create(['nombre' => 'Dirección TIC']);
-        $this->piso = Piso::create(['numero' => 1]);
         $this->marca = Marca::create(['nombre' => 'HP']);
     }
 
-    private function equipo(string $serial, array $datos = [], ?Sede $sede = null, ?Persona $persona = null): Equipo
+    /** Piso de la sede (RN-21: la sede de la asignación es la de su piso). */
+    private function pisoDe(Sede $sede, int $numero = 1): Piso
+    {
+        return Piso::firstOrCreate(['sede_id' => $sede->id, 'numero' => $numero]);
+    }
+
+    private function equipo(string $serial, array $datos = [], ?Sede $sede = null, ?Persona $persona = null, ?Dependencia $dependencia = null, int $piso = 1): Equipo
     {
         $equipo = Equipo::create(array_merge([
             'serial' => $serial,
@@ -66,9 +70,8 @@ class ListadoEquiposTest extends TestCase
             Asignacion::create([
                 'equipo_id' => $equipo->id,
                 'persona_id' => $persona?->id,
-                'sede_id' => $sede->id,
-                'piso_id' => $this->piso->id,
-                'dependencia_id' => $this->tic->id,
+                'piso_id' => $this->pisoDe($sede, $piso)->id,
+                'dependencia_id' => ($dependencia ?? $this->tic)->id,
                 'fecha_inicio' => now(),
             ]);
         }
@@ -81,9 +84,68 @@ class ListadoEquiposTest extends TestCase
         return Livewire::actingAs($this->usuario)->test(Index::class);
     }
 
+    public function test_filtrar_por_una_secretaria_trae_los_equipos_de_sus_direcciones(): void
+    {
+        $hacienda = Dependencia::create(['nombre' => 'Secretaría de Hacienda', 'tipo' => 'secretaria']);
+        $rentas = Dependencia::create(['nombre' => 'Dirección de Rentas', 'tipo' => 'direccion', 'padre_id' => $hacienda->id]);
+        $cobro = Dependencia::create(['nombre' => 'Cobro Coactivo', 'tipo' => 'area', 'padre_id' => $rentas->id]);
+
+        $this->equipo('SN-HACIENDA', [], $this->palacio, dependencia: $hacienda);
+        $this->equipo('SN-RENTAS', [], $this->palacio, dependencia: $rentas);
+        $this->equipo('SN-COBRO', [], $this->palacio, dependencia: $cobro);
+        $this->equipo('SN-TIC', [], $this->palacio);
+
+        $this->listado()
+            ->set('dependencia', (string) $hacienda->id)
+            ->assertSee('SN-HACIENDA')
+            ->assertSee('SN-RENTAS')
+            ->assertSee('SN-COBRO')
+            ->assertDontSee('SN-TIC')
+            ->set('dependencia', (string) $rentas->id)
+            ->assertSee('SN-COBRO')
+            ->assertDontSee('SN-HACIENDA');
+    }
+
+    public function test_filtra_por_piso_y_cambiar_la_sede_vacia_el_piso(): void
+    {
+        $piso1 = $this->pisoDe($this->palacio, 1);
+        $this->equipo('SN-PISO-1', [], $this->palacio, piso: 1);
+        $this->equipo('SN-PISO-6', [], $this->palacio, piso: 6);
+
+        $this->listado()
+            ->set('sede', (string) $this->palacio->id)
+            ->set('piso', (string) $piso1->id)
+            ->assertSee('SN-PISO-1')
+            ->assertDontSee('SN-PISO-6')
+            ->set('sede', (string) $this->morindo->id)
+            ->assertSet('piso', '');
+    }
+
+    public function test_busca_por_documento_nombres_y_numero_de_activo(): void
+    {
+        $ana = Persona::create(['nombres' => 'Ana María', 'apellidos' => 'Pérez Díaz', 'numero_documento' => '1067888999']);
+        $this->equipo('SN-ANA', [], $this->palacio, $ana);
+        $this->equipo('SN-OTRO');
+
+        $this->listado()->set('busqueda', '1.067.888')->assertSee('SN-ANA')->assertDontSee('SN-OTRO');
+        $this->listado()->set('busqueda', 'María Pérez')->assertSee('SN-ANA')->assertDontSee('SN-OTRO');
+    }
+
+    public function test_el_numero_de_activo_se_busca_exacto(): void
+    {
+        $this->equipo('SN-PRIMERO');
+        $segundo = $this->equipo('SN-SEGUNDO');
+
+        // Exacto: buscar el número del segundo no trae al primero aunque uno contenga al otro (1 y 11).
+        $this->listado()
+            ->set('busqueda', (string) $segundo->fresh()->numero_activo)
+            ->assertSee('SN-SEGUNDO')
+            ->assertDontSee('SN-PRIMERO');
+    }
+
     public function test_filtra_los_equipos_sin_responsable(): void
     {
-        $ana = Persona::create(['nombre' => 'Ana Pérez']);
+        $ana = Persona::create(['nombres' => 'Ana', 'apellidos' => 'Pérez']);
         $this->equipo('SN-CON-1', [], $this->palacio, $ana);
         $this->equipo('SN-BODEGA-1', [], $this->palacio);
         $this->equipo('SN-SINASIG-1');
@@ -138,7 +200,7 @@ class ListadoEquiposTest extends TestCase
 
     public function test_filtra_por_firmas_pendientes_o_al_dia(): void
     {
-        $historial = app(\App\Services\HistorialService::class);
+        $historial = app(HistorialService::class);
 
         $pendiente = $this->equipo('SN-FIRMA-PEND');
         $historial->registrar($pendiente, 'traslado_responsable', $this->usuario, ['estado_firma' => 'pendiente_de_firma']);

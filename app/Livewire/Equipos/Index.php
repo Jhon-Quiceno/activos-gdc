@@ -19,7 +19,7 @@ class Index extends Component
     public function render()
     {
         $equipos = Equipo::query()
-            ->with(['tipoEquipo', 'marca', 'asignacionActual.persona', 'asignacionActual.sede', 'asignacionActual.dependencia'])
+            ->with(['tipoEquipo', 'marca', 'modeloEquipo', 'asignacionActual.persona', 'asignacionActual.piso.sede', 'asignacionActual.dependencia'])
             ->tap(fn (Builder $query) => $this->aplicarBusqueda($query))
             ->tap(fn (Builder $query) => $this->aplicarFiltros($query))
             ->latest('id')

@@ -132,20 +132,16 @@
                     {{ __('El serial debe ser único. Si ya existe en otro equipo, el sistema lo avisa antes de guardar.') }}
                 </p>
 
-                <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <div>
-                        <label class="text-[13px] font-semibold text-ink-label">{{ __('Marca') }} *</label>
-                        <select wire:model="marcaId" class="mt-1 h-11 w-full rounded-lg border-line-input text-[14px] text-ink focus:border-primary focus:ring-primary">
-                            <option value="">{{ __('Selecciona…') }}</option>
-                            @foreach ($marcas as $marca)
-                                <option value="{{ $marca->id }}">{{ $marca->nombre }}</option>
-                            @endforeach
-                        </select>
-                        <x-input-error :messages="$errors->get('marcaId')" class="mt-1" />
-                    </div>
+                @include('livewire.equipos.partials.marca-modelo')
 
-                    <x-ui.input name="modelo" :label="__('Modelo')" wire:model="modelo" />
-                </div>
+                <x-ui.input
+                    name="descripcion"
+                    :label="__('Descripción')"
+                    wire:model="descripcion"
+                    :placeholder="__('Para qué se usa o algo que lo distinga (opcional)')"
+                    maxlength="255"
+                    class="mt-4"
+                />
 
                 <div class="mt-4 max-w-sm">
                     <label class="text-[13px] font-semibold text-ink-label">{{ __('Estado de funcionamiento') }} *</label>
@@ -173,25 +169,12 @@
                 </div>
 
                 @if ($propiedad === 'tercero')
-                    <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-                        <x-ui.input name="propietarioTercero" :label="__('Propietario') . ' *'" wire:model="propietarioTercero" required />
-
-                        <div>
-                            <label class="text-[13px] font-semibold text-ink-label">{{ __('Figura') }} *</label>
-                            <select wire:model="figura" class="mt-1 h-11 w-full rounded-lg border-line-input text-[14px] text-ink focus:border-primary focus:ring-primary">
-                                <option value="">{{ __('Selecciona…') }}</option>
-                                <option value="comodato">{{ __('Comodato') }}</option>
-                                <option value="convenio">{{ __('Convenio') }}</option>
-                                <option value="proveedor">{{ __('Proveedor') }}</option>
-                            </select>
-                            <x-input-error :messages="$errors->get('figura')" class="mt-1" />
-                        </div>
-                    </div>
+                    @include('livewire.equipos.partials.propietario-tercero')
                 @endif
             </x-ui.card>
 
-            {{-- 4. Sección condicional según la familia del tipo elegido --}}
-            @if ($familiaSeleccionada === 'computo')
+            {{-- 4. Sección condicional: configuración de cómputo si el tipo la usa; si no, características de su familia --}}
+            @if ($usaConfiguracionComputo)
                 <x-ui.card>
                     <p class="section-title">{{ __('4. Configuración de cómputo') }}</p>
 
@@ -255,6 +238,8 @@
                         <x-ui.input name="nombreRed" :label="__('Nombre de red')" wire:model="nombreRed" />
                     </div>
 
+                    @include('livewire.equipos.partials.red-ofimatica')
+
                     <div class="mt-5">
                         <p class="text-[13px] font-semibold text-ink-label">{{ __('Periféricos') }}</p>
                         <div class="mt-2 overflow-x-auto rounded-lg border border-line">
@@ -301,9 +286,12 @@
                 @include('livewire.equipos.partials.caracteristicas')
             @endif
 
-            {{-- 5. Responsable y ubicación --}}
+            {{-- 5. Adquisición (RF-52) --}}
+            @include('livewire.equipos.partials.adquisicion', ['titulo' => __('5. Adquisición')])
+
+            {{-- 6. Responsable y ubicación --}}
             <x-ui.card>
-                <p class="section-title">{{ __('5. Responsable y ubicación') }}</p>
+                <p class="section-title">{{ __('6. Responsable y ubicación') }}</p>
 
                 <label class="mt-3 flex items-center gap-2 text-[14px] text-ink">
                     <input type="checkbox" wire:model.live="asignarResponsable" class="rounded border-line-input text-primary focus:ring-primary">
@@ -311,90 +299,76 @@
                 </label>
 
                 @if ($asignarResponsable)
+                    {{-- RF-18: datos de la persona con los campos v4. --}}
                     <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-                        <x-ui.input name="responsableNombre" :label="__('Responsable') . ' *'" wire:model="responsableNombre" required />
-                        <x-ui.input name="responsableCedula" :label="__('Cédula')" wire:model.blur="responsableCedula" inputmode="numeric" />
-                        <x-ui.input name="responsableCargo" :label="__('Cargo')" wire:model="responsableCargo" />
+                        <x-ui.input name="responsableNombres" :label="__('Nombres') . ' *'" wire:model="responsableNombres" maxlength="80" required />
+                        <x-ui.input name="responsableApellidos" :label="__('Apellidos')" wire:model="responsableApellidos" maxlength="80" />
 
                         <div>
-                            <label class="text-[13px] font-semibold text-ink-label">{{ __('Vinculación') }} *</label>
-                            <select wire:model="vinculacion" class="mt-1 h-11 w-full rounded-lg border-line-input text-[14px] text-ink focus:border-primary focus:ring-primary">
+                            <label for="responsableTipoDocumento" class="text-[13px] font-semibold text-ink-label">{{ __('Tipo de documento') }} *</label>
+                            <select id="responsableTipoDocumento" wire:model.live="responsableTipoDocumento" class="mt-1 h-11 w-full rounded-lg border-line-input text-[14px] text-ink focus:border-primary focus:ring-primary">
+                                @foreach ($tiposDocumento as $valor => $etiqueta)
+                                    <option value="{{ $valor }}">{{ __($etiqueta) }}</option>
+                                @endforeach
+                            </select>
+                            <x-input-error :messages="$errors->get('responsableTipoDocumento')" class="mt-1" />
+                        </div>
+
+                        <x-ui.input
+                            name="responsableDocumento"
+                            :label="__('Número de documento')"
+                            wire:model.blur="responsableDocumento"
+                            :inputmode="$responsableTipoDocumento === 'CC' ? 'numeric' : 'text'"
+                            maxlength="20"
+                        />
+
+                        <div>
+                            <label for="responsableCargoId" class="text-[13px] font-semibold text-ink-label">{{ __('Cargo') }}</label>
+                            <select id="responsableCargoId" wire:model.live="responsableCargoId" class="mt-1 h-11 w-full rounded-lg border-line-input text-[14px] text-ink focus:border-primary focus:ring-primary">
                                 <option value="">{{ __('Selecciona…') }}</option>
-                                <option value="planta">{{ __('Planta') }}</option>
-                                <option value="contratista">{{ __('Contratista') }}</option>
+                                @foreach ($cargos as $cargo)
+                                    <option value="{{ $cargo->id }}">{{ $cargo->etiqueta() }}</option>
+                                @endforeach
+                            </select>
+                            <x-input-error :messages="$errors->get('responsableCargoId')" class="mt-1" />
+                            @if ($responsableCargoId)
+                                <label class="mt-2 flex items-center gap-2 text-[13px] text-ink-muted">
+                                    <input type="checkbox" wire:model="responsableEncargo" class="rounded border-line-input text-primary focus:ring-primary">
+                                    {{ __('Lo ejerce en encargo (E)') }}
+                                </label>
+                            @endif
+                        </div>
+
+                        <div>
+                            <label for="vinculacion" class="text-[13px] font-semibold text-ink-label">{{ __('Vinculación') }} *</label>
+                            <select id="vinculacion" wire:model="vinculacion" class="mt-1 h-11 w-full rounded-lg border-line-input text-[14px] text-ink focus:border-primary focus:ring-primary">
+                                <option value="">{{ __('Selecciona…') }}</option>
+                                @foreach ($vinculaciones as $valor => $etiqueta)
+                                    <option value="{{ $valor }}">{{ __($etiqueta) }}</option>
+                                @endforeach
                             </select>
                             <x-input-error :messages="$errors->get('vinculacion')" class="mt-1" />
                         </div>
-
-                        <div>
-                            <label class="text-[13px] font-semibold text-ink-label">{{ __('Dependencia') }} *</label>
-                            <select wire:model="dependenciaId" class="mt-1 h-11 w-full rounded-lg border-line-input text-[14px] text-ink focus:border-primary focus:ring-primary">
-                                <option value="">{{ __('Selecciona…') }}</option>
-                                @foreach ($dependencias as $dependencia)
-                                    <option value="{{ $dependencia->id }}">{{ $dependencia->nombre }}</option>
-                                @endforeach
-                            </select>
-                            <x-input-error :messages="$errors->get('dependenciaId')" class="mt-1" />
-                        </div>
-
-                        <div>
-                            <label class="text-[13px] font-semibold text-ink-label">{{ __('Sede') }} *</label>
-                            <select wire:model="sedeId" class="mt-1 h-11 w-full rounded-lg border-line-input text-[14px] text-ink focus:border-primary focus:ring-primary">
-                                <option value="">{{ __('Selecciona…') }}</option>
-                                @foreach ($sedes as $sede)
-                                    <option value="{{ $sede->id }}">{{ $sede->nombre }}</option>
-                                @endforeach
-                            </select>
-                            <x-input-error :messages="$errors->get('sedeId')" class="mt-1" />
-                        </div>
-
-                        <div>
-                            <label class="text-[13px] font-semibold text-ink-label">{{ __('Piso') }} *</label>
-                            <select wire:model="pisoId" class="mt-1 h-11 w-full rounded-lg border-line-input text-[14px] text-ink focus:border-primary focus:ring-primary">
-                                <option value="">{{ __('Selecciona…') }}</option>
-                                @foreach ($pisos as $piso)
-                                    <option value="{{ $piso->id }}">{{ __('Piso :numero', ['numero' => $piso->numero]) }}</option>
-                                @endforeach
-                            </select>
-                            <x-input-error :messages="$errors->get('pisoId')" class="mt-1" />
-                        </div>
-                    </div>
-                @else
-                    <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-                        <div>
-                            <label class="text-[13px] font-semibold text-ink-label">{{ __('Sede de la bodega') }} *</label>
-                            <select wire:model="sedeId" class="mt-1 h-11 w-full rounded-lg border-line-input text-[14px] text-ink focus:border-primary focus:ring-primary">
-                                <option value="">{{ __('Selecciona…') }}</option>
-                                @foreach ($sedes as $sede)
-                                    <option value="{{ $sede->id }}">{{ $sede->nombre }}</option>
-                                @endforeach
-                            </select>
-                            <x-input-error :messages="$errors->get('sedeId')" class="mt-1" />
-                        </div>
-
-                        <div>
-                            <label class="text-[13px] font-semibold text-ink-label">{{ __('Piso') }} *</label>
-                            <select wire:model="pisoId" class="mt-1 h-11 w-full rounded-lg border-line-input text-[14px] text-ink focus:border-primary focus:ring-primary">
-                                <option value="">{{ __('Selecciona…') }}</option>
-                                @foreach ($pisos as $piso)
-                                    <option value="{{ $piso->id }}">{{ __('Piso :numero', ['numero' => $piso->numero]) }}</option>
-                                @endforeach
-                            </select>
-                            <x-input-error :messages="$errors->get('pisoId')" class="mt-1" />
-                        </div>
-
-                        <div>
-                            <label class="text-[13px] font-semibold text-ink-label">{{ __('Dependencia') }} *</label>
-                            <select wire:model="dependenciaId" class="mt-1 h-11 w-full rounded-lg border-line-input text-[14px] text-ink focus:border-primary focus:ring-primary">
-                                <option value="">{{ __('Selecciona…') }}</option>
-                                @foreach ($dependencias as $dependencia)
-                                    <option value="{{ $dependencia->id }}">{{ $dependencia->nombre }}</option>
-                                @endforeach
-                            </select>
-                            <x-input-error :messages="$errors->get('dependenciaId')" class="mt-1" />
-                        </div>
                     </div>
                 @endif
+
+                {{-- RF-19 / RN-21: sede → piso de esa sede → dependencia (componente compartido). --}}
+                <p class="mt-5 text-[13px] font-semibold text-ink-label">
+                    {{ $asignarResponsable ? __('Ubicación') : __('Ubicación (bodega)') }}
+                </p>
+                <x-ui.ubicacion-select sede="sedeId" piso="pisoId" dependencia="dependenciaId" class="mt-2" wire:key="ubicacion-{{ $limpiezas }}" />
+
+                <div class="mt-4 max-w-md">
+                    <label for="procesoId" class="text-[13px] font-semibold text-ink-label">{{ __('Proceso') }}</label>
+                    <select id="procesoId" wire:model="procesoId" class="mt-1 h-11 w-full rounded-lg border-line-input text-[14px] text-ink focus:border-primary focus:ring-primary">
+                        <option value="">{{ __('El de la dependencia (recomendado)') }}</option>
+                        @foreach ($procesos as $proceso)
+                            <option value="{{ $proceso->id }}">{{ $proceso->nombre }}</option>
+                        @endforeach
+                    </select>
+                    <p class="mt-1 text-[13px] text-ink-muted">{{ __('Proceso del SIG al que da soporte el equipo. Cámbialo solo si no es el de su dependencia.') }}</p>
+                    <x-input-error :messages="$errors->get('procesoId')" class="mt-1" />
+                </div>
 
                 <div class="mt-4">
                     <label class="text-[13px] font-semibold text-ink-label">{{ __('Observaciones') }}</label>
