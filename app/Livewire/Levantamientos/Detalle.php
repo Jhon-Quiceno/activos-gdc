@@ -46,6 +46,7 @@ class Detalle extends Component
     public function verificar(int $equipoId, GestorLevantamientos $gestor): void
     {
         $gestor->verificar($this->levantamiento, Equipo::findOrFail($equipoId), auth()->user());
+        $this->levantamiento->refresh();
         session()->flash('status', __('Equipo verificado en sitio.'));
     }
 
@@ -62,6 +63,8 @@ class Detalle extends Component
     #[On('valoracion-registrada')]
     public function valoracionRegistrada(): void
     {
+        app(GestorLevantamientos::class)->registrarCambio($this->levantamiento);
+        $this->levantamiento->refresh();
         $this->valorandoId = null;
         session()->flash('status', __('Valoración registrada en el levantamiento.'));
     }
@@ -96,11 +99,13 @@ class Detalle extends Component
         session()->flash('status', __('Acta firmada cargada: el levantamiento quedó aceptado.'));
     }
 
-    public function verActaFirmada(): ?StreamedResponse
+    public function verActaFirmada(GestorLevantamientos $gestor): ?StreamedResponse
     {
         if (! $this->levantamiento->acta_path) {
             return null;
         }
+
+        abort_unless($gestor->actaFirmadaExiste($this->levantamiento), 404);
 
         return Storage::disk(GestorLevantamientos::DISCO)->download($this->levantamiento->acta_path, "acta-firmada-{$this->levantamiento->codigo}.pdf");
     }

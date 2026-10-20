@@ -12,6 +12,8 @@ use Illuminate\Database\Eloquent\Builder;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithPagination;
+use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
+use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -125,7 +127,7 @@ class BajasListado extends Component
 
         $fila = 2;
         foreach ($this->consultaBajas()->get() as $baja) {
-            $hoja->fromArray([
+            $valores = [
                 $baja->fecha?->format('d/m/Y'),
                 $baja->equipo?->numero_activo,
                 $baja->equipo?->tipoEquipo?->nombre,
@@ -136,7 +138,13 @@ class BajasListado extends Component
                 $baja->diagnostico?->causa,
                 self::textoEstado($baja),
                 $baja->usuario?->name,
-            ], null, 'A'.$fila++);
+            ];
+
+            // Siempre como texto: una causa escrita «=…» no debe volverse fórmula.
+            foreach ($valores as $i => $valor) {
+                $hoja->setCellValueExplicit(Coordinate::stringFromColumnIndex($i + 1).$fila, (string) $valor, DataType::TYPE_STRING);
+            }
+            $fila++;
         }
 
         foreach (range('A', 'J') as $columna) {

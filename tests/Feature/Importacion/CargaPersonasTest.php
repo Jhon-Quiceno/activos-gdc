@@ -158,3 +158,33 @@ it('un documento repetido en el archivo da error de fila', function () {
 
     expect($carga->get('resultados.1.errores'))->toContain('El documento está repetido en el archivo (fila 4).');
 });
+
+it('volver a cargar la planta no borra lo que la nueva no trae o no reconoce', function () {
+    $tic = $this->tic;
+    $persona = Persona::create([
+        'numero_documento' => '1000000001', 'nombres' => 'Ana María', 'apellidos' => 'Pérez Díaz',
+        'dependencia_id' => $tic->id, 'correo_institucional' => 'ana.perez@cordoba.gov.co',
+    ]);
+
+    Livewire::actingAs($this->usuario)->test(Index::class)
+        ->set('tipo', 'personas')
+        ->set('archivo', plantaCsv([filaPlanta(['DEPENDENCIA' => 'Oficina desconocida', 'REAL UBICACIÓN' => '', 'CORREO INSTITUCIONAL' => ''])]))
+        ->call('confirmar')
+        ->assertHasNoErrors()
+        ->assertSet('resumen.actualizadas', 1);
+
+    $persona->refresh();
+
+    expect($persona->dependencia_id)->toBe($tic->id)
+        ->and($persona->correo_institucional)->toBe('ana.perez@cordoba.gov.co')
+        ->and($persona->grado)->toBe('07');
+});
+
+it('con la situación vacía, una fila con nombre y sin documento es un error y no un cargo vacante', function () {
+    $carga = Livewire::actingAs($this->usuario)->test(Index::class)
+        ->set('tipo', 'personas')
+        ->set('archivo', plantaCsv([filaPlanta(['CEDULA' => '', 'ACTIVOS, VACANTES Y ENCARGOS' => ''])]));
+
+    expect($carga->get('resultados.0.omitida'))->toBeFalse()
+        ->and($carga->get('resultados.0.errores'))->toContain('Falta el número de documento.');
+});

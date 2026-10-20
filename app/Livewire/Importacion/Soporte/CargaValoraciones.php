@@ -188,13 +188,23 @@ final class CargaValoraciones
 
             $total = array_sum(array_map('intval', $niveles));
 
+            // Volver a cargar la misma matriz no debe llenar la hoja de vida de
+            // reclasificaciones idénticas (los eventos no se pueden borrar).
+            $vigente = $equipo?->valoracionVigente;
+            $sinCambios = $vigente !== null && collect($datos)->every(fn ($valor, $campo) => (string) $vigente->getRawOriginal($campo) === (string) $valor);
+
             return [
                 'numero' => $fila['numero'],
                 'resumen' => $equipo
                     ? "N.º {$equipo->numero_activo} · {$equipo->tipoEquipo?->nombre} · ".($equipo->codigo_activo ?? $equipo->serial)
                     : 'ID '.($d['id_activo'] ?? $d['codigo_activo'] ?? '—'),
                 'errores' => array_values(array_unique($errores)),
-                'advertencias' => $equipo?->valoracionVigente ? ['Ya tiene valoración: esta queda como reclasificación (RF-58).'] : [],
+                'advertencias' => match (true) {
+                    $sinCambios => ['Igual a la valoración vigente: no se crea una reclasificación.'],
+                    (bool) $equipo?->valoracionVigente => ['Ya tiene valoración: esta queda como reclasificación (RF-58).'],
+                    default => [],
+                },
+                'sin_cambios' => $sinCambios,
                 'dependencia_sin_resolver' => null,
                 'calculo' => in_array(null, $niveles, true) ? null : $total.' · '.ValoracionActivo::IMPORTANCIAS[ValoracionActivo::importanciaPara($total)],
                 'valores' => ['equipo_id' => $equipo?->id, 'datos' => $datos],
@@ -203,15 +213,21 @@ final class CargaValoraciones
     }
 
     /**
-     * @return array{creadas: int, omitidas: int}
+     * @return array{creadas: int, sin_cambios: int, omitidas: int}
      */
     public function guardar(array $resultados, User $usuario, string $archivo): array
     {
-        $resumen = ['creadas' => 0, 'omitidas' => 0];
+        $resumen = ['creadas' => 0, 'sin_cambios' => 0, 'omitidas' => 0];
 
         foreach ($resultados as $resultado) {
             if ($resultado['errores'] !== []) {
                 $resumen['omitidas']++;
+
+                continue;
+            }
+
+            if ($resultado['sin_cambios'] ?? false) {
+                $resumen['sin_cambios']++;
 
                 continue;
             }

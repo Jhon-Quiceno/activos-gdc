@@ -168,3 +168,17 @@ it('un contratista necesita número de contrato y el documento no se repite', fu
         ->call('guardarPersona')
         ->assertHasErrors(['numeroDocumento' => 'unique', 'numeroContrato' => 'required']);
 });
+
+it('editar a una persona retirada no la vuelve a activar', function () {
+    $this->recibe->update(['activo' => false]);
+
+    Livewire::test(Index::class)
+        ->call('editarPersona', $this->recibe->id)
+        ->set('apellidos', 'Recibe Díaz')
+        ->call('guardarPersona')
+        ->assertHasNoErrors();
+
+    expect($this->recibe->fresh())
+        ->apellidos->toBe('Recibe Díaz')
+        ->activo->toBeFalse();
+});

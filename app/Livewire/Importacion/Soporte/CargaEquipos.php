@@ -37,16 +37,43 @@ use InvalidArgumentException;
  */
 final class CargaEquipos
 {
+    /**
+     * Largo máximo de las columnas de texto que van a la base (el de su
+     * columna en la migración). Más largo es error de la fila, no de la carga.
+     */
+    private const LARGOS = [
+        'marca' => 255,
+        'modelo' => 100,
+        'serial' => 255,
+        'propietario_tercero' => 160,
+        'proveedor' => 160,
+        'numero_contrato' => 40,
+        'numero_factura' => 40,
+        'responsable_nombres' => 80,
+        'responsable_apellidos' => 80,
+        'procesador' => 255,
+        'memoria_ram' => 255,
+        'disco' => 255,
+        'antivirus' => 255,
+        'nombre_red' => 255,
+        'ofimatica' => 80,
+        'dominio' => 60,
+    ];
+
     /** @var array<string, Collection<string, mixed>> */
     private array $catalogos = [];
+
+    /** Nombre del archivo que se analiza, para reconocer las filas que ya se cargaron de él. */
+    private ?string $archivo = null;
 
     /**
      * @param  array<int, array{numero: int, datos: array<string, ?string>}>  $filas
      * @return array<int, array<string, mixed>>
      */
-    public function analizar(array $filas): array
+    public function analizar(array $filas, ?string $archivo = null): array
     {
         $this->cargarCatalogos();
+        $this->archivo = $archivo;
 
         // Para detectar repetidos dentro del mismo archivo.
         $seriales = [];
@@ -152,6 +179,14 @@ final class CargaEquipos
                 $this->configuracionComputo($equipo, $v);
             }
 
+            foreach ($v['perifericos'] ?? [] as $tipoComponenteId) {
+                Componente::create([
+                    'equipo_id' => $equipo->id,
+                    'tipo_componente_id' => $tipoComponenteId,
+                    'fecha_instalacion' => now(),
+                ]);
+            }
+
             $resumen['creados']++;
         }
 
@@ -181,6 +216,12 @@ final class CargaEquipos
                 return null;
             }
         };
+
+        foreach (self::LARGOS as $clave => $maximo) {
+            if (($texto = $txt($clave)) !== null && mb_strlen($texto) > $maximo) {
+                $errores[] = PlantillaEquipos::COLUMNAS[$clave][0].' tiene '.mb_strlen($texto)." caracteres: el máximo es {$maximo}.";
+            }
+        }
 
         // --- Catálogos obligatorios ---
         $tipo = $this->buscar('tipos', $txt('tipo_equipo'));
@@ -254,6 +295,12 @@ final class CargaEquipos
             $errores[] = "El código {$codigo} ya está en otro equipo: escribe la justificación (RN-03).";
         }
 
+        // Sin serial ni código no hay con qué reconocer un repetido: si esta misma
+        // fila de este mismo archivo ya se cargó, volver a subirlo la duplicaría.
+        if ($serial === null && $codigo === null && $tipo && $previo = $this->yaCargado($numero, $tipo->id)) {
+            $errores[] = "Esta fila ya se cargó de «{$this->archivo}» (equipo N.º {$previo->numero_activo}): no se vuelve a crear.";
+        }
+
         // --- Modelo (se crea si no existe) ---
         $modelo = $txt('modelo');
         if ($modelo && $tipo && (! $marca || ! ModeloEquipo::where(['marca_id' => $marca->id, 'tipo_equipo_id' => $tipo->id, 'nombre' => $modelo])->exists())) {
@@ -296,6 +343,7 @@ final class CargaEquipos
         }
         $antivirus = $txt('antivirus');
         $tieneAntivirus = $antivirus !== null && ! in_array(Normalizar::clave($antivirus), ['no', 'ninguno'], true);
+        $perifericos = $this->perifericos($txt('perifericos'), $usaComputo, $advertencias);
 
         // --- Adquisición (RF-52) ---
         $formaIngreso = 'carga_inicial';
@@ -345,6 +393,7 @@ final class CargaEquipos
             'dominio' => $txt('dominio'),
             'direccion_ip' => $ip,
             'direccion_mac' => $intentar(fn () => Normalizar::mac($d['direccion_mac'] ?? null)),
+            'perifericos' => $perifericos,
             'forma_ingreso' => $formaIngreso,
             'fecha_adquisicion' => $fechaAdquisicion,
             'valor_adquisicion' => $intentar(fn () => Normalizar::valor($d['valor_adquisicion'] ?? null)),
@@ -382,7 +431,15 @@ final class CargaEquipos
             return null;
         }
 
-        $existente = $documento ? Persona::where('numero_documento', $documento)->first() : null;
+        if ($documento !== null && mb_strlen($documento) > 20) {
+            $errores[] = 'El documento del responsable tiene más de 20 caracteres.';
+        }
+
+        // Sin documento, la persona se reconoce por su nombre completo: así no se
+        // crea una nueva por cada equipo de la fila ni en cada carga.
+        $existente = $documento
+            ? Persona::where('numero_documento', $documento)->first()
+            : $this->personaSinDocumento($nombres, Normalizar::texto($d['responsable_apellidos'] ?? null));
         if (! $existente && $nombres === null) {
             $errores[] = "No hay ninguna persona con el documento {$documento}: escribe sus nombres para crearla.";
 
@@ -440,8 +497,9 @@ final class CargaEquipos
             return Persona::find($datos['existente_id']);
         }
 
-        if ($datos['documento'] && isset($personas[$datos['documento']])) {
-            return $personas[$datos['documento']];
+        $clave = $datos['documento'] ?? 'nombre:'.Normalizar::clave($datos['nombres'].' '.$datos['apellidos']);
+        if (isset($personas[$clave])) {
+            return $personas[$clave];
         }
 
         $persona = Persona::create([
@@ -454,12 +512,68 @@ final class CargaEquipos
             'tipo_vinculacion' => $datos['vinculacion'],
         ]);
         $resumen['personas_nuevas']++;
-
-        if ($datos['documento']) {
-            $personas[$datos['documento']] = $persona;
-        }
+        $personas[$clave] = $persona;
 
         return $persona;
+    }
+
+    private function personaSinDocumento(?string $nombres, ?string $apellidos): ?Persona
+    {
+        if ($nombres === null) {
+            return null;
+        }
+
+        $buscado = Normalizar::clave($nombres.' '.$apellidos);
+
+        return Persona::whereNull('numero_documento')->get()
+            ->first(fn (Persona $p) => Normalizar::clave($p->nombreCompleto()) === $buscado);
+    }
+
+    /** Equipo creado antes desde esta misma fila de un archivo con el mismo nombre. */
+    private function yaCargado(int $numero, int $tipoId): ?Equipo
+    {
+        if ($this->archivo === null) {
+            return null;
+        }
+
+        return Equipo::where('fila_origen_importacion', $numero)
+            ->where('tipo_equipo_id', $tipoId)
+            ->whereHas('importacion', fn ($q) => $q->where('archivo', $this->archivo))
+            ->first();
+    }
+
+    /**
+     * «Teclado, Mouse y Sonido» → ids de los tipos de componente periféricos.
+     *
+     * @return array<int, int>
+     */
+    private function perifericos(?string $texto, bool $usaComputo, array &$advertencias): array
+    {
+        if ($texto === null) {
+            return [];
+        }
+
+        if (! $usaComputo) {
+            $advertencias[] = 'Los periféricos solo se registran en equipos de cómputo: se omiten.';
+
+            return [];
+        }
+
+        $ids = [];
+        foreach (preg_split('/\s*(?:[,;\/]|\by\b)\s*/u', $texto) as $nombre) {
+            if (trim($nombre) === '') {
+                continue;
+            }
+
+            $tipo = $this->buscar('perifericos', $nombre);
+            if ($tipo) {
+                $ids[] = $tipo->id;
+            } else {
+                $advertencias[] = "El periférico «{$nombre}» no está en el catálogo: se omite.";
+            }
+        }
+
+        return array_values(array_unique($ids));
     }
 
     private function configuracionComputo(Equipo $equipo, array $v): void
@@ -582,6 +696,7 @@ final class CargaEquipos
             'procesos' => Proceso::all(),
             'proveedores' => Proveedor::all(),
             'sistemas' => SistemaOperativo::all(),
+            'perifericos' => TipoComponente::where('es_periferico', true)->get(),
         ];
     }
 }

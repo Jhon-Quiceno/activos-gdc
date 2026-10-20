@@ -79,8 +79,10 @@ final class CargaPersonas
             $situacion = Normalizar::clave($d['situacion'] ?? null);
             $documento = Normalizar::documento($d['documento'] ?? null);
 
-            // Un cargo vacante no tiene persona: no es un error, se omite.
-            if ($documento === null && ($situacion === '' || str_contains($situacion, 'vacante'))) {
+            // Un cargo vacante no tiene persona: no es un error, se omite. Sin la
+            // columna de situación, solo es vacante si tampoco trae nombre.
+            $sinNombre = Normalizar::texto($d['nombres'] ?? null) === null && Normalizar::texto($d['nombre_completo'] ?? null) === null;
+            if ($documento === null && (str_contains($situacion, 'vacante') || ($situacion === '' && $sinNombre))) {
                 $resultados[] = ['numero' => $fila['numero'], 'resumen' => 'Cargo vacante', 'omitida' => true, 'errores' => [], 'advertencias' => [], 'dependencia_sin_resolver' => null, 'valores' => null];
 
                 continue;
@@ -186,8 +188,17 @@ final class CargaPersonas
             $jefe = $valores['jefe'];
             unset($valores['jefe']);
 
-            $persona = Persona::updateOrCreate(['numero_documento' => $valores['numero_documento']], $valores + ['activo' => true]);
-            $resumen[$persona->wasRecentlyCreated ? 'creadas' : 'actualizadas']++;
+            $persona = Persona::firstWhere('numero_documento', $valores['numero_documento']);
+
+            if ($persona) {
+                // Una celda vacía o que no se reconoce (dependencia, cargo, correo…) no
+                // borra lo que la persona ya tenía.
+                $persona->update(array_filter($valores, fn ($valor) => $valor !== null) + ['activo' => true]);
+                $resumen['actualizadas']++;
+            } else {
+                $persona = Persona::create($valores + ['activo' => true]);
+                $resumen['creadas']++;
+            }
 
             if ($jefe !== null) {
                 $jefes[$persona->id] = $jefe;

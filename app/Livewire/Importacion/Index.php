@@ -12,6 +12,7 @@ use App\Livewire\Importacion\Soporte\PlantillaEquipos;
 use App\Models\Dependencia;
 use App\Models\DependenciaEquivalencia;
 use App\Models\Importacion;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Url;
 use Livewire\Component;
@@ -98,7 +99,7 @@ class Index extends Component
             $conversion = ConversorInventario2026::convertir($ruta);
             $filas = array_map(fn ($datos, $i) => ['numero' => $i + 2, 'datos' => $datos], $conversion['filas'], array_keys($conversion['filas']));
             $this->lectura = ['leidas' => $conversion['leidas'], 'excluidas' => $conversion['excluidas'], 'faltantes' => []];
-            $this->resultados = (new CargaEquipos)->analizar($filas);
+            $this->resultados = (new CargaEquipos)->analizar($filas, $this->archivo->getClientOriginalName());
         } else {
             $lectura = match ($this->tipo) {
                 'equipos' => LectorHoja::leer($ruta, PlantillaEquipos::anclas(), PlantillaEquipos::encabezadosAceptados()),
@@ -116,7 +117,7 @@ class Index extends Component
 
             $this->lectura = ['leidas' => count($lectura['filas']), 'excluidas' => 0, 'faltantes' => $lectura['faltantes']];
             $this->resultados = match ($this->tipo) {
-                'equipos' => (new CargaEquipos)->analizar($lectura['filas']),
+                'equipos' => (new CargaEquipos)->analizar($lectura['filas'], $this->archivo->getClientOriginalName()),
                 'personas' => (new CargaPersonas)->analizar($lectura['filas'], $this->planta, $this->ordenNombre),
                 'valoraciones' => (new CargaValoraciones)->analizar($lectura['filas']),
                 'adquisicion' => (new CargaAdquisicion)->analizar($lectura['filas']),
@@ -205,7 +206,9 @@ class Index extends Component
         } catch (Throwable $e) {
             DB::rollBack();
             report($e);
-            $this->addError('archivo', __('La carga no se pudo completar y no se guardó nada: :mensaje', ['mensaje' => $e->getMessage()]));
+            // Un error de la base trae el SQL con los datos de la fila (cédulas, nombres): no se muestra.
+            $mensaje = $e instanceof QueryException ? __('un dato no es válido para la base de datos (el detalle quedó en el registro de errores)') : $e->getMessage();
+            $this->addError('archivo', __('La carga no se pudo completar y no se guardó nada: :mensaje', ['mensaje' => $mensaje]));
 
             return;
         }

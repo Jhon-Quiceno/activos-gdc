@@ -3,7 +3,6 @@
 namespace App\Livewire\Importacion\Soporte;
 
 use App\Livewire\Importacion\InventarioExcel;
-use Illuminate\Support\Str;
 use Maatwebsite\Excel\Facades\Excel;
 
 /**
@@ -20,6 +19,10 @@ use Maatwebsite\Excel\Facades\Excel;
  * Detecta las cabeceras reales del formulario (preguntas completas) y las
  * cortas de los ejemplos («PC», «Monitor»…). Las filas marcadas como equipo
  * personal se excluyen (RN-01).
+ *
+ * Lo personal y lo de terceros se busca solo en el texto que habla del equipo:
+ * la dependencia, la sede o el nombre del responsable no cuentan («Dirección
+ * de Personal» es una dependencia, no un equipo personal).
  */
 final class ConversorInventario2026
 {
@@ -33,6 +36,12 @@ final class ConversorInventario2026
         'otro' => [['otro', 'otros'], 'Otro'],
         'ups' => [['ups'], 'UPS'],
     ];
+
+    /** Periféricos del PC con su columna «¿El equipo cuenta con …?» (SI/NO). */
+    private const PERIFERICOS = ['teclado' => 'Teclado', 'mouse' => 'Mouse', 'sonido' => 'Sonido', 'camara' => 'Cámara'];
+
+    /** Columnas cuyo texto no dice nada de a quién pertenece el equipo. */
+    private const COLUMNAS_SIN_PROPIEDAD = ['dependencia', 'sede', 'piso', 'nombre', 'correo', 'cargo', 'vinculacion', 'cedula'];
 
     /** Palabras de un encabezado que indican que es un dato del dispositivo, no su presencia. */
     private const MODIFICADORES = ['codigo', 'activo', 'marca', 'modelo', 'serial', 'estado', 'sistema', 'version', 'antivirus'];
@@ -130,7 +139,10 @@ final class ConversorInventario2026
     {
         foreach ($filas as &$fila) {
             $codigo = $fila['codigo_activo'];
-            if ($codigo !== null && ! Normalizar::pareceCodigo($codigo) && preg_match('/^(?=.*[A-Z])(?=.*\d)[A-Z0-9\- ]{6,}$/i', $codigo)) {
+            // Un código mal escrito («I1-2410», «I1-0024147») no es un serial: se
+            // deja como código para que la fila muestre el error y se corrija.
+            $codigoMalEscrito = $codigo !== null && preg_match('/^[IL]1[\s\-.]*\d/i', $codigo);
+            if ($codigo !== null && ! $codigoMalEscrito && ! Normalizar::pareceCodigo($codigo) && preg_match('/^(?=.*[A-Z])(?=.*\d)[A-Z0-9\- ]{6,}$/i', $codigo)) {
                 $fila['serial'] ??= $codigo;
                 $fila['codigo_activo'] = null;
             }
@@ -178,6 +190,8 @@ final class ConversorInventario2026
                 'serial' => $serial,
                 'codigo_activo' => $codigo,
                 'estado_funcionamiento' => self::estado(self::modificador($fila, $palabras, ['estado']) ?? self::conTokens($fila, ['estado', 'funcionamiento'])),
+                // Teclado, mouse y sonido son del PC, no del monitor ni de la impresora de la misma fila.
+                'perifericos' => $categoria === 'pc' ? self::perifericos($fila) : null,
             ];
         }
 
@@ -187,7 +201,7 @@ final class ConversorInventario2026
     /** Datos que comparten todos los equipos de la fila. */
     private static function datosDeFila(array $fila): array
     {
-        $tercero = Str::contains(Str::lower(implode(' ', array_filter($fila))), ['tercero', 'externo', 'comodato']);
+        $tercero = (bool) preg_match('/\btercero(s)?\b|\bcomodato\b|\barrendad|\barrendamiento\b|\balquilad|\bequipo externo\b/', self::textoDelEquipo($fila));
         $antivirus = self::conTokens($fila, ['antivirus']);
         $piso = self::conTokens($fila, ['piso']);
 
@@ -196,8 +210,7 @@ final class ConversorInventario2026
 
         return [
             'sede' => $sede !== null ? (self::SEDES[LectorHoja::normalizar($sede)] ?? $sede) : null,
-            // «Piso 3» → «3»; un nombre («Local 44») se deja igual.
-            'piso' => $piso !== null && preg_match('/(\d+)/', $piso, $m) ? $m[1] : $piso,
+            'piso' => self::piso($piso),
             'dependencia' => self::conTokens($fila, ['dependencia']),
             'propiedad' => $tercero ? 'Tercero' : 'Gobernación',
             'propietario_tercero' => $tercero ? self::conTokens($fila, ['propietario']) : null,
@@ -210,6 +223,46 @@ final class ConversorInventario2026
             'antivirus' => $antivirus,
             'forma_ingreso' => 'Carga inicial',
         ];
+    }
+
+    /** «Piso 3», «3» o «3er piso» → «3»; un nombre («Local 44», «Sótano») se deja igual. */
+    private static function piso(?string $texto): ?string
+    {
+        if ($texto !== null && preg_match('/^(?:piso\s*)?(\d+)\s*(?:er|ro|do|to|vo|no|mo|°|º)?(?:\s*piso)?$/iu', trim($texto), $m)) {
+            return $m[1];
+        }
+
+        return $texto;
+    }
+
+    /**
+     * «Teclado, Mouse» según las columnas «¿El equipo cuenta con …?» que dicen SI.
+     * Sin esas columnas, el valor bajo el nombre del periférico es su serial y
+     * también cuenta.
+     */
+    private static function perifericos(array $fila): ?string
+    {
+        $presentes = [];
+        foreach (self::PERIFERICOS as $palabra => $nombre) {
+            $cuenta = self::conTokens($fila, ['cuenta', $palabra]);
+            $presente = $cuenta !== null
+                ? in_array(LectorHoja::normalizar($cuenta), ['si', 's'], true)
+                : self::conTokens($fila, [$palabra]) !== null;
+
+            if ($presente) {
+                $presentes[] = $nombre;
+            }
+        }
+
+        return $presentes !== [] ? implode(', ', $presentes) : null;
+    }
+
+    /** Texto de las celdas que hablan del equipo (observaciones, estado…), sin ubicación ni datos del responsable. */
+    private static function textoDelEquipo(array $fila): string
+    {
+        $celdas = array_filter($fila, fn ($valor, $clave) => $valor !== null && ! self::contieneAlguna($clave, self::COLUMNAS_SIN_PROPIEDAD), ARRAY_FILTER_USE_BOTH);
+
+        return LectorHoja::normalizar(implode(' ', $celdas));
     }
 
     private static function presencia(array $fila, array $palabras): ?string
@@ -326,6 +379,6 @@ final class ConversorInventario2026
 
     private static function esPersonal(array $fila): bool
     {
-        return Str::contains(Str::lower(implode(' ', array_filter($fila))), ['personal', 'no es de la gobernacion', 'no es de la gobernación']);
+        return (bool) preg_match('/\b(equipo|computador|pc|portatil|dispositivo|propiedad|es)\s+(es\s+)?personal\b|\bno es de la gobernacion\b/', self::textoDelEquipo($fila));
     }
 }
