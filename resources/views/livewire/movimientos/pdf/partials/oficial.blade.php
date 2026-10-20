@@ -51,7 +51,7 @@
             <tr>
                 <td class="ofi-etiqueta">{{ __('Marca del equipo:') }}</td>
                 <td>{{ $equipoFormato->marca?->nombre }}</td>
-                <td colspan="2"><span class="ofi-etiqueta-linea">{{ __('Modelo:') }}</span> {{ $equipoFormato->modelo }}</td>
+                <td colspan="2"><span class="ofi-etiqueta-linea">{{ __('Modelo:') }}</span> {{ $equipoFormato->modeloEquipo?->nombre }}</td>
             </tr>
             <tr>
                 <td class="ofi-etiqueta">{{ __('Placa Activo:') }}</td>
@@ -60,11 +60,11 @@
             </tr>
             <tr>
                 <td class="ofi-etiqueta">{{ __('Funcionario Responsable:') }}</td>
-                <td colspan="3">{{ $persona?->nombre ?? __('Sin responsable (bodega)') }}</td>
+                <td colspan="3">{{ $persona?->nombreCompleto() ?? __('Sin responsable (bodega)') }}</td>
             </tr>
             <tr>
                 <td class="ofi-etiqueta">{{ __('Cargo:') }}</td>
-                <td colspan="3">{{ $persona?->cargo }}</td>
+                <td colspan="3">{{ $persona?->cargoTexto() }}</td>
             </tr>
             <tr><td colspan="4" class="ofi-gris ofi-centro">{{ __('Diagnóstico') }}</td></tr>
             <tr><td colspan="4" class="ofi-caja-diagnostico">{!! nl2br(e($contenido['diagnostico'])) !!}</td></tr>
@@ -85,9 +85,10 @@
                 <td>
                     <div class="ofi-linea-firma"></div>
                     {{ __('Aprobado: funcionario responsable') }}<br>
-                    <span class="ofi-nombre">{{ $persona?->nombre }}</span>
-                    @if ($persona?->cedula)
-                        <br><span class="ofi-nombre">{{ __('C.C. :cedula', ['cedula' => $persona->cedula]) }}</span>
+                    <span class="ofi-nombre">{{ $persona?->nombreCompleto() }}</span>
+                    {{-- Completo: es el formato que se firma (RN-12). --}}
+                    @if ($persona?->numero_documento)
+                        <br><span class="ofi-nombre">{{ ($persona->tipo_documento === 'CC' ? 'C.C.' : $persona->tipo_documento).' '.$persona->numero_documento }}</span>
                     @endif
                 </td>
             </tr>

@@ -3,6 +3,7 @@
 namespace App\Livewire\Equipos\Concerns;
 
 use App\Models\Dependencia;
+use App\Models\Piso;
 use App\Models\Sede;
 use App\Models\TipoEquipo;
 use Illuminate\Database\Eloquent\Builder;
@@ -10,16 +11,19 @@ use Livewire\Attributes\Url;
 
 /**
  * Búsqueda (RF-07) y filtros combinables de equipos. La usan el listado de
- * Equipos y el de Traslados, con la vista parcial
- * livewire/equipos/partials/filtros.blade.php.
+ * Equipos, el de Traslados y la impresión de QR por lotes, con la vista
+ * parcial livewire/equipos/partials/filtros.blade.php.
+ *
+ * Modelo v4: la sede sale del piso de la asignación (RN-21) y el filtro por
+ * dependencia trae también sus subdependencias (RF-60).
  *
  * El componente debe usar WithPagination.
  */
 trait FiltrosDeEquipos
 {
     /**
-     * Término libre: serial, código de activo, responsable, cédula, dependencia
-     * o sede. Tolera espacios y guiones (I1 24147 = I1-24147).
+     * Término libre: serial, código de activo, número de activo, responsable,
+     * documento, dependencia o sede. Tolera espacios y guiones (I1 24147 = I1-24147).
      */
     #[Url(as: 'q')]
     public string $busqueda = '';
@@ -34,6 +38,11 @@ trait FiltrosDeEquipos
     #[Url]
     public string $sede = '';
 
+    /** Piso de la sede elegida; se vacía al cambiar la sede. */
+    #[Url]
+    public string $piso = '';
+
+    /** Dependencia y todas las que cuelgan de ella (Dependencia::idsDeRama). */
     #[Url]
     public string $dependencia = '';
 
@@ -60,13 +69,18 @@ trait FiltrosDeEquipos
     #[Url]
     public string $firmas = '';
 
-    protected static array $filtrosDeEquipos = ['responsable', 'sede', 'dependencia', 'tipo', 'estado', 'verificacion', 'identificacion', 'propiedad', 'firmas'];
+    protected static array $filtrosDeEquipos = ['responsable', 'sede', 'piso', 'dependencia', 'tipo', 'estado', 'verificacion', 'identificacion', 'propiedad', 'firmas'];
 
     /**
      * Cualquier cambio en la búsqueda o en un filtro vuelve a la primera página.
      */
     public function updatedFiltrosDeEquipos(string $propiedad): void
     {
+        // El piso es de una sede: al cambiar la sede deja de servir.
+        if ($propiedad === 'sede') {
+            $this->piso = '';
+        }
+
         if ($propiedad === 'busqueda' || in_array($propiedad, self::$filtrosDeEquipos, true)) {
             $this->resetPage();
         }
@@ -98,7 +112,11 @@ trait FiltrosDeEquipos
     {
         return [
             'sedes' => Sede::orderBy('nombre')->get(['id', 'nombre']),
-            'dependencias' => Dependencia::orderBy('nombre')->get(['id', 'nombre']),
+            'pisos' => $this->sede !== ''
+                ? Piso::where('sede_id', $this->sede)->orderBy('numero')->get()
+                : collect(),
+            // En árbol (con `profundidad`) para mostrar la sangría.
+            'dependencias' => Dependencia::arbol(),
             'tipos' => TipoEquipo::orderBy('nombre')->get(['id', 'nombre']),
         ];
     }
@@ -106,7 +124,7 @@ trait FiltrosDeEquipos
     protected function aplicarBusqueda(Builder $query): void
     {
         $termino = trim($this->busqueda);
-        $normalizado = str_replace([' ', '-'], '', $termino);
+        $normalizado = str_replace([' ', '-', '.'], '', $termino);
 
         if ($termino === '') {
             return;
@@ -120,15 +138,23 @@ trait FiltrosDeEquipos
                     ->orWhereRaw("REPLACE(REPLACE(codigo_activo, ' ', ''), '-', '') LIKE ?", ["%{$normalizado}%"]);
             }
 
+            // Número de activo (RN-27): exacto, para que «12» no traiga el 120 ni el 312.
+            if (ctype_digit($termino)) {
+                $q->orWhere('numero_activo', (int) $termino);
+            }
+
             $q->orWhereHas('asignacionActual.persona', function ($p) use ($termino, $normalizado) {
-                $p->where('nombre', 'like', "%{$termino}%");
+                $p->whereRaw("CONCAT_WS(' ', nombres, apellidos) LIKE ?", ["%{$termino}%"]);
 
                 if ($normalizado !== '') {
-                    $p->orWhereRaw("REPLACE(cedula, ' ', '') LIKE ?", ["%{$normalizado}%"]);
+                    $p->orWhereRaw("REPLACE(numero_documento, ' ', '') LIKE ?", ["%{$normalizado}%"]);
                 }
             })
-                ->orWhereHas('asignacionActual.dependencia', fn ($d) => $d->where('nombre', 'like', "%{$termino}%"))
-                ->orWhereHas('asignacionActual.sede', fn ($s) => $s->where('nombre', 'like', "%{$termino}%"));
+                ->orWhereHas('asignacionActual.dependencia', fn ($d) => $d->where(fn ($d) => $d
+                    ->where('nombre', 'like', "%{$termino}%")
+                    ->orWhere('nombre_corto', 'like', "%{$termino}%")
+                    ->orWhere('sigla', 'like', "%{$termino}%")))
+                ->orWhereHas('asignacionActual.piso.sede', fn ($s) => $s->where('nombre', 'like', "%{$termino}%"));
         });
     }
 
@@ -141,12 +167,16 @@ trait FiltrosDeEquipos
             $query->whereDoesntHave('asignacionActual', fn ($a) => $a->whereNotNull('persona_id'));
         }
 
-        if ($this->sede !== '') {
-            $query->whereHas('asignacionActual', fn ($a) => $a->where('sede_id', $this->sede));
+        // RN-21: la sede de la asignación es la de su piso.
+        if ($this->piso !== '') {
+            $query->whereHas('asignacionActual', fn ($a) => $a->where('piso_id', $this->piso));
+        } elseif ($this->sede !== '') {
+            $query->whereHas('asignacionActual.piso', fn ($p) => $p->where('pisos.sede_id', $this->sede));
         }
 
+        // RF-60: la dependencia elegida y todas las que cuelgan de ella.
         if ($this->dependencia !== '') {
-            $query->whereHas('asignacionActual', fn ($a) => $a->where('dependencia_id', $this->dependencia));
+            $query->whereHas('asignacionActual', fn ($a) => $a->whereIn('dependencia_id', Dependencia::idsDeRama((int) $this->dependencia)));
         }
 
         if ($this->tipo !== '') {

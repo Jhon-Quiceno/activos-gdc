@@ -2,7 +2,8 @@
     Búsqueda y filtros de equipos (trait App\Livewire\Equipos\Concerns\FiltrosDeEquipos).
     La usan el listado de Equipos y el de Traslados, dentro del slot «filters» de <x-ui.table>.
 
-    Variables: $equipos (paginador), $sedes, $dependencias, $tipos y, opcional,
+    Variables: $equipos (paginador), $sedes, $pisos (de la sede elegida),
+    $dependencias (en árbol, con `profundidad`), $tipos y, opcional,
     $conDadosDeBaja (false en Traslados, que nunca muestra equipos dados de baja).
 --}}
 <div class="relative w-full max-w-sm">
@@ -12,7 +13,7 @@
     <input
         type="text"
         wire:model.live.debounce.400ms="busqueda"
-        placeholder="{{ __('Buscar por serial, código, responsable, cédula, dependencia o sede...') }}"
+        placeholder="{{ __('Buscar por serial, código, n.º de activo, responsable, documento, dependencia o sede...') }}"
         class="h-11 w-full rounded-lg border-line-input pl-9 text-[14px] text-ink placeholder:text-ink-muted focus:border-primary focus:ring-primary"
     >
 </div>
@@ -38,10 +39,25 @@
         @endforeach
     </select>
 
-    <select wire:model.live="dependencia" class="{{ $claseFiltro }} max-w-[220px]" aria-label="{{ __('Dependencia') }}">
+    @if ($sede !== '')
+        <select wire:model.live="piso" wire:key="filtro-piso-{{ $sede }}" class="{{ $claseFiltro }}" aria-label="{{ __('Piso') }}">
+            <option value="">{{ __('Piso: todos') }}</option>
+            @foreach ($pisos as $opcion)
+                <option value="{{ $opcion->id }}">{{ $opcion->etiqueta() }}</option>
+            @endforeach
+        </select>
+    @endif
+
+    {{-- RF-60: al elegir una secretaría también trae sus direcciones y áreas. --}}
+    <select
+        wire:model.live="dependencia"
+        class="{{ $claseFiltro }} max-w-[260px]"
+        aria-label="{{ __('Dependencia') }}"
+        title="{{ __('Incluye las dependencias que cuelgan de la elegida') }}"
+    >
         <option value="">{{ __('Dependencia: todas') }}</option>
         @foreach ($dependencias as $opcion)
-            <option value="{{ $opcion->id }}">{{ $opcion->nombre }}</option>
+            <option value="{{ $opcion->id }}">{{ str_repeat("\u{00A0}\u{00A0}\u{00A0}", $opcion->profundidad) }}{{ $opcion->nombre }}</option>
         @endforeach
     </select>
 

@@ -2,31 +2,33 @@
 
 namespace App\Livewire\Movimientos;
 
+use App\Livewire\Movimientos\Concerns\FormularioPersona;
 use App\Livewire\Movimientos\Soporte\FormatosPdf;
 use App\Livewire\Movimientos\Soporte\GestorAsignaciones;
+use App\Livewire\Movimientos\Soporte\PazYSalvo;
 use App\Models\Asignacion;
 use App\Models\Dependencia;
 use App\Models\Equipo;
 use App\Models\Persona;
-use Illuminate\Validation\Rule;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithPagination;
 
 /**
- * Responsables (ruta /movimientos): RF-18, RF-21 y RF-22.
+ * Responsables (ruta /movimientos): RF-18, RF-21, RF-22 y RF-23.
  *
- * - Registrar personas responsables (nombre, cédula, cargo, dependencia y
- *   vinculación).
- * - Consultar los equipos a cargo de una persona y descargar su formato de
- *   entrega consolidado.
- * - Ver cuántos equipos están sin responsable (bodega) e ir a su listado.
+ * - Registrar y editar personas responsables con los campos v4 (documento,
+ *   nombres y apellidos, cargo del Decreto 607, vinculación, provisión…).
+ * - Consultar los equipos a cargo de una persona, descargar su formato de
+ *   entrega consolidado y su paz y salvo.
+ * - Avisar de quienes terminan su vinculación pronto y todavía tienen equipos.
  *
  * La asignación de un equipo a una persona se hace siempre con un traslado,
  * para que quede el evento en la hoja de vida y se generen los formatos.
  */
 class Index extends Component
 {
+    use FormularioPersona;
     use WithPagination;
 
     #[Url(as: 'q')]
@@ -37,15 +39,10 @@ class Index extends Component
 
     public bool $mostrarFormulario = false;
 
-    public string $nombre = '';
-
-    public string $cedula = '';
-
-    public string $cargo = '';
+    /** Persona que se está editando; null = persona nueva. */
+    public ?int $editandoId = null;
 
     public ?int $dependenciaId = null;
-
-    public ?string $tipoVinculacion = null;
 
     public ?string $mensaje = null;
 
@@ -70,41 +67,66 @@ class Index extends Component
         $this->dispatch('close-modal', 'persona-detalle');
     }
 
+    public function nuevaPersona(): void
+    {
+        $this->reset(['editandoId', 'dependenciaId', ...$this->camposPersona()]);
+        $this->resetValidation();
+        $this->mostrarFormulario = true;
+    }
+
+    public function editarPersona(int $personaId): void
+    {
+        $persona = Persona::findOrFail($personaId);
+
+        $this->resetValidation();
+        $this->llenarPersona($persona);
+        $this->editandoId = $persona->id;
+        $this->dependenciaId = $persona->dependencia_id;
+        $this->mostrarFormulario = true;
+        $this->cerrarPersona();
+    }
+
+    public function cancelarFormulario(): void
+    {
+        $this->reset(['mostrarFormulario', 'editandoId', 'dependenciaId', ...$this->camposPersona()]);
+        $this->resetValidation();
+    }
+
     protected function rules(): array
     {
-        return [
-            'nombre' => ['required', 'string', 'max:255'],
-            'cedula' => ['required', 'digits_between:5,12', Rule::unique('personas', 'cedula')],
-            'cargo' => ['required', 'string', 'max:255'],
+        return $this->reglasPersona($this->editandoId) + [
             'dependenciaId' => ['required', 'exists:dependencias,id'],
-            'tipoVinculacion' => ['required', 'in:planta,contratista'],
         ];
+    }
+
+    protected function messages(): array
+    {
+        return $this->mensajesPersona();
     }
 
     protected function validationAttributes(): array
     {
-        return [
-            'dependenciaId' => __('dependencia'),
-            'tipoVinculacion' => __('tipo de vinculación'),
-        ];
+        return ['dependenciaId' => __('dependencia')] + $this->atributosPersona();
     }
 
-    public function crearPersona(): void
+    public function guardarPersona(): void
     {
+        $this->updatedNumeroDocumento();
         $this->validate();
 
-        $persona = Persona::create([
-            'nombre' => trim($this->nombre),
-            'cedula' => $this->cedula,
-            'cargo' => trim($this->cargo),
-            'dependencia_id' => $this->dependenciaId,
-            'tipo_vinculacion' => $this->tipoVinculacion,
-            'activo' => true,
-        ]);
+        $datos = $this->datosPersona($this->dependenciaId);
 
-        $this->reset(['nombre', 'cedula', 'cargo', 'dependenciaId', 'tipoVinculacion', 'mostrarFormulario']);
+        if ($this->editandoId) {
+            $persona = Persona::findOrFail($this->editandoId);
+            $persona->update($datos);
+            $this->mensaje = __('Datos de :nombre actualizados.', ['nombre' => $persona->nombreCompleto()]);
+        } else {
+            $persona = Persona::create($datos);
+            $this->mensaje = __(':nombre quedó registrado. Para asignarle un equipo, regístralo con un traslado.', ['nombre' => $persona->nombreCompleto()]);
+        }
+
+        $this->cancelarFormulario();
         $this->personaSeleccionada = $persona->id;
-        $this->mensaje = __(':nombre quedó registrado. Para asignarle un equipo, regístralo con un traslado.', ['nombre' => $persona->nombre]);
     }
 
     /**
@@ -116,30 +138,44 @@ class Index extends Component
     {
         $persona = Persona::findOrFail($personaId);
         $pdf = $formatos->pdfConsolidado($persona);
-        $nombre = 'formatos-entrega-'.str($persona->nombre)->slug().'.pdf';
+        $nombre = 'formatos-entrega-'.str($persona->nombreCompleto())->slug().'.pdf';
 
         return response()->streamDownload(fn () => print ($pdf->output()), $nombre, ['Content-Type' => 'application/pdf']);
     }
 
-    public function render(GestorAsignaciones $asignaciones)
+    /**
+     * RF-23: paz y salvo de equipos de la persona (o la lista de lo que tiene
+     * pendiente por entregar).
+     */
+    public function descargarPazYSalvo(int $personaId, PazYSalvo $pazYSalvo)
+    {
+        $persona = Persona::findOrFail($personaId);
+        $pdf = $pazYSalvo->pdf($persona);
+        $nombre = 'paz-y-salvo-'.str($persona->nombreCompleto())->slug().'.pdf';
+
+        return response()->streamDownload(fn () => print ($pdf->output()), $nombre, ['Content-Type' => 'application/pdf']);
+    }
+
+    public function render(GestorAsignaciones $asignaciones, PazYSalvo $pazYSalvo)
     {
         $termino = trim($this->busqueda);
-        $digitos = preg_replace('/\D/', '', $termino);
+        $documento = preg_replace('/[\s.,\-]/', '', $termino);
 
         $personas = Persona::query()
-            ->with('dependencia')
+            ->with(['dependencia', 'cargoOficial'])
             ->withCount(['asignaciones as equipos_a_cargo' => fn ($q) => $q
                 ->whereNull('fecha_fin')
                 ->whereHas('equipo', fn ($e) => $e->where('estado_ciclo_vida', '!=', 'dado_de_baja'))])
             ->when($termino !== '', fn ($q) => $q->where(fn ($q) => $q
-                ->where('nombre', 'like', "%{$termino}%")
-                ->orWhere('cargo', 'like', "%{$termino}%")
-                ->when($digitos !== '', fn ($q) => $q->orWhere('cedula', 'like', "%{$digitos}%"))
+                ->whereRaw("CONCAT_WS(' ', nombres, apellidos) LIKE ?", ["%{$termino}%"])
+                ->orWhereHas('cargoOficial', fn ($c) => $c->where('denominacion', 'like', "%{$termino}%")->orWhere('codigo', $termino))
+                ->when($documento !== '', fn ($q) => $q->orWhere('numero_documento', 'like', "%{$documento}%"))
                 ->orWhereHas('dependencia', fn ($d) => $d->where('nombre', 'like', "%{$termino}%"))))
-            ->orderBy('nombre')
+            ->orderBy('nombres')
+            ->orderBy('apellidos')
             ->paginate(12);
 
-        $seleccionada = $this->personaSeleccionada ? Persona::with('dependencia')->find($this->personaSeleccionada) : null;
+        $seleccionada = $this->personaSeleccionada ? Persona::with(['dependencia', 'cargoOficial', 'jefeInmediato'])->find($this->personaSeleccionada) : null;
 
         return view('livewire.movimientos.index', [
             'personas' => $personas,
@@ -156,7 +192,8 @@ class Index extends Component
                     ->get()
                 : collect(),
             'sinAsignar' => Equipo::where('estado_ciclo_vida', 'sin_asignar')->count(),
-            'dependencias' => Dependencia::orderBy('nombre')->get(),
-        ]);
+            'porTerminar' => $pazYSalvo->porTerminarConEquipos(),
+            'dependencias' => $this->mostrarFormulario ? Dependencia::arbol() : collect(),
+        ] + $this->opcionesPersona());
     }
 }

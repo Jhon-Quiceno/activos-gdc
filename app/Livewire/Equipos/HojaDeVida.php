@@ -8,6 +8,7 @@ use App\Services\HistorialService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Str;
 use Livewire\Attributes\Locked;
+use Livewire\Attributes\On;
 use Livewire\Component;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -60,12 +61,25 @@ class HojaDeVida extends Component
         'diagnostico' => 'Diagnóstico',
         'baja' => 'Baja',
         'actualizacion_datos' => 'Actualización de datos',
+        'valoracion' => 'Valoración del activo',
         'anulacion_aclaracion' => 'Anulación / aclaración',
     ];
 
     public function mount(Equipo $equipo): void
     {
         $this->equipo = $equipo;
+    }
+
+    /**
+     * El formulario de valoración (otro componente) avisa al guardar; la hoja
+     * de vida se vuelve a pintar con la valoración vigente y el historial.
+     */
+    #[On('valoracion-registrada')]
+    public function valoracionRegistrada(int $equipoId, ?int $valoracionId = null): void
+    {
+        if ($equipoId === $this->equipo->id) {
+            session()->flash('status', __('Valoración registrada.'));
+        }
     }
 
     /**
@@ -218,11 +232,17 @@ class HojaDeVida extends Component
         $this->equipo->load([
             'tipoEquipo',
             'marca',
+            'modeloEquipo',
+            'proceso',
+            'proveedor',
+            'proveedorTercero',
             'asignacionActual.persona.dependencia',
-            'asignacionActual.sede',
-            'asignacionActual.piso',
+            'asignacionActual.persona.cargoOficial',
+            'asignacionActual.piso.sede',
             'asignacionActual.dependencia',
             'configuracionComputo.sistemaOperativo',
+            'valoraciones.usuario',
+            'valoraciones.levantamiento',
             'componentes' => fn ($q) => $q->whereNull('fecha_retiro')->with('tipoComponente')->orderBy('id'),
             'eventos' => fn ($q) => $q->with([
                 'usuario',

@@ -25,7 +25,15 @@
 
             {{-- 2. Identificación --}}
             <x-ui.card>
-                <p class="section-title">{{ __('2. Identificación') }}</p>
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                    <p class="section-title">{{ __('2. Identificación') }}</p>
+                    {{-- RN-27: el número de activo lo asigna el sistema y nunca cambia. --}}
+                    <p class="text-[13px] text-ink-muted">
+                        {{ __('N.º de activo') }}
+                        <span class="ml-1 font-mono text-[14px] font-semibold text-ink">{{ $equipo->numero_activo ?? '—' }}</span>
+                        <span class="ml-1">· {{ __('no se edita') }}</span>
+                    </p>
+                </div>
 
                 <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <x-ui.input name="serial" :label="__('Serial del fabricante') . ' *'" wire:model.blur="serial" required />
@@ -64,19 +72,26 @@
                     </div>
                 </div>
 
-                <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <div>
-                        <label class="text-[13px] font-semibold text-ink-label">{{ __('Marca') }} *</label>
-                        <select wire:model="marcaId" class="mt-1 h-11 w-full rounded-lg border-line-input text-[14px] text-ink focus:border-primary focus:ring-primary">
-                            <option value="">{{ __('Selecciona…') }}</option>
-                            @foreach ($marcas as $marca)
-                                <option value="{{ $marca->id }}">{{ $marca->nombre }}</option>
-                            @endforeach
-                        </select>
-                        <x-input-error :messages="$errors->get('marcaId')" class="mt-1" />
-                    </div>
+                @include('livewire.equipos.partials.marca-modelo')
 
-                    <x-ui.input name="modelo" :label="__('Modelo')" wire:model="modelo" />
+                <x-ui.input
+                    name="descripcion"
+                    :label="__('Descripción')"
+                    wire:model="descripcion"
+                    :placeholder="__('Para qué se usa o algo que lo distinga (opcional)')"
+                    maxlength="255"
+                    class="mt-4"
+                />
+
+                <div class="mt-4 max-w-md">
+                    <label for="procesoId" class="text-[13px] font-semibold text-ink-label">{{ __('Proceso') }}</label>
+                    <select id="procesoId" wire:model="procesoId" class="mt-1 h-11 w-full rounded-lg border-line-input text-[14px] text-ink focus:border-primary focus:ring-primary">
+                        <option value="">{{ __('El de la dependencia') }}</option>
+                        @foreach ($procesos as $proceso)
+                            <option value="{{ $proceso->id }}">{{ $proceso->nombre }}</option>
+                        @endforeach
+                    </select>
+                    <x-input-error :messages="$errors->get('procesoId')" class="mt-1" />
                 </div>
 
                 <div class="mt-4 max-w-sm">
@@ -108,25 +123,12 @@
                 </div>
 
                 @if ($propiedad === 'tercero')
-                    <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-                        <x-ui.input name="propietarioTercero" :label="__('Propietario') . ' *'" wire:model="propietarioTercero" required />
-
-                        <div>
-                            <label class="text-[13px] font-semibold text-ink-label">{{ __('Figura') }} *</label>
-                            <select wire:model="figura" class="mt-1 h-11 w-full rounded-lg border-line-input text-[14px] text-ink focus:border-primary focus:ring-primary">
-                                <option value="">{{ __('Selecciona…') }}</option>
-                                <option value="comodato">{{ __('Comodato') }}</option>
-                                <option value="convenio">{{ __('Convenio') }}</option>
-                                <option value="proveedor">{{ __('Proveedor') }}</option>
-                            </select>
-                            <x-input-error :messages="$errors->get('figura')" class="mt-1" />
-                        </div>
-                    </div>
+                    @include('livewire.equipos.partials.propietario-tercero')
                 @endif
             </x-ui.card>
 
-            {{-- 4. Software (cómputo) o características (demás familias) --}}
-            @if ($familiaSeleccionada === 'computo')
+            {{-- 4. Software (si el tipo usa configuración de cómputo) o características (demás tipos) --}}
+            @if ($usaConfiguracionComputo)
                 <x-ui.card>
                     <p class="section-title">{{ __('4. Software') }}</p>
 
@@ -156,6 +158,8 @@
                         <x-ui.input name="nombreRed" :label="__('Nombre de red')" wire:model="nombreRed" />
                     </div>
 
+                    @include('livewire.equipos.partials.red-ofimatica')
+
                     <p class="mt-4 rounded-lg bg-info-bg px-3 py-2 text-[13px] text-info-text">
                         {{ __('Procesador, RAM, disco y periféricos no se editan aquí: se cambian con «Cambio de componente», que deja el registro de lo retirado y lo instalado (RN-07).') }}
                     </p>
@@ -164,9 +168,12 @@
                 @include('livewire.equipos.partials.caracteristicas')
             @endif
 
-            {{-- 5. Observaciones --}}
+            {{-- 5. Adquisición (RF-52) --}}
+            @include('livewire.equipos.partials.adquisicion', ['titulo' => __('5. Adquisición')])
+
+            {{-- 6. Observaciones --}}
             <x-ui.card>
-                <p class="section-title">{{ __('5. Observaciones') }}</p>
+                <p class="section-title">{{ __('6. Observaciones') }}</p>
                 <textarea
                     wire:model="observaciones"
                     rows="3"

@@ -21,11 +21,11 @@ class GestorAsignaciones
     /**
      * Cierra la asignación abierta y abre la nueva. Si $persona es null el
      * equipo queda «Sin asignar» (bodega), que es un estado válido (RF-21).
+     * La sede no se pasa: es la del piso (RN-21).
      */
     public function asignar(
         Equipo $equipo,
         ?Persona $persona,
-        int $sedeId,
         int $pisoId,
         ?int $dependenciaId,
         CarbonInterface|string $fecha,
@@ -48,7 +48,6 @@ class GestorAsignaciones
         $asignacion = Asignacion::create([
             'equipo_id' => $equipo->id,
             'persona_id' => $persona?->id,
-            'sede_id' => $sedeId,
             'piso_id' => $pisoId,
             'dependencia_id' => $persona ? ($dependenciaId ?? $persona->dependencia_id) : $dependenciaId,
             'fecha_inicio' => $fecha->toDateString(),
@@ -78,7 +77,7 @@ class GestorAsignaciones
             ->where('equipo_id', $evento->equipo_id)
             ->when($creadaPorElEvento, fn ($q) => $q->where('id', '<', $creadaPorElEvento))
             ->where(fn ($q) => $q->whereNull('evento_origen_id')->orWhere('evento_origen_id', '<', $evento->id))
-            ->with(['persona.dependencia', 'sede', 'piso', 'dependencia'])
+            ->with(['persona.dependencia', 'persona.cargoOficial', 'piso.sede', 'dependencia'])
             ->latest('id')
             ->first();
     }
@@ -92,7 +91,7 @@ class GestorAsignaciones
     {
         return Asignacion::query()
             ->where('evento_origen_id', $evento->id)
-            ->with(['persona.dependencia', 'sede', 'piso', 'dependencia'])
+            ->with(['persona.dependencia', 'persona.cargoOficial', 'piso.sede', 'dependencia'])
             ->first()
             ?? $this->vigenteAntesDe($evento);
     }
@@ -109,8 +108,8 @@ class GestorAsignaciones
             ->with([
                 'tipoEquipo',
                 'marca',
-                'asignacionActual.sede',
-                'asignacionActual.piso',
+                'modeloEquipo',
+                'asignacionActual.piso.sede',
                 'asignacionActual.dependencia',
                 'componentes' => fn ($q) => $q->whereNull('fecha_retiro')->with('tipoComponente')->orderBy('id'),
             ])

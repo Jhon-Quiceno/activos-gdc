@@ -3,10 +3,10 @@
 use App\Livewire\Movimientos\Index;
 use App\Livewire\Movimientos\Soporte\FormatosPdf;
 use App\Livewire\Movimientos\Soporte\RegistroMovimientos;
+use App\Models\Cargo;
 use App\Models\Dependencia;
 use App\Models\Persona;
 use App\Models\Piso;
-use App\Models\Sede;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
@@ -20,13 +20,12 @@ beforeEach(function () {
     $this->usuario = Apoyo::usuario();
     $this->actingAs($this->usuario);
 
-    $this->entrega = Apoyo::persona(['nombre' => 'Quien Entrega', 'cedula' => '1067111222']);
-    $this->recibe = Apoyo::persona(['nombre' => 'Quien Recibe', 'cedula' => '1067333444']);
+    $this->entrega = Apoyo::persona(['nombres' => 'Quien', 'apellidos' => 'Entrega', 'numero_documento' => '1067111222']);
+    $this->recibe = Apoyo::persona(['nombres' => 'Quien', 'apellidos' => 'Recibe', 'numero_documento' => '1067333444']);
     $this->equipo = Apoyo::equipo($this->entrega);
 
     $this->traslado = app(RegistroMovimientos::class)->trasladar($this->equipo, $this->usuario, [
         'persona' => $this->recibe,
-        'sede_id' => Sede::query()->value('id'),
         'piso_id' => Piso::query()->value('id'),
         'dependencia_id' => $this->recibe->dependencia_id,
         'fecha' => now()->toDateString(),
@@ -122,17 +121,50 @@ it('al elegir un responsable se abre una ventana con sus equipos actuales y los 
 });
 
 it('registra una persona responsable con sus datos completos (RF-18)', function () {
+    $cargo = Cargo::where('codigo', '367')->first();
+
     Livewire::test(Index::class)
-        ->set('mostrarFormulario', true)
-        ->set('nombre', 'Carlos Pérez')
-        ->set('cedula', '78123456')
-        ->set('cargo', 'Técnico Administrativo')
+        ->call('nuevaPersona')
+        ->set('nombres', 'Carlos')
+        ->set('apellidos', 'Pérez')
+        ->set('numeroDocumento', '78.123.456')
+        ->set('cargoId', $cargo->id)
+        ->set('grado', '6')
+        ->set('correoInstitucional', 'carlos.perez@cordoba.gov.co')
         ->set('dependenciaId', Dependencia::query()->value('id'))
         ->set('tipoVinculacion', 'planta')
-        ->call('crearPersona')
+        ->set('tipoProvision', 'carrera_administrativa')
+        ->call('guardarPersona')
         ->assertHasNoErrors();
 
-    expect(Persona::where('cedula', '78123456')->first())
-        ->nombre->toBe('Carlos Pérez')
-        ->tipo_vinculacion->toBe('planta');
+    $persona = Persona::where('numero_documento', '78123456')->first();
+
+    expect($persona->nombreCompleto())->toBe('Carlos Pérez')
+        ->and($persona->cargo_id)->toBe($cargo->id)
+        ->and($persona->grado)->toBe('06')
+        ->and($persona->tipo_vinculacion)->toBe('planta')
+        ->and($persona->tipo_provision)->toBe('carrera_administrativa');
+});
+
+it('edita los datos de una persona sin chocar con su propio documento', function () {
+    Livewire::test(Index::class)
+        ->call('editarPersona', $this->recibe->id)
+        ->assertSet('numeroDocumento', '1067333444')
+        ->set('apellidos', 'Recibe Díaz')
+        ->set('fechaFinVinculacion', now()->addDays(10)->toDateString())
+        ->call('guardarPersona')
+        ->assertHasNoErrors();
+
+    expect($this->recibe->fresh()->apellidos)->toBe('Recibe Díaz');
+});
+
+it('un contratista necesita número de contrato y el documento no se repite', function () {
+    Livewire::test(Index::class)
+        ->call('nuevaPersona')
+        ->set('nombres', 'Otra')
+        ->set('numeroDocumento', '1067333444')
+        ->set('dependenciaId', Dependencia::query()->value('id'))
+        ->set('tipoVinculacion', 'contratista')
+        ->call('guardarPersona')
+        ->assertHasErrors(['numeroDocumento' => 'unique', 'numeroContrato' => 'required']);
 });

@@ -27,7 +27,6 @@ function datosTraslado(?Persona $persona, array $extra = []): array
 {
     return array_merge([
         'persona' => $persona,
-        'sede_id' => Sede::query()->orderByDesc('id')->value('id'),
         'piso_id' => Piso::query()->orderByDesc('id')->value('id'),
         'dependencia_id' => $persona?->dependencia_id,
         'fecha' => now()->toDateString(),
@@ -36,8 +35,8 @@ function datosTraslado(?Persona $persona, array $extra = []): array
 }
 
 it('cierra la asignación anterior, abre la nueva y deja una sola abierta (RN-04)', function () {
-    $anterior = Apoyo::persona(['nombre' => 'Ana Anterior']);
-    $nueva = Apoyo::persona(['nombre' => 'Nicolás Nuevo']);
+    $anterior = Apoyo::persona(['nombres' => 'Ana', 'apellidos' => 'Anterior']);
+    $nueva = Apoyo::persona(['nombres' => 'Nicolás', 'apellidos' => 'Nuevo']);
     $equipo = Apoyo::equipo($anterior);
 
     $evento = app(RegistroMovimientos::class)->trasladar($equipo, $this->usuario, datosTraslado($nueva));
@@ -94,10 +93,11 @@ it('registra el traslado desde la pantalla con una persona nueva (RF-18)', funct
 
     Livewire::test(TrasladoForm::class, ['equipo' => $equipo])
         ->set('modoResponsable', 'nueva')
-        ->set('nombre', 'Laura Gómez')
-        ->set('cedula', '1067123456')
-        ->set('cargo', 'Profesional Universitario')
+        ->set('nombres', 'Laura')
+        ->set('apellidos', 'Gómez')
+        ->set('numeroDocumento', '1067123456')
         ->set('tipoVinculacion', 'contratista')
+        ->set('numeroContrato', 'CPS-0145-2026')
         ->set('dependenciaId', $dependencia)
         ->set('motivo', 'Ingreso de contratista')
         ->call('guardar')
@@ -105,23 +105,23 @@ it('registra el traslado desde la pantalla con una persona nueva (RF-18)', funct
         ->assertSet('eventoId', fn ($id) => $id !== null)
         ->assertSee('Traslado registrado');
 
-    $persona = Persona::where('cedula', '1067123456')->first();
+    $persona = Persona::where('numero_documento', '1067123456')->first();
     expect($persona)->not->toBeNull()
         ->and($persona->tipo_vinculacion)->toBe('contratista')
         ->and($equipo->fresh()->asignacionActual->persona_id)->toBe($persona->id);
 });
 
 it('valida los datos obligatorios del responsable nuevo y la cédula única', function () {
-    $existente = Apoyo::persona(['cedula' => '1067000111']);
+    $existente = Apoyo::persona(['numero_documento' => '1067000111']);
     $equipo = Apoyo::equipo();
 
     Livewire::test(TrasladoForm::class, ['equipo' => $equipo])
         ->set('modoResponsable', 'nueva')
-        ->set('nombre', '')
-        ->set('cedula', $existente->cedula)
+        ->set('nombres', '')
+        ->set('numeroDocumento', $existente->numero_documento)
         ->set('motivo', 'x')
         ->call('guardar')
-        ->assertHasErrors(['nombre' => 'required', 'cedula' => 'unique', 'cargo' => 'required', 'tipoVinculacion' => 'required']);
+        ->assertHasErrors(['nombres' => 'required', 'numeroDocumento' => 'unique', 'tipoVinculacion' => 'required']);
 
     expect(Evento::where('equipo_id', $equipo->id)->where('tipo', 'traslado_responsable')->count())->toBe(0);
 });
@@ -136,4 +136,38 @@ it('no acepta una fecha futura (RN-13)', function () {
         ->set('motivo', 'Prueba')
         ->call('guardar')
         ->assertHasErrors(['fecha']);
+});
+
+it('un traslado guarda el piso elegido y la sede es la de ese piso (RN-21)', function () {
+    $equipo = Apoyo::equipo();
+    $piso = Piso::with('sede')->whereNotNull('sede_id')->orderByDesc('id')->first();
+
+    Livewire::test(TrasladoForm::class, ['equipo' => $equipo])
+        ->set('personaId', Apoyo::persona()->id)
+        ->set('sedeId', $piso->sede_id)
+        ->set('pisoId', $piso->id)
+        ->set('dependenciaId', Dependencia::query()->value('id'))
+        ->set('motivo', 'Cambio de oficina')
+        ->call('guardar')
+        ->assertHasNoErrors();
+
+    $actual = $equipo->fresh()->asignacionActual;
+
+    expect($actual->piso_id)->toBe($piso->id)
+        ->and($actual->piso->sede_id)->toBe($piso->sede_id);
+});
+
+it('no acepta un piso que no es de la sede elegida', function () {
+    $equipo = Apoyo::equipo();
+    $piso = Piso::whereNotNull('sede_id')->first();
+    $otraSede = Sede::where('id', '!=', $piso->sede_id)->value('id');
+
+    Livewire::test(TrasladoForm::class, ['equipo' => $equipo])
+        ->set('personaId', Apoyo::persona()->id)
+        ->set('sedeId', $otraSede)
+        ->set('pisoId', $piso->id)
+        ->set('dependenciaId', Dependencia::query()->value('id'))
+        ->set('motivo', 'Prueba')
+        ->call('guardar')
+        ->assertHasErrors(['pisoId' => 'exists']);
 });

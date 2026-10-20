@@ -87,7 +87,7 @@
                         {{ collect($faltan)->map(fn ($t) => $formatoLabels[$t] ?? $t)->implode(' + ') ?: '—' }}
                     </td>
                     <td>
-                        {{ $evento->equipo?->asignacionActual?->persona?->nombre ?? '—' }}
+                        {{ $evento->equipo?->asignacionActual?->persona?->nombreCompleto() ?? '—' }}
                     </td>
                     <td>
                         {{ $evento->usuario?->name ?? '—' }}

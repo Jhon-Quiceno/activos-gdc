@@ -65,7 +65,7 @@
                     {{ $equipo->tipoEquipo?->nombre }}
                     @if ($equipo->marca)
                         · {{ $equipo->marca->nombre }}
-                        @if ($equipo->modelo) {{ $equipo->modelo }} @endif
+                        @if ($equipo->modeloEquipo) {{ $equipo->modeloEquipo->nombre }} @endif
                     @endif
                 </p>
 
@@ -75,9 +75,10 @@
                 </div>
 
                 <p class="mt-3 text-[14px] text-ink-muted">
-                    {{ $equipo->codigo_activo ?? __('Sin código de activo') }}
+                    {{ __('N.º :n', ['n' => $equipo->numero_activo ?? '—']) }}
+                    · {{ $equipo->codigo_activo ?? __('Sin código de activo') }}
                     @if ($asignacion?->persona)
-                        · {{ $asignacion->persona->nombre }}
+                        · {{ $asignacion->persona->nombreCompleto() }}
                     @endif
                     @if ($asignacion?->dependencia)
                         · {{ $asignacion->dependencia->nombre }}

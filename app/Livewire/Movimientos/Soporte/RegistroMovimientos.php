@@ -37,7 +37,7 @@ class RegistroMovimientos
      * de firma» y genera los dos formatos prellenados: el de baja (quien
      * entrega) y el de entrega (quien recibe).
      *
-     * @param  array{persona: ?Persona, sede_id: int, piso_id: int, dependencia_id: ?int, fecha: string, motivo: string}  $datos
+     * @param  array{persona: ?Persona, piso_id: int, dependencia_id: ?int, fecha: string, motivo: string}  $datos  La sede es la del piso (RN-21).
      */
     public function trasladar(Equipo $equipo, User $usuario, array $datos): Evento
     {
@@ -48,9 +48,9 @@ class RegistroMovimientos
             ReglasMovimiento::asegurarQueAdmiteEventos($equipo);
 
             $equipo->loadMissing('asignacionActual.persona');
-            $origen = $equipo->asignacionActual?->persona?->nombre ?? __('Sin asignar (bodega)');
+            $origen = $equipo->asignacionActual?->persona?->nombreCompleto() ?? __('Sin asignar (bodega)');
             $persona = $datos['persona'];
-            $destino = $persona?->nombre ?? __('Sin asignar (bodega)');
+            $destino = $persona?->nombreCompleto() ?? __('Sin asignar (bodega)');
 
             $evento = $this->historial->registrar(
                 equipo: $equipo,
@@ -67,7 +67,6 @@ class RegistroMovimientos
             $this->asignaciones->asignar(
                 equipo: $equipo,
                 persona: $persona,
-                sedeId: $datos['sede_id'],
                 pisoId: $datos['piso_id'],
                 dependenciaId: $datos['dependencia_id'] ?? null,
                 fecha: $datos['fecha'],

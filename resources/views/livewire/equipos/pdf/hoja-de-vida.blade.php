@@ -23,10 +23,7 @@
         'pendiente_de_verificar' => __('Pendiente de verificar'),
     ];
 
-    $vinculacionLabels = [
-        'planta' => __('Planta'),
-        'contratista' => __('Contratista'),
-    ];
+    $vinculacionLabels = \App\Models\Persona::VINCULACIONES;
 
     $firmaLabels = [
         'pendiente_de_firma' => __('Pendiente de firma'),
@@ -45,11 +42,7 @@
         'descarte' => __('Descarte'),
     ];
 
-    $figuraLabels = [
-        'comodato' => __('Comodato'),
-        'convenio' => __('Convenio'),
-        'proveedor' => __('Proveedor'),
-    ];
+    $figuraLabels = \App\Livewire\Equipos\Soporte\TextosEquipo::FIGURAS_TERCERO;
 
     // Mismas claves que usa la pantalla (hoja-de-vida.blade.php) para
     // `equipos.caracteristicas`, según la familia del tipo de equipo.
@@ -71,12 +64,16 @@
 
     $datosEquipo = [];
 
+    if (trim((string) $equipo->descripcion) !== '') {
+        $datosEquipo[__('Descripción')] = $equipo->descripcion;
+    }
+
     foreach (($equipo->caracteristicas ?? []) as $clave => $valor) {
         $datosEquipo[$caracteristicaLabels[$clave] ?? $clave] = $valor;
     }
 
     if ($equipo->propiedad === 'tercero' && $equipo->figura_tercero) {
-        $datosEquipo[__('Figura del tercero')] = $figuraLabels[$equipo->figura_tercero] ?? $equipo->figura_tercero;
+        $datosEquipo[__('Figura del tercero')] = __($figuraLabels[$equipo->figura_tercero] ?? $equipo->figura_tercero);
     }
 
     if (trim((string) $equipo->codigo_activo_justificacion) !== '') {
@@ -89,14 +86,28 @@
 
     $asignacion = $equipo->asignacionActual;
     $persona = $asignacion?->persona;
+    $sede = $asignacion?->piso?->sede;
     $configuracion = $equipo->configuracionComputo;
 
-    // RN-12: solo los últimos 4 dígitos (****6226).
-    $cedula = $persona?->cedula
-        ? str_repeat('*', 4).mb_substr($persona->cedula, -4)
+    // RN-12: solo los últimos 4 dígitos (CC ****6226).
+    $documento = $persona?->numero_documento
+        ? trim(($persona->tipo_documento ?? '').' '.str_repeat('*', 4).mb_substr($persona->numero_documento, -4))
         : $placeholder;
 
     $fecha = fn ($valor) => $valor ? $valor->format('d/m/Y H:i') : $placeholder;
+    $dia = fn ($valor) => $valor ? $valor->format('d/m/Y') : $placeholder;
+
+    // RF-52: adquisición, con avisos.
+    $vidaUtil = $equipo->vida_util_meses ?? $equipo->tipoEquipo?->vida_util_meses;
+    $avisos = array_filter([
+        $equipo->garantiaPorVencer() ? __('Garantía por vencer') : null,
+        $equipo->vidaUtilSuperada() ? __('Vida útil superada') : null,
+    ]);
+
+    // RF-56: valoración vigente (GT-M4).
+    $valoracion = $equipo->valoraciones->firstWhere('vigente', true);
+    $siNo = \App\Livewire\Equipos\ValorarActivo::SI_NO;
+    $importancias = \App\Models\ValoracionActivo::IMPORTANCIAS;
 
     // Logo oficial de la Gobernación (PNG recortado y reducido, junto a esta vista).
     // Va incrustado en base64 para que dompdf no dependa de rutas ni de su chroot.
@@ -138,6 +149,7 @@
                     {{ __('Dirección TIC · Gobernación de Córdoba') }}
                 </td>
                 <td style="width: 26%; text-align: left;">
+                    {{ __('N.º de activo: :n', ['n' => $equipo->numero_activo ?? $placeholder]) }}<br>
                     {{ __('Serial: :serial', ['serial' => $equipo->serial]) }}<br>
                     {{ __('Generado: :fecha', ['fecha' => $generadoEl->format('d/m/Y H:i')]) }}
                 </td>
@@ -163,20 +175,26 @@
         </tr>
         <tr>
             <td class="etiqueta">{{ __('Modelo') }}</td>
-            <td>{{ $equipo->modelo ?? $placeholder }}</td>
+            <td>{{ $equipo->modeloEquipo?->nombre ?? $placeholder }}</td>
             <td class="etiqueta">{{ __('Serial') }}</td>
             <td class="mono">{{ $equipo->serial }}</td>
         </tr>
         <tr>
+            <td class="etiqueta">{{ __('N.º de activo') }}</td>
+            <td class="mono">{{ $equipo->numero_activo ?? $placeholder }}</td>
             <td class="etiqueta">{{ __('Código de activo') }}</td>
             <td class="mono">{{ $equipo->codigo_activo ?? __('Sin código de activo') }}</td>
+        </tr>
+        <tr>
             <td class="etiqueta">{{ __('Propiedad') }}</td>
             <td>
                 {{ $equipo->propiedad === 'tercero' ? __('Tercero') : __('Gobernación') }}
-                @if($equipo->propiedad === 'tercero' && $equipo->propietario_tercero)
-                    ({{ $equipo->propietario_tercero }})
+                @if($equipo->propiedad === 'tercero' && $equipo->proveedorTercero)
+                    ({{ $equipo->proveedorTercero->razon_social }})
                 @endif
             </td>
+            <td class="etiqueta">{{ __('Proceso') }}</td>
+            <td>{{ $equipo->proceso?->nombre ?? $placeholder }}</td>
         </tr>
         <tr>
             <td class="etiqueta">{{ __('Estado') }}</td>
@@ -195,28 +213,97 @@
         <tr><td colspan="4" class="seccion">{{ __('Responsable y ubicación') }}</td></tr>
         <tr>
             <td class="etiqueta">{{ __('Responsable') }}</td>
-            <td>{{ $persona?->nombre ?? __('Sin asignar') }}</td>
-            <td class="etiqueta">{{ __('Cédula') }}</td>
-            <td class="mono">{{ $cedula }}</td>
+            <td>{{ $persona?->nombreCompleto() ?? __('Sin asignar') }}</td>
+            <td class="etiqueta">{{ __('Documento') }}</td>
+            <td class="mono">{{ $documento }}</td>
         </tr>
         <tr>
             <td class="etiqueta">{{ __('Cargo') }}</td>
-            <td>{{ $persona?->cargo ?? $placeholder }}</td>
+            <td>{{ $persona?->cargoTexto() ?? $placeholder }}</td>
             <td class="etiqueta">{{ __('Vinculación') }}</td>
-            <td>{{ $persona?->tipo_vinculacion ? ($vinculacionLabels[$persona->tipo_vinculacion] ?? $persona->tipo_vinculacion) : $placeholder }}</td>
+            <td>{{ $persona?->tipo_vinculacion ? __($vinculacionLabels[$persona->tipo_vinculacion] ?? $persona->tipo_vinculacion) : $placeholder }}</td>
         </tr>
         <tr>
             <td class="etiqueta">{{ __('Dependencia') }}</td>
-            <td>{{ $asignacion?->dependencia?->nombre ?? $persona?->dependencia?->nombre ?? $placeholder }}</td>
+            <td>{{ $asignacion?->dependencia?->ruta() ?? $persona?->dependencia?->nombre ?? $placeholder }}</td>
             <td class="etiqueta">{{ __('Sede / piso') }}</td>
             <td>
-                {{ $asignacion?->sede?->nombre ?? $placeholder }}
+                {{ $sede?->nombre ?? $placeholder }}
                 @if($asignacion?->piso)
-                    · {{ __('Piso :numero', ['numero' => $asignacion->piso->numero]) }}
+                    · {{ $asignacion->piso->etiqueta() }}
+                @endif
+                {{-- RN-28: la dirección de una sede reservada (Casa Refugio) no se imprime. --}}
+                @if($sede?->direccionVisible())
+                    <br><span class="muted">{{ $sede->direccionVisible() }}</span>
                 @endif
             </td>
         </tr>
     </table>
+
+    {{-- Adquisición (RF-52) --}}
+    <table>
+        <tr><td colspan="4" class="seccion">{{ __('Adquisición') }}</td></tr>
+        <tr>
+            <td class="etiqueta">{{ __('Forma de ingreso') }}</td>
+            <td>{{ $equipo->forma_ingreso ? __(\App\Models\Equipo::FORMAS_INGRESO[$equipo->forma_ingreso] ?? $equipo->forma_ingreso) : $placeholder }}</td>
+            <td class="etiqueta">{{ __('Fecha de adquisición') }}</td>
+            <td>{{ $dia($equipo->fecha_adquisicion) }}</td>
+        </tr>
+        <tr>
+            <td class="etiqueta">{{ __('Valor') }}</td>
+            <td>{{ \App\Livewire\Equipos\Soporte\TextosEquipo::pesos($equipo->valor_adquisicion) ?? $placeholder }}</td>
+            <td class="etiqueta">{{ __('Proveedor') }}</td>
+            <td>{{ $equipo->proveedor?->razon_social ?? $placeholder }}</td>
+        </tr>
+        <tr>
+            <td class="etiqueta">{{ __('Contrato / factura') }}</td>
+            <td>{{ $equipo->numero_contrato ?? $placeholder }} / {{ $equipo->numero_factura ?? $placeholder }}</td>
+            <td class="etiqueta">{{ __('Fin de garantía / vida útil') }}</td>
+            <td>
+                {{ $dia($equipo->fecha_fin_garantia) }} / {{ $vidaUtil ? __(':n meses', ['n' => $vidaUtil]) : $placeholder }}
+                @if($avisos)
+                    <br><strong>{{ implode(' · ', $avisos) }}</strong>
+                @endif
+            </td>
+        </tr>
+    </table>
+
+    {{-- Valoración vigente (GT-M4, RF-56) --}}
+    @unless($equipo->tipoEquipo?->esSoporte())
+        <table>
+            <tr><td colspan="4" class="seccion">{{ __('Valoración del activo (Manual GT-M4)') }}</td></tr>
+            @if($valoracion)
+                <tr>
+                    <td class="etiqueta">{{ __('C · I · D = total') }}</td>
+                    <td>{{ $valoracion->confidencialidad }} · {{ $valoracion->integridad }} · {{ $valoracion->disponibilidad }} = <strong>{{ $valoracion->total }}</strong></td>
+                    <td class="etiqueta">{{ __('Importancia') }}</td>
+                    <td>
+                        <strong>{{ __($importancias[$valoracion->importancia] ?? $valoracion->importancia) }}</strong>
+                        @if($valoracion->requiere_gestion_riesgo) · {{ __('pasa a gestión de riesgos') }} @endif
+                    </td>
+                </tr>
+                <tr>
+                    <td class="etiqueta">{{ __('Datos personales') }}</td>
+                    <td>
+                        {{ __($siNo[$valoracion->contiene_datos_personales] ?? $valoracion->contiene_datos_personales) }}
+                        @if($valoracion->contiene_datos_personales === 'si')
+                            ({{ __(\App\Models\ValoracionActivo::CLASIFICACIONES_DATOS[$valoracion->clasificacion_datos] ?? $valoracion->clasificacion_datos) }})
+                        @endif
+                    </td>
+                    <td class="etiqueta">{{ __('Infraestructura crítica / continuidad') }}</td>
+                    <td>{{ __($siNo[$valoracion->infraestructura_critica] ?? '') }} / {{ __($siNo[$valoracion->continuidad_negocio] ?? '') }}</td>
+                </tr>
+                <tr>
+                    <td class="etiqueta">{{ __('Propietario / custodio') }}</td>
+                    <td>{{ $valoracion->propietario_cargo }} / {{ $valoracion->custodio_cargo }}</td>
+                    <td class="etiqueta">{{ __('Valorado') }}</td>
+                    <td>{{ $dia($valoracion->fecha) }} · {{ $valoracion->usuario?->name ?? $placeholder }}</td>
+                </tr>
+            @else
+                <tr><td colspan="4" class="muted">{{ __('Este activo aún no tiene valoración.') }}</td></tr>
+            @endif
+        </table>
+    @endunless
 
     {{-- Software (solo cómputo) --}}
     @if($configuracion)
@@ -234,8 +321,16 @@
                 </td>
             </tr>
             <tr>
-                <td class="etiqueta">{{ __('Nombre de red') }}</td>
-                <td colspan="3">{{ $configuracion->nombre_red ?? $placeholder }}</td>
+                <td class="etiqueta">{{ __('Ofimática') }}</td>
+                <td>{{ $configuracion->ofimatica ?? $placeholder }}</td>
+                <td class="etiqueta">{{ __('Nombre de red / dominio') }}</td>
+                <td>{{ $configuracion->nombre_red ?? $placeholder }} / {{ $configuracion->dominio ?? $placeholder }}</td>
+            </tr>
+            <tr>
+                <td class="etiqueta">{{ __('Dirección IP') }}</td>
+                <td class="mono">{{ $configuracion->direccion_ip ?? $placeholder }}</td>
+                <td class="etiqueta">{{ __('Dirección MAC') }}</td>
+                <td class="mono">{{ $configuracion->direccion_mac ?? $placeholder }}</td>
             </tr>
         </table>
     @endif
@@ -319,6 +414,15 @@
                             @if($cambio->serial_instalado) · {{ __('Instalado') }}: <span class="mono">{{ $cambio->serial_instalado }}</span> @endif
                             @if($cambio->destino_retirado) · {{ __('Destino') }}: {{ $destinoLabels[$cambio->destino_retirado] ?? $cambio->destino_retirado }} @endif
                             @if($cambio->motivo)<br>{{ __('Motivo') }}: {{ $cambio->motivo }}@endif
+                        </div>
+                    @endif
+
+                    @if($evento->tipo === 'valoracion' && ! empty($evento->valores['despues']))
+                        @php($v = $evento->valores['despues'])
+                        <div class="detalle">
+                            C {{ $v['confidencialidad'] ?? '—' }} · I {{ $v['integridad'] ?? '—' }} · D {{ $v['disponibilidad'] ?? '—' }}
+                            = {{ $v['total'] ?? '—' }} ({{ __($importancias[$v['importancia'] ?? ''] ?? ($v['importancia'] ?? '—')) }})
+                            @if(! empty($v['requiere_gestion_riesgo'])) · {{ __('pasa a gestión de riesgos') }} @endif
                         </div>
                     @endif
 

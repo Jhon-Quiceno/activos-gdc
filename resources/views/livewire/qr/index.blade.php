@@ -60,8 +60,8 @@
                     <td class="font-mono"><a href="{{ route('equipos.show', $equipo) }}" class="hover:text-primary hover:underline">{{ $equipo->serial }}</a></td>
                     <td class="font-mono">{{ $equipo->codigo_activo ?? __('Sin código') }}</td>
                     <td>{{ $equipo->tipoEquipo?->nombre }}</td>
-                    <td>{!! $equipo->asignacionActual?->persona ? e($equipo->asignacionActual->persona->nombre) : '<span class="text-ink-muted">—</span>' !!}</td>
-                    <td>{!! $equipo->asignacionActual?->sede ? e($equipo->asignacionActual->sede->nombre) : '<span class="text-ink-muted">—</span>' !!}</td>
+                    <td>{!! $equipo->asignacionActual?->persona ? e($equipo->asignacionActual->persona->nombreCompleto()) : '<span class="text-ink-muted">—</span>' !!}</td>
+                    <td>{!! $equipo->asignacionActual?->piso?->sede ? e($equipo->asignacionActual->piso->sede->nombre.' · '.$equipo->asignacionActual->piso->etiqueta()) : '<span class="text-ink-muted">—</span>' !!}</td>
                     <td>
                         @if ($equipo->etiquetas_qr_count > 0)
                             <x-ui.badge variant="success">{{ trans_choice('Impresa :count vez|Impresa :count veces', $equipo->etiquetas_qr_count, ['count' => $equipo->etiquetas_qr_count]) }}</x-ui.badge>
