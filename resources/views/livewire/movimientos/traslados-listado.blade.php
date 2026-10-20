@@ -132,10 +132,10 @@
                         <td class="font-mono">{{ $equipo->serial ?? __('Pendiente') }}</td>
                         <td class="font-mono">{{ $equipo->codigo_activo ?? __('Sin código') }}</td>
                         <td>{{ $equipo->tipoEquipo?->nombre }}</td>
-                        <td>{{ $equipo->marca?->nombre }}{{ $equipo->modelo ? ' '.$equipo->modelo : '' }}</td>
-                        <td>{!! $asignacion?->persona ? e($asignacion->persona->nombre) : '<span class="text-ink-muted">—</span>' !!}</td>
+                        <td>{{ $equipo->marca?->nombre }}{{ $equipo->modeloEquipo ? ' '.$equipo->modeloEquipo->nombre : '' }}</td>
+                        <td>{!! $asignacion?->persona ? e($asignacion->persona->nombreCompleto()) : '<span class="text-ink-muted">—</span>' !!}</td>
                         <td>{!! $asignacion?->dependencia ? e($asignacion->dependencia->nombre) : '<span class="text-ink-muted">—</span>' !!}</td>
-                        <td>{!! $asignacion?->sede ? e($asignacion->sede->nombre) : '<span class="text-ink-muted">—</span>' !!}</td>
+                        <td>{!! $asignacion?->piso?->sede ? e($asignacion->piso->sede->nombre) : '<span class="text-ink-muted">—</span>' !!}</td>
                         <td><x-ui.badge :variant="$ciclo['variant']">{{ $ciclo['label'] }}</x-ui.badge></td>
                         <td class="text-right" onclick="event.stopPropagation()">
                             <x-ui.button variant="primary" size="sm" class="whitespace-nowrap" :href="route('movimientos.traslado', $equipo)">

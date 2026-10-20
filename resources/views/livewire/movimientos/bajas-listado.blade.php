@@ -50,6 +50,19 @@
                 <span class="ml-auto text-[14px] text-ink-muted">
                     {{ trans_choice(':count baja|:count bajas', $bajas->total(), ['count' => $bajas->total()]) }}
                 </span>
+
+                {{-- RF-27: período y descarga para la dependencia que tramita la baja administrativa. --}}
+                <div class="flex w-full flex-wrap items-end gap-2">
+                    <label class="text-[13px] text-ink-label">{{ __('Desde') }}
+                        <input type="date" wire:model.live="desde" class="{{ $claseFiltro }} block" aria-label="{{ __('Desde') }}">
+                    </label>
+                    <label class="text-[13px] text-ink-label">{{ __('Hasta') }}
+                        <input type="date" wire:model.live="hasta" class="{{ $claseFiltro }} block" aria-label="{{ __('Hasta') }}">
+                    </label>
+                    <x-ui.button variant="secondary" size="sm" wire:click="exportarPdf">{{ __('Listado en PDF') }}</x-ui.button>
+                    <x-ui.button variant="secondary" size="sm" wire:click="exportarExcel">{{ __('Listado en Excel') }}</x-ui.button>
+                    <x-input-error :messages="$errors->get('hasta')" class="w-full" />
+                </div>
             </x-slot>
 
             <thead>
@@ -141,10 +154,10 @@
                         <td class="font-mono">{{ $equipo->serial ?? __('Pendiente') }}</td>
                         <td class="font-mono">{{ $equipo->codigo_activo ?? __('Sin código') }}</td>
                         <td>{{ $equipo->tipoEquipo?->nombre }}</td>
-                        <td>{{ $equipo->marca?->nombre }}{{ $equipo->modelo ? ' '.$equipo->modelo : '' }}</td>
-                        <td>{!! $asignacion?->persona ? e($asignacion->persona->nombre) : '<span class="text-ink-muted">—</span>' !!}</td>
+                        <td>{{ $equipo->marca?->nombre }}{{ $equipo->modeloEquipo ? ' '.$equipo->modeloEquipo->nombre : '' }}</td>
+                        <td>{!! $asignacion?->persona ? e($asignacion->persona->nombreCompleto()) : '<span class="text-ink-muted">—</span>' !!}</td>
                         <td>{!! $asignacion?->dependencia ? e($asignacion->dependencia->nombre) : '<span class="text-ink-muted">—</span>' !!}</td>
-                        <td>{!! $asignacion?->sede ? e($asignacion->sede->nombre) : '<span class="text-ink-muted">—</span>' !!}</td>
+                        <td>{!! $asignacion?->piso?->sede ? e($asignacion->piso->sede->nombre) : '<span class="text-ink-muted">—</span>' !!}</td>
                         <td><x-ui.badge :variant="$ciclo['variant']">{{ $ciclo['label'] }}</x-ui.badge></td>
                         <td class="text-right" onclick="event.stopPropagation()">
                             <x-ui.button variant="danger" size="sm" class="whitespace-nowrap" :href="route('movimientos.baja', $equipo)">

@@ -61,7 +61,8 @@ class BajaForm extends Component
             'tipoEquipo',
             'marca',
             'asignacionActual.persona',
-            'asignacionActual.sede',
+            'asignacionActual.piso.sede',
+            'modeloEquipo',
             'asignacionActual.piso',
             'asignacionActual.dependencia',
         ]);

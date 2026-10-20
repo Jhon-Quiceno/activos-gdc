@@ -1,7 +1,6 @@
 @php
     use App\Livewire\Movimientos\Soporte\Cedula;
 
-    $vinculaciones = ['planta' => __('Planta'), 'contratista' => __('Contratista')];
     $selectClass = 'mt-1 h-11 w-full rounded-lg border-line-input text-[14px] text-ink focus:border-primary focus:ring-primary';
 @endphp
 
@@ -10,6 +9,33 @@
         <div class="rounded-lg border border-line bg-success-bg px-4 py-3 text-[14px] text-success-text" role="status">
             {{ $mensaje }}
         </div>
+    @endif
+
+    {{-- RF-23: quienes terminan su vinculación pronto y todavía tienen equipos. --}}
+    @if ($porTerminar->isNotEmpty())
+        <x-ui.card>
+            <p class="section-title">{{ __('Paz y salvo pendiente') }}</p>
+            <p class="mt-1 text-[13px] text-ink-muted">
+                {{ __('Personas cuya vinculación termina en los próximos :dias días (o ya terminó) y todavía tienen equipos a cargo.', ['dias' => \App\Livewire\Movimientos\Soporte\PazYSalvo::DIAS_AVISO]) }}
+            </p>
+            <ul class="mt-3 divide-y divide-line text-[14px]">
+                @foreach ($porTerminar as $pendiente)
+                    <li class="flex flex-wrap items-center justify-between gap-2 py-2" wire:key="por-terminar-{{ $pendiente->id }}">
+                        <span>
+                            <span class="font-semibold text-ink">{{ $pendiente->nombreCompleto() }}</span>
+                            <span class="text-ink-muted">· {{ $pendiente->dependencia?->nombre ?? __('Sin dependencia') }}</span>
+                        </span>
+                        <span class="flex items-center gap-2">
+                            <x-ui.badge :variant="$pendiente->fecha_fin_vinculacion->isPast() ? 'danger' : 'warning'">
+                                {{ $pendiente->fecha_fin_vinculacion->isPast() ? __('Terminó el :fecha', ['fecha' => $pendiente->fecha_fin_vinculacion->format('d/m/Y')]) : __('Termina el :fecha', ['fecha' => $pendiente->fecha_fin_vinculacion->format('d/m/Y')]) }}
+                            </x-ui.badge>
+                            <x-ui.badge variant="info">{{ trans_choice(':count equipo|:count equipos', $pendiente->equipos_a_cargo, ['count' => $pendiente->equipos_a_cargo]) }}</x-ui.badge>
+                            <x-ui.button variant="ghost" size="sm" wire:click="seleccionar({{ $pendiente->id }})">{{ __('Ver') }}</x-ui.button>
+                        </span>
+                    </li>
+                @endforeach
+            </ul>
+        </x-ui.card>
     @endif
 
     <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -27,35 +53,24 @@
 
     @if ($mostrarFormulario)
         <x-ui.card>
-            <p class="section-title">{{ __('Nueva persona responsable') }}</p>
-            <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <x-ui.input class="sm:col-span-2" name="nombre" :label="__('Nombre completo')" wire:model="nombre" required />
-                <x-ui.input name="cedula" :label="__('Cédula')" wire:model="cedula" inputmode="numeric" required />
-                <x-ui.input name="cargo" :label="__('Cargo')" wire:model="cargo" required />
-                <div>
-                    <label class="text-[13px] font-semibold text-ink-label">{{ __('Dependencia') }}</label>
-                    <select wire:model="dependenciaId" class="{{ $selectClass }}">
+            <p class="section-title">{{ $editandoId ? __('Editar persona responsable') : __('Nueva persona responsable') }}</p>
+            <div class="mt-4 space-y-4">
+                @include('livewire.movimientos.partials.campos-persona')
+
+                <div class="max-w-xl">
+                    <label for="dependenciaId" class="text-[13px] font-semibold text-ink-label">{{ __('Dependencia donde trabaja') }} *</label>
+                    <select id="dependenciaId" wire:model="dependenciaId" class="{{ $selectClass }}">
                         <option value="">{{ __('Selecciona…') }}</option>
                         @foreach ($dependencias as $dependencia)
-                            <option value="{{ $dependencia->id }}">{{ $dependencia->nombre }}</option>
+                            <option value="{{ $dependencia->id }}">{{ str_repeat("\u{00A0}\u{00A0}\u{00A0}", $dependencia->profundidad) }}{{ $dependencia->nombre }}</option>
                         @endforeach
                     </select>
                     <x-input-error :messages="$errors->get('dependenciaId')" class="mt-1" />
                 </div>
-                <div>
-                    <label class="text-[13px] font-semibold text-ink-label">{{ __('Tipo de vinculación') }}</label>
-                    <select wire:model="tipoVinculacion" class="{{ $selectClass }}">
-                        <option value="">{{ __('Selecciona…') }}</option>
-                        @foreach ($vinculaciones as $valor => $etiqueta)
-                            <option value="{{ $valor }}">{{ $etiqueta }}</option>
-                        @endforeach
-                    </select>
-                    <x-input-error :messages="$errors->get('tipoVinculacion')" class="mt-1" />
-                </div>
             </div>
             <div class="mt-4 flex justify-end gap-3">
-                <x-ui.button variant="secondary" wire:click="$set('mostrarFormulario', false)">{{ __('Cancelar') }}</x-ui.button>
-                <x-ui.button variant="primary" wire:click="crearPersona">{{ __('Guardar persona') }}</x-ui.button>
+                <x-ui.button variant="secondary" wire:click="cancelarFormulario">{{ __('Cancelar') }}</x-ui.button>
+                <x-ui.button variant="primary" wire:click="guardarPersona">{{ $editandoId ? __('Guardar cambios') : __('Guardar persona') }}</x-ui.button>
             </div>
         </x-ui.card>
     @endif
@@ -66,15 +81,21 @@
         transformación y, dentro de él, position:fixed no cubre la pantalla.
     --}}
     @teleport('body')
-    <x-ui.modal name="persona-detalle" :title="$seleccionada?->nombre ?? __('Responsable')" :show="$seleccionada !== null">
+    <x-ui.modal name="persona-detalle" :title="$seleccionada?->nombreCompleto() ?? __('Responsable')" :show="$seleccionada !== null">
         @if ($seleccionada)
-            <x-ui.definition-list :items="[
-                __('Cédula') => Cedula::enmascarar($seleccionada->cedula),
-                __('Cargo') => $seleccionada->cargo ?? __('Sin cargo'),
+            <x-ui.definition-list :items="array_filter([
+                __('Documento') => Cedula::documento($seleccionada),
+                __('Cargo') => $seleccionada->cargoTexto() ?? __('Sin cargo'),
+                __('Grado') => $seleccionada->grado,
                 __('Dependencia') => $seleccionada->dependencia?->nombre ?? __('Sin dependencia'),
-                __('Vinculación') => $vinculaciones[$seleccionada->tipo_vinculacion] ?? __('Sin vinculación'),
+                __('Correo institucional') => $seleccionada->correo_institucional,
+                __('Jefe inmediato') => $seleccionada->jefeInmediato?->nombreCompleto(),
+                __('Vinculación') => __($vinculaciones[$seleccionada->tipo_vinculacion] ?? 'Sin vinculación'),
+                __('Provisión') => $seleccionada->tipo_provision && $seleccionada->tipo_provision !== 'no_aplica' ? __($provisiones[$seleccionada->tipo_provision]) : null,
+                __('Contrato') => $seleccionada->numero_contrato,
+                __('Fin de la vinculación') => $seleccionada->fecha_fin_vinculacion?->format('d/m/Y'),
                 __('Equipos a cargo') => $equiposACargo->count(),
-            ]" />
+            ], fn ($valor) => $valor !== null && $valor !== '')" />
 
             <p class="section-title mt-5">{{ __('Equipos a cargo') }}</p>
             <div class="mt-2 overflow-x-auto">
@@ -91,11 +112,11 @@
                             <tr wire:key="a-cargo-{{ $equipo->id }}">
                                 <td class="py-2 pr-3">
                                     <span class="font-semibold text-ink">{{ $equipo->tipoEquipo?->nombre }}</span>
-                                    · {{ $equipo->marca?->nombre }}{{ $equipo->modelo ? ' '.$equipo->modelo : '' }}
+                                    · {{ $equipo->marca?->nombre }}{{ $equipo->modeloEquipo ? ' '.$equipo->modeloEquipo->nombre : '' }}
                                     <span class="block font-mono text-ink-muted">{{ $equipo->serial }} · {{ $equipo->codigo_activo ?? __('Sin código') }}</span>
                                 </td>
                                 <td class="py-2 pr-3">
-                                    {{ $equipo->asignacionActual?->sede?->nombre ?? '—' }}@if($equipo->asignacionActual?->piso) · {{ __('Piso :numero', ['numero' => $equipo->asignacionActual->piso->numero]) }}@endif
+                                    {{ $equipo->asignacionActual?->piso?->sede?->nombre ?? '—' }}@if($equipo->asignacionActual?->piso) · {{ $equipo->asignacionActual->piso->etiqueta() }}@endif
                                 </td>
                                 <td class="whitespace-nowrap py-2 text-right">
                                     <a href="{{ route('equipos.show', $equipo) }}" class="font-semibold text-primary hover:underline">{{ __('Hoja de vida') }}</a>
@@ -134,6 +155,10 @@
         <x-slot name="footer">
             <x-ui.button variant="secondary" wire:click="cerrarPersona">{{ __('Cerrar') }}</x-ui.button>
             @if ($seleccionada)
+                <x-ui.button variant="secondary" wire:click="editarPersona({{ $seleccionada->id }})">{{ __('Editar datos') }}</x-ui.button>
+                <x-ui.button variant="secondary" wire:click="descargarPazYSalvo({{ $seleccionada->id }})">
+                    {{ $equiposACargo->isEmpty() ? __('Paz y salvo (PDF)') : __('Pendientes para el paz y salvo (PDF)') }}
+                </x-ui.button>
                 <x-ui.button variant="primary" wire:click="descargarConsolidado({{ $seleccionada->id }})" :disabled="$equiposACargo->isEmpty()">
                     {{ __('Formatos de entrega de sus equipos (PDF)') }}
                 </x-ui.button>
@@ -151,12 +176,12 @@
                 <input
                     type="text"
                     wire:model.live.debounce.400ms="busqueda"
-                    placeholder="{{ __('Buscar por nombre, cédula, cargo o dependencia...') }}"
+                    placeholder="{{ __('Buscar por nombre, documento, cargo o dependencia...') }}"
                     class="h-11 w-full rounded-lg border-line-input pl-9 text-[14px] text-ink placeholder:text-ink-muted focus:border-primary focus:ring-primary"
                 >
             </div>
 
-            <x-ui.button variant="secondary" size="sm" class="ml-auto" wire:click="$toggle('mostrarFormulario')">
+            <x-ui.button variant="secondary" size="sm" class="ml-auto" wire:click="nuevaPersona">
                 {{ __('Nueva persona') }}
             </x-ui.button>
         </x-slot>
@@ -164,7 +189,7 @@
         <thead>
             <tr>
                 <th>{{ __('Nombre') }}</th>
-                <th>{{ __('Cédula') }}</th>
+                <th>{{ __('Documento') }}</th>
                 <th>{{ __('Cargo') }}</th>
                 <th>{{ __('Dependencia') }}</th>
                 <th>{{ __('Vinculación') }}</th>
@@ -174,11 +199,11 @@
         <tbody>
             @forelse ($personas as $persona)
                 <tr wire:key="persona-{{ $persona->id }}" wire:click="seleccionar({{ $persona->id }})" class="cursor-pointer {{ $personaSeleccionada === $persona->id ? 'bg-info-bg' : '' }}">
-                    <td class="font-semibold">{{ $persona->nombre }}</td>
-                    <td class="font-mono">{{ Cedula::enmascarar($persona->cedula) }}</td>
-                    <td>{{ $persona->cargo ?? '—' }}</td>
+                    <td class="font-semibold">{{ $persona->nombreCompleto() }}</td>
+                    <td class="font-mono">{{ Cedula::documento($persona) }}</td>
+                    <td>{{ $persona->cargoTexto() ?? '—' }}</td>
                     <td>{{ $persona->dependencia?->nombre ?? '—' }}</td>
-                    <td>{{ $vinculaciones[$persona->tipo_vinculacion] ?? '—' }}</td>
+                    <td>{{ __($vinculaciones[$persona->tipo_vinculacion] ?? '—') }}</td>
                     <td>
                         <x-ui.badge :variant="$persona->equipos_a_cargo > 0 ? 'info' : 'neutral'">{{ $persona->equipos_a_cargo }}</x-ui.badge>
                     </td>

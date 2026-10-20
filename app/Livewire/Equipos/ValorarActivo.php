@@ -35,6 +35,10 @@ class ValorarActivo extends Component
     #[Locked]
     public ?int $levantamientoId = null;
 
+    /** Nombre de la ventana (x-ui.modal) que lo contiene, para cerrarla al guardar o cancelar. */
+    #[Locked]
+    public string $ventana = 'valorar-activo';
+
     public string $contieneDatosPersonales = '';
 
     public string $clasificacionDatos = 'no_aplica';
@@ -81,10 +85,11 @@ class ValorarActivo extends Component
         'equipo_id' => 'equipo',
     ];
 
-    public function mount(Equipo $equipo, ?int $levantamientoId = null): void
+    public function mount(Equipo $equipo, ?int $levantamientoId = null, string $ventana = 'valorar-activo'): void
     {
         $this->equipo = $equipo->loadMissing(['tipoEquipo', 'asignacionActual.persona.cargoOficial']);
         $this->levantamientoId = $levantamientoId;
+        $this->ventana = $ventana;
 
         $vigente = $equipo->valoracionVigente;
 
@@ -234,7 +239,7 @@ class ValorarActivo extends Component
         }
 
         $this->dispatch('valoracion-registrada', equipoId: $this->equipo->id, valoracionId: $valoracion->id);
-        $this->dispatch('close-modal', 'valorar-activo');
+        $this->dispatch('close-modal', $this->ventana);
     }
 
     public function render()

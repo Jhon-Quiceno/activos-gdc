@@ -119,8 +119,8 @@ class DocumentosEvento extends Component
         $evento = $this->evento();
 
         $firmantes = [
-            'formato_baja' => $asignaciones->vigenteAntesDe($evento)?->persona?->nombre ?? __('Sin responsable'),
-            'formato_entrega' => $asignaciones->vigenteDespuesDe($evento)?->persona?->nombre ?? __('Sin responsable (bodega)'),
+            'formato_baja' => $asignaciones->vigenteAntesDe($evento)?->persona?->nombreCompleto() ?? __('Sin responsable'),
+            'formato_entrega' => $asignaciones->vigenteDespuesDe($evento)?->persona?->nombreCompleto() ?? __('Sin responsable (bodega)'),
         ];
 
         return view('livewire.movimientos.documentos-evento', [

@@ -9,7 +9,7 @@
 <div class="space-y-6">
     <x-ui.page-header
         :title="$dadoDeBaja ? __('Equipo dado de baja') : __('Registrar baja')"
-        :subtitle="trim(($equipo->tipoEquipo?->nombre ?? '') . ' · ' . ($equipo->marca?->nombre ?? '') . ' ' . ($equipo->modelo ?? '') . ' · ' . $equipo->serial . ($equipo->codigo_activo ? ' · ' . $equipo->codigo_activo : ''))"
+        :subtitle="trim(($equipo->tipoEquipo?->nombre ?? '') . ' · ' . ($equipo->marca?->nombre ?? '') . ' ' . ($equipo->modeloEquipo?->nombre ?? '') . ' · ' . $equipo->serial . ($equipo->codigo_activo ? ' · ' . $equipo->codigo_activo : ''))"
     >
         <x-slot name="actions">
             @if ($dadoDeBaja)
@@ -135,9 +135,9 @@
             <x-ui.card>
                 <p class="section-title">{{ __('Responsable que entrega') }}</p>
                 <x-ui.definition-list :items="[
-                    __('Responsable') => $asignacion?->persona?->nombre ?? __('Sin asignar'),
+                    __('Responsable') => $asignacion?->persona?->nombreCompleto() ?? __('Sin asignar'),
                     __('Sede / Piso') => $asignacion
-                        ? trim(($asignacion->sede?->nombre ?? '—') . ' · ' . __('Piso :numero', ['numero' => $asignacion->piso?->numero ?? '—']))
+                        ? trim(($asignacion->piso?->sede?->nombre ?? '—') . ' · ' . ($asignacion->piso?->etiqueta() ?? '—'))
                         : '—',
                     __('Dependencia') => $asignacion?->dependencia?->nombre ?? '—',
                 ]" class="mt-2" />

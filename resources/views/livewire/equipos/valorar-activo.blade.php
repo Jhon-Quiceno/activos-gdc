@@ -156,7 +156,7 @@
     </div>
 
     <div class="flex flex-wrap justify-end gap-2">
-        <x-ui.button variant="secondary" type="button" x-on:click="$dispatch('close-modal', 'valorar-activo')">
+        <x-ui.button variant="secondary" type="button" x-on:click="$dispatch('close-modal', '{{ $ventana }}')">
             {{ __('Cancelar') }}
         </x-ui.button>
         <x-ui.button variant="primary" type="button" wire:click="guardar" wire:loading.attr="disabled" wire:target="guardar">
