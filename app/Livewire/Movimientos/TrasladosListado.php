@@ -64,7 +64,7 @@ class TrasladosListado extends Component
         }
 
         $equipos = Equipo::query()
-            ->with(['tipoEquipo', 'marca', 'asignacionActual.persona', 'asignacionActual.sede', 'asignacionActual.dependencia'])
+            ->with(['tipoEquipo', 'marca', 'asignacionActual.persona', 'modeloEquipo', 'asignacionActual.piso.sede', 'asignacionActual.dependencia'])
             ->where('estado_ciclo_vida', '!=', 'dado_de_baja')
             ->tap(fn (Builder $query) => $this->aplicarBusqueda($query))
             ->tap(fn (Builder $query) => $this->aplicarFiltros($query))

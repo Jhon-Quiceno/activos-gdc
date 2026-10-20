@@ -5,7 +5,6 @@ use App\Livewire\Movimientos\DocumentosEvento;
 use App\Livewire\Movimientos\Soporte\RegistroMovimientos;
 use App\Livewire\Movimientos\TrasladosListado;
 use App\Models\Piso;
-use App\Models\Sede;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
@@ -19,13 +18,12 @@ beforeEach(function () {
     $this->usuario = Apoyo::usuario();
     $this->actingAs($this->usuario);
 
-    $this->entrega = Apoyo::persona(['nombre' => 'Quien Entrega']);
-    $this->recibe = Apoyo::persona(['nombre' => 'Quien Recibe']);
+    $this->entrega = Apoyo::persona(['nombres' => 'Quien', 'apellidos' => 'Entrega']);
+    $this->recibe = Apoyo::persona(['nombres' => 'Quien', 'apellidos' => 'Recibe']);
     $this->equipo = Apoyo::equipo($this->entrega, atributos: ['serial' => 'SN-TRASLADO-1']);
 
     $this->traslado = app(RegistroMovimientos::class)->trasladar($this->equipo, $this->usuario, [
         'persona' => $this->recibe,
-        'sede_id' => Sede::query()->value('id'),
         'piso_id' => Piso::query()->value('id'),
         'dependencia_id' => $this->recibe->dependencia_id,
         'fecha' => now()->toDateString(),

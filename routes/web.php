@@ -42,6 +42,7 @@ Route::middleware(['auth', 'cambiar.contrasena'])->group(function () {
 
     // --- Levantamientos de activos (Anuar, Fase 2) ---
     Route::view('/levantamientos', 'livewire.levantamientos.page')->name('levantamientos.index');
+    Route::view('/levantamientos/{levantamiento}', 'livewire.levantamientos.detalle-page')->name('levantamientos.show');
 
     // --- Reportes (Alex) ---
     Route::view('/reportes', 'livewire.reportes.page')->name('reportes.index');

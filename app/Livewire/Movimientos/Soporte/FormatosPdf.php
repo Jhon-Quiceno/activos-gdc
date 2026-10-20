@@ -68,6 +68,7 @@ class FormatosPdf
             'diagnostico.motivoBaja',
             'equipo.tipoEquipo',
             'equipo.marca',
+            'equipo.modeloEquipo',
             'equipo.componentes' => fn ($q) => $q->whereNull('fecha_retiro')->with('tipoComponente')->orderBy('id'),
         ]);
 
@@ -108,7 +109,7 @@ class FormatosPdf
      */
     public function datosConsolidado(Persona $persona): array
     {
-        $persona->loadMissing('dependencia');
+        $persona->loadMissing(['dependencia', 'cargoOficial']);
         $equipos = $this->asignaciones->equiposACargo($persona);
 
         return [
@@ -228,7 +229,7 @@ class FormatosPdf
         ?Diagnostico $diagnostico,
     ): array {
         $equipo->loadMissing(['componentes' => fn ($q) => $q->whereNull('fecha_retiro')->with('tipoComponente')->orderBy('id')]);
-        $asignacion?->loadMissing(['sede', 'piso', 'dependencia']);
+        $asignacion?->loadMissing(['piso.sede', 'dependencia']);
 
         $fecha = self::fecha($evento?->fecha ?? now());
         $estado = $equipo->estado_funcionamiento
@@ -241,7 +242,7 @@ class FormatosPdf
             'retiro' => [
                 [
                     __('Retiro del equipo por traslado o cambio de responsable. :quien entrega el equipo al área de sistemas el :fecha.', [
-                        'quien' => $persona ? __('El funcionario :nombre', ['nombre' => $persona->nombre]) : __('El responsable'),
+                        'quien' => $persona ? __('El funcionario :nombre', ['nombre' => $persona->nombreCompleto()]) : __('El responsable'),
                         'fecha' => $fecha,
                     ]),
                     $motivo ? __('Motivo: :motivo.', ['motivo' => rtrim($motivo, '.')]) : null,
@@ -255,7 +256,7 @@ class FormatosPdf
                 [
                     __('Entrega del equipo :a para su uso y custodia:ubicacion, el :fecha.', [
                         'a' => $persona
-                            ? __('al funcionario :nombre:cargo', ['nombre' => $persona->nombre, 'cargo' => $persona->cargo ? ' ('.$persona->cargo.')' : ''])
+                            ? __('al funcionario :nombre:cargo', ['nombre' => $persona->nombreCompleto(), 'cargo' => $persona->cargoTexto() ? ' ('.$persona->cargoTexto().')' : ''])
                             : __('al área de sistemas (bodega)'),
                         'ubicacion' => self::textoUbicacion($asignacion),
                         'fecha' => $fecha,
@@ -319,10 +320,11 @@ class FormatosPdf
             return '';
         }
 
+        // Sede por su nombre, nunca su dirección: la de una sede reservada no sale en ningún PDF (RN-28).
         $partes = array_filter([
             $asignacion->dependencia?->nombre,
-            $asignacion->sede?->nombre,
-            $asignacion->piso ? __('piso :numero', ['numero' => $asignacion->piso->numero]) : null,
+            $asignacion->piso?->sede?->nombre,
+            $asignacion->piso ? mb_strtolower($asignacion->piso->etiqueta()) : null,
         ]);
 
         return $partes ? ', '.__('en :ubicacion', ['ubicacion' => implode(', ', $partes)]) : '';

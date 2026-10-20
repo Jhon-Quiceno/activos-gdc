@@ -6,7 +6,6 @@ use App\Livewire\Movimientos\Soporte\GestorFirmas;
 use App\Livewire\Movimientos\Soporte\RegistroMovimientos;
 use App\Models\Evento;
 use App\Models\Piso;
-use App\Models\Sede;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -25,7 +24,6 @@ beforeEach(function () {
     $persona = Apoyo::persona();
     $this->traslado = app(RegistroMovimientos::class)->trasladar(Apoyo::equipo(), $this->usuario, [
         'persona' => $persona,
-        'sede_id' => Sede::query()->value('id'),
         'piso_id' => Piso::query()->value('id'),
         'dependencia_id' => $persona->dependencia_id,
         'fecha' => now()->toDateString(),

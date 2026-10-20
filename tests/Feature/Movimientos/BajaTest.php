@@ -9,7 +9,6 @@ use App\Livewire\Movimientos\TrasladoForm;
 use App\Models\Evento;
 use App\Models\MotivoBaja;
 use App\Models\Piso;
-use App\Models\Sede;
 use App\Models\TipoComponente;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -67,7 +66,6 @@ it('bloquea nuevos eventos en un equipo dado de baja (RN-10)', function () {
     $persona = Apoyo::persona();
     expect(fn () => app(RegistroMovimientos::class)->trasladar($this->equipo->fresh(), $this->usuario, [
         'persona' => $persona,
-        'sede_id' => Sede::query()->value('id'),
         'piso_id' => Piso::query()->value('id'),
         'dependencia_id' => $persona->dependencia_id,
         'fecha' => now()->toDateString(),

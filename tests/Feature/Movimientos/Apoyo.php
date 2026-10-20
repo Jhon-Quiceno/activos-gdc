@@ -8,7 +8,6 @@ use App\Models\Dependencia;
 use App\Models\Equipo;
 use App\Models\Persona;
 use App\Models\Piso;
-use App\Models\Sede;
 use App\Models\TipoComponente;
 use App\Models\TipoEquipo;
 use App\Models\User;
@@ -64,7 +63,6 @@ class Apoyo
         Asignacion::create([
             'equipo_id' => $equipo->id,
             'persona_id' => $persona?->id,
-            'sede_id' => Sede::query()->value('id'),
             'piso_id' => Piso::query()->value('id'),
             'dependencia_id' => $persona?->dependencia_id,
             'fecha_inicio' => now()->subMonths(6)->toDateString(),

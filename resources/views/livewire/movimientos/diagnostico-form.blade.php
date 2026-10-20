@@ -15,7 +15,7 @@
     </x-ui.page-header>
 
     <p class="-mt-4 text-[14px] text-ink-muted">
-        {{ trim(($equipo->tipoEquipo?->nombre ?? '') . ' · ' . ($equipo->marca?->nombre ?? '') . ' ' . ($equipo->modelo ?? '') . ' · ' . $equipo->serial . ($equipo->codigo_activo ? ' · ' . $equipo->codigo_activo : '')) }}
+        {{ trim(($equipo->tipoEquipo?->nombre ?? '') . ' · ' . ($equipo->marca?->nombre ?? '') . ' ' . ($equipo->modeloEquipo?->nombre ?? '') . ' · ' . $equipo->serial . ($equipo->codigo_activo ? ' · ' . $equipo->codigo_activo : '')) }}
     </p>
 
     @if ($eventoId)
