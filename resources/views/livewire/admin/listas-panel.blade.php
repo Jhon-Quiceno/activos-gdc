@@ -52,7 +52,7 @@
                         @php $registro = $fila['registro']; @endphp
                         <tr wire:key="registro-{{ $listaActiva }}-{{ $registro->id }}">
                             <td class="font-semibold text-ink">
-                                {{ $config['campo'] === 'numero' ? __('Piso :numero', ['numero' => $registro->numero]) : $registro->nombre }}
+                                {{ $registro->nombre }}
                             </td>
                             <td class="text-ink-muted">{{ $fila['detalle'] }}</td>
                             <td>{{ $fila['uso'] }}</td>
@@ -87,8 +87,8 @@
                     <div class="w-full max-w-sm">
                         <x-ui.input
                             name="nuevoValor"
-                            :label="($config['campo'] === 'numero' ? __('Número') : __('Nombre')) . ' *'"
-                            :type="$config['campo'] === 'numero' ? 'number' : 'text'"
+                            :label="__('Nombre') . ' *'"
+                            type="text"
                             wire:model="nuevoValor"
                             required
                         />
@@ -125,8 +125,8 @@
         <form wire:submit="guardarEdicion" class="space-y-4">
             <x-ui.input
                 name="editandoValor"
-                :label="($config['campo'] === 'numero' ? __('Número') : __('Nombre')) . ' *'"
-                :type="$config['campo'] === 'numero' ? 'number' : 'text'"
+                :label="__('Nombre') . ' *'"
+                type="text"
                 wire:model="editandoValor"
                 required
             />

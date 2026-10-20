@@ -2,11 +2,8 @@
 
 namespace App\Livewire\Admin;
 
-use App\Models\Dependencia;
 use App\Models\Marca;
 use App\Models\MotivoBaja;
-use App\Models\Piso;
-use App\Models\Sede;
 use App\Models\SistemaOperativo;
 use App\Models\TipoComponente;
 use App\Models\TipoEquipo;
@@ -15,17 +12,21 @@ use Livewire\Component;
 
 /**
  * Pantalla "Listas" (Manuel, bloque de Administración): patrón maestro-detalle
- * sobre los 8 catálogos simples de la app. El prototipo también menciona
- * "Tipos de evento", pero eso es el enum fijo `Evento::tipo` (no una tabla), así
- * que se omite aquí a propósito (ver CLAUDE.md de la tarea).
+ * sobre los catálogos planos de la app (un solo `nombre`): tipos de equipo y de
+ * componente, marcas, sistemas operativos y motivos de baja.
  *
- * Ninguno de estos catálogos tiene columna `activo` todavía, así que "Desactivar"
- * queda como TODO (RN pendiente de columna de estado); "Editar" sí persiste de
- * verdad, y "Agregar" también.
+ * Modelo v4: sedes, pisos y dependencias salieron de este panel genérico. En v4
+ * son catálogos relacionales (la sede necesita municipio, el piso necesita sede
+ * y número único por sede, la dependencia es un árbol con tipo y padre), así que
+ * tienen sus propias pantallas en el bloque de Administración. Dejarlos en el
+ * editor plano los rompería apenas corra la migración de cierre, que vuelve
+ * obligatorios `sedes.municipio_id` y `pisos.sede_id`.
+ *
+ * "Tipos de evento" sigue fuera: es el enum fijo `Evento::tipo`, no una tabla.
  */
 class ListasPanel extends Component
 {
-    public string $listaActiva = 'sedes';
+    public string $listaActiva = 'tipos_equipo';
 
     public string $nuevoValor = '';
 
@@ -38,17 +39,14 @@ class ListasPanel extends Component
     public string $editandoFamilia = '';
 
     /**
-     * @var array<string, array{label: string, singular: string, model: class-string, campo: string}>
+     * @var array<string, array{label: string, singular: string, model: class-string}>
      */
     private const CATALOGOS = [
-        'sedes' => ['label' => 'Sedes', 'singular' => 'Sede', 'model' => Sede::class, 'campo' => 'nombre'],
-        'pisos' => ['label' => 'Pisos', 'singular' => 'Piso', 'model' => Piso::class, 'campo' => 'numero'],
-        'dependencias' => ['label' => 'Dependencias', 'singular' => 'Dependencia', 'model' => Dependencia::class, 'campo' => 'nombre'],
-        'tipos_equipo' => ['label' => 'Tipos de equipo', 'singular' => 'Tipo de equipo', 'model' => TipoEquipo::class, 'campo' => 'nombre'],
-        'tipos_componente' => ['label' => 'Tipos de componente', 'singular' => 'Tipo de componente', 'model' => TipoComponente::class, 'campo' => 'nombre'],
-        'marcas' => ['label' => 'Marcas', 'singular' => 'Marca', 'model' => Marca::class, 'campo' => 'nombre'],
-        'sistemas_operativos' => ['label' => 'Sistemas operativos', 'singular' => 'Sistema operativo', 'model' => SistemaOperativo::class, 'campo' => 'nombre'],
-        'motivos_baja' => ['label' => 'Motivos de baja', 'singular' => 'Motivo de baja', 'model' => MotivoBaja::class, 'campo' => 'nombre'],
+        'tipos_equipo' => ['label' => 'Tipos de equipo', 'singular' => 'Tipo de equipo', 'model' => TipoEquipo::class],
+        'tipos_componente' => ['label' => 'Tipos de componente', 'singular' => 'Tipo de componente', 'model' => TipoComponente::class],
+        'marcas' => ['label' => 'Marcas', 'singular' => 'Marca', 'model' => Marca::class],
+        'sistemas_operativos' => ['label' => 'Sistemas operativos', 'singular' => 'Sistema operativo', 'model' => SistemaOperativo::class],
+        'motivos_baja' => ['label' => 'Motivos de baja', 'singular' => 'Motivo de baja', 'model' => MotivoBaja::class],
     ];
 
     /**
@@ -69,20 +67,15 @@ class ListasPanel extends Component
     ];
 
     /**
-     * Etiqueta de la columna de "uso" por catálogo, tal como aparece en
-     * Listas.dc.html (prototipo real, no la paráfrasis de la tarea): Sedes,
-     * Pisos y Dependencias miden puestos de inventario; Tipos de equipo mide
-     * equipos; el resto usa la etiqueta genérica "Uso".
+     * Etiqueta de la columna de "uso" por catálogo: Tipos de equipo y Marcas
+     * miden equipos; el resto usa la etiqueta genérica "Uso".
      *
      * @var array<string, string>
      */
     private const USO_LABELS = [
-        'sedes' => 'Puestos (inventario)',
-        'pisos' => 'Puestos (inventario)',
-        'dependencias' => 'Puestos (inventario)',
         'tipos_equipo' => 'Equipos',
+        'marcas' => 'Equipos',
         'tipos_componente' => 'Uso',
-        'marcas' => 'Uso',
         'sistemas_operativos' => 'Uso',
         'motivos_baja' => 'Uso',
     ];
@@ -99,7 +92,7 @@ class ListasPanel extends Component
     }
 
     /**
-     * @return array{label: string, singular: string, model: class-string, campo: string}
+     * @return array{label: string, singular: string, model: class-string}
      */
     private function config(): array
     {
@@ -109,14 +102,9 @@ class ListasPanel extends Component
     public function agregar(): void
     {
         $config = $this->config();
-        $campo = $config['campo'];
         $tabla = (new $config['model'])->getTable();
 
-        $rules = [
-            'nuevoValor' => $campo === 'numero'
-                ? ['required', 'integer', Rule::unique($tabla, 'numero')]
-                : ['required', 'string', 'max:255', Rule::unique($tabla, 'nombre')],
-        ];
+        $rules = ['nuevoValor' => ['required', 'string', 'max:255', Rule::unique($tabla, 'nombre')]];
 
         if ($this->listaActiva === 'tipos_equipo') {
             $rules['nuevaFamilia'] = ['required', 'in:'.implode(',', array_keys(self::FAMILIAS))];
@@ -124,7 +112,7 @@ class ListasPanel extends Component
 
         $this->validate($rules);
 
-        $datos = [$campo => $this->nuevoValor];
+        $datos = ['nombre' => $this->nuevoValor];
 
         if ($this->listaActiva === 'tipos_equipo') {
             $datos['familia'] = $this->nuevaFamilia;
@@ -143,7 +131,7 @@ class ListasPanel extends Component
         $registro = $config['model']::findOrFail($id);
 
         $this->editandoId = $registro->id;
-        $this->editandoValor = (string) $registro->{$config['campo']};
+        $this->editandoValor = (string) $registro->nombre;
         $this->editandoFamilia = $this->listaActiva === 'tipos_equipo' ? (string) $registro->familia : '';
         $this->resetErrorBag();
 
@@ -153,14 +141,9 @@ class ListasPanel extends Component
     public function guardarEdicion(): void
     {
         $config = $this->config();
-        $campo = $config['campo'];
         $tabla = (new $config['model'])->getTable();
 
-        $rules = [
-            'editandoValor' => $campo === 'numero'
-                ? ['required', 'integer', Rule::unique($tabla, 'numero')->ignore($this->editandoId)]
-                : ['required', 'string', 'max:255', Rule::unique($tabla, 'nombre')->ignore($this->editandoId)],
-        ];
+        $rules = ['editandoValor' => ['required', 'string', 'max:255', Rule::unique($tabla, 'nombre')->ignore($this->editandoId)]];
 
         if ($this->listaActiva === 'tipos_equipo') {
             $rules['editandoFamilia'] = ['required', 'in:'.implode(',', array_keys(self::FAMILIAS))];
@@ -169,7 +152,7 @@ class ListasPanel extends Component
         $this->validate($rules);
 
         $registro = $config['model']::findOrFail($this->editandoId);
-        $datos = [$campo => $this->editandoValor];
+        $datos = ['nombre' => $this->editandoValor];
 
         if ($this->listaActiva === 'tipos_equipo') {
             $datos['familia'] = $this->editandoFamilia;
@@ -184,14 +167,11 @@ class ListasPanel extends Component
 
     /**
      * Conteo real de "uso" por fila, según el catálogo activo. Cada rama usa
-     * la relación que mejor representa el uso de ese registro en el
-     * inventario; si no hay una relación directa y confiable, no se añade
-     * ninguna rama y la fila cae al '—' calculado en detalleUsoDe().
+     * la relación que mejor representa el uso de ese registro en el inventario.
      */
     private function usoDe(mixed $registro): int
     {
         return match ($this->listaActiva) {
-            'sedes', 'pisos', 'dependencias' => $registro->asignaciones()->whereNull('fecha_fin')->count(),
             'tipos_equipo', 'marcas' => $registro->equipos()->count(),
             'tipos_componente' => $registro->componentes()->count(),
             'sistemas_operativos' => $registro->configuracionesComputo()->count(),
@@ -202,9 +182,8 @@ class ListasPanel extends Component
 
     /**
      * Columna "Detalle": solo Tipos de equipo tiene un dato real adicional
-     * (la familia). Los demás catálogos solo tienen `nombre` (o `numero` en
-     * Pisos), así que muestran '—' en vez de inventar variantes o notas que
-     * no existen en la BD.
+     * (la familia). Los demás catálogos solo tienen `nombre`, así que muestran
+     * '—' en vez de inventar variantes o notas que no existen en la BD.
      */
     private function detalleDe(mixed $registro): string
     {
@@ -216,9 +195,10 @@ class ListasPanel extends Component
     }
 
     /**
-     * TODO: estos catálogos todavía no tienen columna `activo`/estado en BD
-     * (fuera del alcance de esta tarea: no se tocan migraciones). Cuando exista,
-     * este método debe alternarla igual que UsuariosPanel::alternarActivo().
+     * TODO: estos catálogos planos todavía no tienen columna `activo`/estado en
+     * BD uniforme (fuera del alcance de esta tarea: no se tocan migraciones).
+     * Cuando exista, este método debe alternarla igual que
+     * UsuariosPanel::alternarActivo().
      */
     public function desactivar(int $id): void
     {
@@ -231,7 +211,7 @@ class ListasPanel extends Component
 
         $config = $this->config();
 
-        $registros = $config['model']::orderBy($config['campo'])->get();
+        $registros = $config['model']::orderBy('nombre')->get();
 
         $filas = $registros->map(fn ($registro) => [
             'registro' => $registro,
