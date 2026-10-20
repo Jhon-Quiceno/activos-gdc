@@ -65,7 +65,7 @@ class Index extends Component
     public function render()
     {
         $equipos = $this->consulta()
-            ->with(['tipoEquipo', 'marca', 'asignacionActual.persona', 'asignacionActual.sede'])
+            ->with(['tipoEquipo', 'marca', 'asignacionActual.persona', 'asignacionActual.piso.sede'])
             ->withCount('etiquetasQr')
             ->latest('id')
             ->paginate(15);

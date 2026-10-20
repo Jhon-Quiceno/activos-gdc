@@ -8,6 +8,8 @@ use App\Models\ConfiguracionComputo;
 use App\Models\Equipo;
 use App\Models\Evento;
 use App\Models\Marca;
+use App\Models\ModeloEquipo;
+use App\Models\Proveedor;
 use App\Models\SistemaOperativo;
 use App\Models\TipoEquipo;
 use App\Models\User;
@@ -31,6 +33,10 @@ class EditarEquipoTest extends TestCase
 
     private Marca $lenovo;
 
+    private ModeloEquipo $p24;
+
+    private ModeloEquipo $thinkVision;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -39,6 +45,8 @@ class EditarEquipoTest extends TestCase
         $this->monitor = TipoEquipo::create(['nombre' => 'Monitor', 'familia' => 'video']);
         $this->hp = Marca::create(['nombre' => 'HP']);
         $this->lenovo = Marca::create(['nombre' => 'Lenovo']);
+        $this->p24 = ModeloEquipo::create(['marca_id' => $this->hp->id, 'tipo_equipo_id' => $this->monitor->id, 'nombre' => 'P24']);
+        $this->thinkVision = ModeloEquipo::create(['marca_id' => $this->lenovo->id, 'tipo_equipo_id' => $this->monitor->id, 'nombre' => 'ThinkVision T24']);
     }
 
     private function crearMonitor(array $datos = []): Equipo
@@ -48,7 +56,7 @@ class EditarEquipoTest extends TestCase
             'codigo_activo' => 'I1-024147',
             'tipo_equipo_id' => $this->monitor->id,
             'marca_id' => $this->hp->id,
-            'modelo' => 'P24',
+            'modelo_id' => $this->p24->id,
             'propiedad' => 'gobernacion',
             'estado_funcionamiento' => 'Bueno',
             'caracteristicas' => ['tamano_pulgadas' => '24', 'conexion' => 'HDMI'],
@@ -66,7 +74,7 @@ class EditarEquipoTest extends TestCase
             ->assertSet('serial', 'SN-MON-0001')
             ->assertSet('codigoActivo', 'I1-024147')
             ->assertSet('marcaId', $this->hp->id)
-            ->assertSet('modelo', 'P24')
+            ->assertSet('modeloId', $this->p24->id)
             ->assertSet('tamanoPulgadas', '24')
             ->assertSet('conexionMonitor', 'HDMI');
     }
@@ -77,7 +85,7 @@ class EditarEquipoTest extends TestCase
 
         $this->editar($equipo)
             ->set('marcaId', $this->lenovo->id)
-            ->set('modelo', 'ThinkVision T24')
+            ->set('modeloId', $this->thinkVision->id)
             ->set('tamanoPulgadas', '27')
             ->call('guardar')
             ->assertHasNoErrors()
@@ -85,7 +93,7 @@ class EditarEquipoTest extends TestCase
 
         $equipo->refresh();
         $this->assertSame($this->lenovo->id, $equipo->marca_id);
-        $this->assertSame('ThinkVision T24', $equipo->modelo);
+        $this->assertSame($this->thinkVision->id, $equipo->modelo_id);
         $this->assertEquals(['tamano_pulgadas' => '27', 'conexion' => 'HDMI'], $equipo->caracteristicas);
 
         $evento = Evento::sole();
@@ -102,11 +110,64 @@ class EditarEquipoTest extends TestCase
         $equipo = $this->crearMonitor();
 
         $this->editar($equipo)
-            ->set('modelo', ' P24 ')
+            ->set('modeloId', $this->p24->id)
+            ->set('observaciones', '   ')
             ->call('guardar')
             ->assertHasNoErrors();
 
         $this->assertSame(0, Evento::count());
+    }
+
+    public function test_muestra_el_numero_de_activo_sin_poder_editarlo(): void
+    {
+        $equipo = $this->crearMonitor();
+
+        $this->editar($equipo)
+            ->assertSee('N.º de activo')
+            ->assertSee((string) $equipo->fresh()->numero_activo)
+            ->assertSee('no se edita');
+    }
+
+    public function test_un_modelo_nuevo_se_agrega_al_catalogo_y_queda_en_el_historial(): void
+    {
+        $equipo = $this->crearMonitor();
+
+        $this->editar($equipo)
+            ->set('agregarModelo', true)
+            ->set('modeloNuevo', 'P24h G5')
+            ->call('guardar')
+            ->assertHasNoErrors();
+
+        $nuevo = ModeloEquipo::where('nombre', 'P24h G5')->sole();
+        $this->assertSame($this->hp->id, $nuevo->marca_id);
+        $this->assertSame($nuevo->id, $equipo->fresh()->modelo_id);
+        $this->assertEquals(['modelo' => 'P24'], Evento::sole()->valores['antes']);
+        $this->assertEquals(['modelo' => 'P24h G5'], Evento::sole()->valores['despues']);
+    }
+
+    public function test_pasar_a_tercero_exige_propietario_del_catalogo(): void
+    {
+        $equipo = $this->crearMonitor();
+        $ministerio = Proveedor::create(['razon_social' => 'Ministerio TIC']);
+
+        $this->editar($equipo)
+            ->set('propiedad', 'tercero')
+            ->set('figura', 'comodato')
+            ->call('guardar')
+            ->assertHasErrors(['proveedorTerceroId' => 'required']);
+
+        $this->editar($equipo)
+            ->set('propiedad', 'tercero')
+            ->set('proveedorTerceroId', $ministerio->id)
+            ->set('figura', 'comodato')
+            ->call('guardar')
+            ->assertHasNoErrors();
+
+        $this->assertSame($ministerio->id, $equipo->fresh()->proveedor_tercero_id);
+        $this->assertEquals(
+            ['propiedad' => 'Tercero', 'propietario_tercero' => 'Ministerio TIC', 'figura_tercero' => 'Comodato'],
+            Evento::sole()->valores['despues'],
+        );
     }
 
     public function test_el_serial_se_normaliza_y_puede_quedar_igual(): void
@@ -154,10 +215,11 @@ class EditarEquipoTest extends TestCase
 
     public function test_actualiza_el_software_de_un_equipo_de_computo(): void
     {
-        $pc = TipoEquipo::create(['nombre' => 'PC de escritorio', 'familia' => 'computo']);
+        $pc = TipoEquipo::create(['nombre' => 'PC de escritorio', 'familia' => 'computo', 'usa_configuracion_computo' => true]);
         $w10 = SistemaOperativo::create(['nombre' => 'Windows 10']);
         $w11 = SistemaOperativo::create(['nombre' => 'Windows 11']);
-        $equipo = $this->crearMonitor(['tipo_equipo_id' => $pc->id, 'caracteristicas' => null]);
+        // Sin modelo: el P24 es de monitor, no de PC.
+        $equipo = $this->crearMonitor(['tipo_equipo_id' => $pc->id, 'modelo_id' => null, 'caracteristicas' => null]);
         ConfiguracionComputo::create(['equipo_id' => $equipo->id, 'sistema_operativo_id' => $w10->id, 'tiene_antivirus' => false]);
 
         $this->editar($equipo)
@@ -183,11 +245,11 @@ class EditarEquipoTest extends TestCase
 
         $this->editar($equipo)
             ->assertSee('no admite cambios')
-            ->set('modelo', 'Otro modelo')
+            ->set('modeloId', null)
             ->call('guardar')
             ->assertHasErrors('equipo');
 
-        $this->assertSame('P24', $equipo->fresh()->modelo);
+        $this->assertSame($this->p24->id, $equipo->fresh()->modelo_id);
         $this->assertSame(0, Evento::count());
     }
 
@@ -211,7 +273,7 @@ class EditarEquipoTest extends TestCase
     {
         $equipo = $this->crearMonitor();
 
-        $this->editar($equipo)->set('modelo', 'ThinkVision T24')->call('guardar');
+        $this->editar($equipo)->set('marcaId', $this->lenovo->id)->set('modeloId', $this->thinkVision->id)->call('guardar');
 
         Livewire::actingAs($this->usuario)
             ->test(HojaDeVida::class, ['equipo' => $equipo->fresh()])

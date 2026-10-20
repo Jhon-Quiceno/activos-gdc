@@ -3,23 +3,24 @@
 namespace App\Livewire\Equipos;
 
 use App\Livewire\Equipos\Concerns\CaracteristicasPorFamilia;
+use App\Livewire\Equipos\Concerns\CatalogoDelEquipo;
+use App\Livewire\Equipos\Concerns\DatosDeAdquisicion;
 use App\Livewire\Equipos\Concerns\NormalizaIdentificadores;
 use App\Models\Asignacion;
+use App\Models\Cargo;
 use App\Models\Componente;
 use App\Models\ConfiguracionComputo;
-use App\Models\Dependencia;
 use App\Models\Equipo;
 use App\Models\Evento;
 use App\Models\Marca;
 use App\Models\Persona;
-use App\Models\Piso;
-use App\Models\Sede;
 use App\Models\SistemaOperativo;
 use App\Models\TipoComponente;
 use App\Models\TipoEquipo;
 use App\Services\HistorialService;
 use Closure;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Livewire\Component;
 
@@ -33,12 +34,21 @@ use Livewire\Component;
 class Crear extends Component
 {
     use CaracteristicasPorFamilia;
+    use CatalogoDelEquipo;
+    use DatosDeAdquisicion;
     use NormalizaIdentificadores;
 
     // --- 1. Tipo de equipo ---
     public ?int $tipoEquipoId = null;
 
     public ?string $familiaSeleccionada = null;
+
+    /**
+     * Muestra sistema operativo, antivirus, red y componentes internos
+     * (`tipos_equipo.usa_configuracion_computo`). No basta la familia: un NAS
+     * es de la familia cómputo pero no lleva esa configuración.
+     */
+    public bool $usaConfiguracionComputo = false;
 
     // --- 2. Identificación ---
     public string $serial = '';
@@ -63,18 +73,18 @@ class Crear extends Component
 
     public ?int $marcaId = null;
 
-    public string $modelo = '';
+    // Modelo, descripción y proceso: ver el trait CatalogoDelEquipo.
 
     public string $estadoFuncionamiento = '';
 
     // --- 3. Propiedad ---
     public string $propiedad = 'gobernacion';
 
-    public string $propietarioTercero = '';
+    // Propietario tercero (proveedor): ver el trait CatalogoDelEquipo.
 
     /**
-     * Figura jurídica del tercero (RF-04): comodato, convenio o proveedor.
-     * Se guarda en `equipos.figura_tercero`.
+     * Figura jurídica del tercero (RF-04): comodato, convenio, proveedor o
+     * arrendamiento. Se guarda en `equipos.figura_tercero`.
      */
     public string $figura = '';
 
@@ -108,11 +118,19 @@ class Crear extends Component
     // --- 5. Responsable y ubicación ---
     public bool $asignarResponsable = false;
 
-    public string $responsableNombre = '';
+    // RF-18: datos de la persona con los campos v4 (nombres y apellidos aparte,
+    // tipo y número de documento, cargo del catálogo oficial).
+    public string $responsableNombres = '';
 
-    public string $responsableCedula = '';
+    public string $responsableApellidos = '';
 
-    public string $responsableCargo = '';
+    public string $responsableTipoDocumento = 'CC';
+
+    public string $responsableDocumento = '';
+
+    public ?int $responsableCargoId = null;
+
+    public bool $responsableEncargo = false;
 
     public string $vinculacion = '';
 
@@ -123,6 +141,13 @@ class Crear extends Component
     public ?int $pisoId = null;
 
     public string $observaciones = '';
+
+    /**
+     * Cuántas veces se limpió el formulario («Guardar y registrar otro»). La vista
+     * lo usa como clave del selector de ubicación, que guarda su estado en el
+     * navegador (Alpine) y así vuelve a empezar vacío.
+     */
+    public int $limpiezas = 0;
 
     /**
      * Etiquetas visibles de cada familia (RF-02). Las claves son los valores
@@ -138,20 +163,29 @@ class Crear extends Component
         'energia' => 'Energía',
         'conectividad' => 'Conectividad',
         'proyeccion' => 'Proyección',
+        'seguridad_electronica' => 'Seguridad electrónica',
+        'climatizacion' => 'Climatización',
+        'telefonia' => 'Telefonía',
     ];
 
     public function seleccionarTipo(int $tipoEquipoId): void
     {
-        $nuevaFamilia = TipoEquipo::find($tipoEquipoId)?->familia;
+        $tipo = TipoEquipo::find($tipoEquipoId);
 
         // Si cambia de familia, limpiamos los campos específicos de la sección 4
         // anterior para no arrastrar datos que ya no aplican.
-        if ($nuevaFamilia !== $this->familiaSeleccionada) {
+        if ($tipo?->familia !== $this->familiaSeleccionada || (bool) $tipo?->usa_configuracion_computo !== $this->usaConfiguracionComputo) {
             $this->resetCamposFamilia();
         }
 
+        // Los modelos del catálogo son por marca y tipo: al cambiar el tipo, el elegido ya no aplica.
+        if ($tipoEquipoId !== $this->tipoEquipoId) {
+            $this->modeloId = null;
+        }
+
         $this->tipoEquipoId = $tipoEquipoId;
-        $this->familiaSeleccionada = $nuevaFamilia;
+        $this->familiaSeleccionada = $tipo?->familia;
+        $this->usaConfiguracionComputo = (bool) $tipo?->usa_configuracion_computo;
     }
 
     private function resetCamposFamilia(): void
@@ -159,6 +193,7 @@ class Crear extends Component
         $this->reset([
             'procesador', 'memoriaRam', 'tipoDisco', 'capacidadDisco', 'sistemaOperativoId',
             'tieneAntivirus', 'antivirusProducto', 'nombreRed',
+            'ofimatica', 'licenciaOfimatica', 'dominio', 'direccionIp', 'direccionMac',
             'tamanoPulgadas', 'conexionMonitor',
             'funcionesImpresora', 'tipoImpresion', 'conexionImpresora',
             'tipoEscaner', 'conexionEscaner',
@@ -204,29 +239,37 @@ class Crear extends Component
                 'max:1000',
             ],
             'marcaId' => ['required', 'exists:marcas,id'],
-            'modelo' => ['nullable', 'string', 'max:255'],
             'estadoFuncionamiento' => ['required', 'string'],
             'propiedad' => ['required', 'in:gobernacion,tercero'],
-            // RF-19: la ubicación siempre lleva sede, piso y dependencia, tenga o no responsable.
+            // RF-19 / RN-21: la ubicación siempre lleva sede, un piso de esa sede
+            // y dependencia, tenga o no responsable.
             'sedeId' => ['required', 'exists:sedes,id'],
-            'pisoId' => ['required', 'exists:pisos,id'],
+            'pisoId' => ['required', Rule::exists('pisos', 'id')->where('sede_id', $this->sedeId)],
             'dependenciaId' => ['required', 'exists:dependencias,id'],
         ];
 
-        if ($this->propiedad === 'tercero') {
-            $rules['propietarioTercero'] = ['required', 'string', 'max:255'];
-            // RF-04: mismas opciones que el enum `equipos.figura_tercero`.
-            $rules['figura'] = ['required', 'in:comodato,convenio,proveedor'];
-        }
+        // Modelo, descripción, proceso y propietario tercero (RF-04, RN-16).
+        $rules += $this->reglasCatalogo();
+
+        // Adquisición (RF-52) y, en cómputo, ofimática y red.
+        $rules += $this->reglasAdquisicion();
 
         // Características por tipo (RF-03): números enteros donde aplica.
         $rules += $this->reglasCaracteristicas();
         $rules['observaciones'] = ['nullable', 'string', 'max:2000'];
 
         if ($this->asignarResponsable) {
-            $rules['responsableNombre'] = ['required', 'string', 'max:255'];
-            $rules['responsableCedula'] = ['nullable', 'regex:/^\d+$/', 'max:15'];
-            $rules['vinculacion'] = ['required', 'in:planta,contratista'];
+            $rules['responsableNombres'] = ['required', 'string', 'max:80'];
+            $rules['responsableApellidos'] = ['nullable', 'string', 'max:80'];
+            $rules['responsableTipoDocumento'] = ['required', Rule::in(array_keys(Persona::TIPOS_DOCUMENTO))];
+            // La cédula solo lleva dígitos; pasaporte y demás pueden traer letras.
+            $rules['responsableDocumento'] = [
+                'nullable',
+                'max:20',
+                $this->responsableTipoDocumento === 'CC' ? 'regex:/^\d+$/' : 'regex:/^[A-Z0-9]+$/',
+            ];
+            $rules['responsableCargoId'] = ['nullable', 'exists:cargos,id'];
+            $rules['vinculacion'] = ['required', Rule::in(array_keys(Persona::VINCULACIONES))];
         }
 
         return $rules;
@@ -239,8 +282,11 @@ class Crear extends Component
             'codigoActivo.required' => __('Escribe el código de activo o marca «El equipo no tiene código de activo».'),
             'codigoActivo.regex' => __('El código de activo debe tener el formato I1-###### (por ejemplo, I1-024147).'),
             'codigoActivoJustificacion.required' => __('Este código de activo ya está en otro equipo: escribe por qué se repite (RN-03).'),
-            'responsableCedula.regex' => __('La cédula solo puede tener números.'),
-        ];
+            'responsableDocumento.regex' => $this->responsableTipoDocumento === 'CC'
+                ? __('La cédula solo puede tener números.')
+                : __('El documento solo puede tener letras y números.'),
+            'pisoId.exists' => __('Elige un piso de la sede seleccionada.'),
+        ] + $this->mensajesCatalogo() + $this->mensajesAdquisicion();
     }
 
     protected function validationAttributes(): array
@@ -252,18 +298,19 @@ class Crear extends Component
             'codigoActivoJustificacion' => __('justificación'),
             'marcaId' => __('marca'),
             'estadoFuncionamiento' => __('estado de funcionamiento'),
-            'propietarioTercero' => __('propietario'),
-            'figura' => __('figura'),
             'numTomas' => __('número de tomas'),
             'numPuertos' => __('número de puertos'),
             'observaciones' => __('observaciones'),
-            'responsableNombre' => __('responsable'),
-            'responsableCedula' => __('cédula'),
+            'responsableNombres' => __('nombres'),
+            'responsableApellidos' => __('apellidos'),
+            'responsableTipoDocumento' => __('tipo de documento'),
+            'responsableDocumento' => __('número de documento'),
+            'responsableCargoId' => __('cargo'),
             'vinculacion' => __('vinculación'),
             'dependenciaId' => __('dependencia'),
             'sedeId' => __('sede'),
             'pisoId' => __('piso'),
-        ];
+        ] + $this->atributosCatalogo() + $this->atributosAdquisicion();
     }
 
     /**
@@ -362,12 +409,12 @@ class Crear extends Component
         }
     }
 
-    public function updatedResponsableCedula(): void
+    public function updatedResponsableDocumento(): void
     {
-        $this->responsableCedula = $this->normalizarCedula($this->responsableCedula);
+        $this->responsableDocumento = $this->normalizarDocumento($this->responsableDocumento);
 
-        if ($this->responsableCedula !== '') {
-            $this->validateOnly('responsableCedula');
+        if ($this->responsableDocumento !== '') {
+            $this->validateOnly('responsableDocumento');
         }
     }
 
@@ -382,7 +429,9 @@ class Crear extends Component
     {
         $this->guardarEquipo();
 
+        $limpiezas = $this->limpiezas;
         $this->reset();
+        $this->limpiezas = $limpiezas + 1;
 
         session()->flash('status', __('Equipo guardado. Podés registrar otro a continuación.'));
     }
@@ -395,7 +444,8 @@ class Crear extends Component
         // vista, pero igual podría traer texto residual; nos aseguramos de que viaje null.
         $this->serial = $this->sinSerial ? '' : $this->normalizarSerial($this->serial);
         $this->codigoActivo = $this->sinCodigoActivo ? '' : $this->normalizarCodigoActivo($this->codigoActivo);
-        $this->responsableCedula = $this->normalizarCedula($this->responsableCedula);
+        $this->responsableDocumento = $this->normalizarDocumento($this->responsableDocumento);
+        $this->normalizarAdquisicion();
 
         $this->validate();
 
@@ -426,10 +476,12 @@ class Crear extends Component
                 'codigo_activo_justificacion' => $this->equipoConMismoCodigo() && $justificacion !== '' ? $justificacion : null,
                 'tipo_equipo_id' => $this->tipoEquipoId,
                 'marca_id' => $this->marcaId,
-                'modelo' => $this->modelo !== '' ? $this->modelo : null,
+                'modelo_id' => $this->resolverModeloId(),
+                'descripcion' => trim($this->descripcion) !== '' ? trim($this->descripcion) : null,
+                'proceso_id' => $this->procesoParaGuardar($this->dependenciaId),
                 'caracteristicas' => $this->caracteristicas(),
                 'propiedad' => $this->propiedad,
-                'propietario_tercero' => $this->propiedad === 'tercero' ? $this->propietarioTercero : null,
+                'proveedor_tercero_id' => $this->resolverProveedorTerceroId(),
                 'figura_tercero' => $this->propiedad === 'tercero' ? $this->figura : null,
                 'estado_funcionamiento' => $this->estadoFuncionamiento,
                 'observaciones' => trim($this->observaciones) !== '' ? trim($this->observaciones) : null,
@@ -439,9 +491,9 @@ class Crear extends Component
                 // RN-02: con serial provisional el equipo nace "pendiente de
                 // verificar"; en el resto de los casos nace verificado (ver resumen).
                 'verificacion' => $this->sinSerial ? 'pendiente_de_verificar' : 'verificado',
-            ]);
+            ] + $this->columnasAdquisicion());
 
-            if ($this->familiaSeleccionada === 'computo') {
+            if ($this->usaConfiguracionComputo) {
                 $this->guardarConfiguracionComputo($equipo);
             }
 
@@ -468,7 +520,7 @@ class Crear extends Component
                 ? $this->antivirusProducto
                 : null,
             'nombre_red' => $this->nombreRed !== '' ? $this->nombreRed : null,
-        ]);
+        ] + $this->columnasRedYOfimatica());
 
         $tipoComponenteIds = TipoComponente::whereIn('nombre', ['Procesador', 'RAM', 'Disco'])
             ->pluck('id', 'nombre');
@@ -525,23 +577,26 @@ class Crear extends Component
 
         if ($this->asignarResponsable) {
             $datosPersona = [
-                'nombre' => $this->responsableNombre,
-                'cargo' => $this->responsableCargo !== '' ? $this->responsableCargo : null,
+                'nombres' => trim($this->responsableNombres),
+                'apellidos' => trim($this->responsableApellidos) !== '' ? trim($this->responsableApellidos) : null,
+                'tipo_documento' => $this->responsableTipoDocumento,
+                'cargo_id' => $this->responsableCargoId,
+                'encargo' => $this->responsableCargoId !== null && $this->responsableEncargo,
                 'dependencia_id' => $this->dependenciaId,
                 'tipo_vinculacion' => $this->vinculacion !== '' ? $this->vinculacion : null,
             ];
 
-            // RN: si ya existe una persona con esa cédula, se reutiliza en vez de
-            // duplicarla; si no, se crea una nueva (no hace falta autocompletar).
-            $persona = $this->responsableCedula !== ''
-                ? Persona::firstOrCreate(['cedula' => $this->responsableCedula], $datosPersona)
+            // RN: si ya existe una persona con ese documento, se reutiliza en vez de
+            // duplicarla (el número es único); si no, se crea una nueva.
+            $persona = $this->responsableDocumento !== ''
+                ? Persona::firstOrCreate(['numero_documento' => $this->responsableDocumento], $datosPersona)
                 : Persona::create($datosPersona);
         }
 
+        // RN-21: la sede la define el piso (el modelo Asignacion la copia del piso).
         Asignacion::create([
             'equipo_id' => $equipo->id,
             'persona_id' => $persona?->id,
-            'sede_id' => $this->sedeId,
             'piso_id' => $this->pisoId,
             'dependencia_id' => $this->dependenciaId,
             'fecha_inicio' => now(),
@@ -551,7 +606,7 @@ class Crear extends Component
 
     public function render()
     {
-        $tiposPorFamilia = TipoEquipo::orderBy('nombre')->get()->groupBy('familia');
+        $tiposPorFamilia = TipoEquipo::where('activo', true)->orderBy('nombre')->get()->groupBy('familia');
 
         $tipoSeleccionado = $this->tipoEquipoId
             ? $tiposPorFamilia->flatten()->firstWhere('id', $this->tipoEquipoId)
@@ -562,6 +617,9 @@ class Crear extends Component
             __('Familia') => $this->familiaSeleccionada
                 ? (self::FAMILIA_LABELS[$this->familiaSeleccionada] ?? $this->familiaSeleccionada)
                 : '—',
+            __('Modelo') => $this->nombreModeloDelFormulario() ?? '—',
+            // RN-27: el consecutivo lo asigna el sistema; no se escribe.
+            __('N.º de activo') => __('Se asigna al guardar'),
             __('Propiedad') => $this->propiedad === 'tercero' ? __('Tercero') : __('Gobernación'),
             __('Estado inicial') => $this->asignarResponsable ? __('En servicio') : __('Sin asignar'),
         ];
@@ -571,10 +629,12 @@ class Crear extends Component
             'tiposPorFamilia' => $tiposPorFamilia,
             'marcas' => Marca::orderBy('nombre')->get(),
             'sistemasOperativos' => SistemaOperativo::orderBy('nombre')->get(),
-            'dependencias' => Dependencia::orderBy('nombre')->get(),
-            'sedes' => Sede::orderBy('nombre')->get(),
-            'pisos' => Piso::orderBy('numero')->get(),
+            'cargos' => Cargo::orderBy('codigo')->orderBy('denominacion')->get(),
+            'tiposDocumento' => Persona::TIPOS_DOCUMENTO,
+            'vinculaciones' => Persona::VINCULACIONES,
+            'formasIngreso' => Equipo::FORMAS_INGRESO,
+            'vidaUtilDelTipo' => $tipoSeleccionado?->vida_util_meses,
             'resumen' => $resumen,
-        ]);
+        ] + $this->datosCatalogo());
     }
 }

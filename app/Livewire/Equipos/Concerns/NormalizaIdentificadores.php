@@ -54,12 +54,12 @@ trait NormalizaIdentificadores
     }
 
     /**
-     * Cédula del responsable: solo dígitos. Quita los separadores con que suele
-     * escribirse («1.067.888.999», «1067 888 999»); si queda algo que no sea un
-     * dígito, la validación lo rechaza.
+     * Número de documento del responsable. Quita los separadores con que suele
+     * escribirse («1.067.888.999», «1067 888 999») y pasa a mayúsculas (los
+     * pasaportes llevan letras); si queda algo inválido, la validación lo rechaza.
      */
-    protected function normalizarCedula(string $cedula): string
+    protected function normalizarDocumento(string $documento): string
     {
-        return preg_replace('/[\s.,\-]+/u', '', trim($cedula));
+        return mb_strtoupper(preg_replace('/[\s.,\-]+/u', '', trim($documento)));
     }
 }

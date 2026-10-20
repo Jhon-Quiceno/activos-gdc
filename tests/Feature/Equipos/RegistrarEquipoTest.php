@@ -4,21 +4,26 @@ namespace Tests\Feature\Equipos;
 
 use App\Livewire\Equipos\Crear;
 use App\Models\Asignacion;
+use App\Models\Cargo;
 use App\Models\Dependencia;
 use App\Models\Equipo;
 use App\Models\Evento;
 use App\Models\Marca;
+use App\Models\ModeloEquipo;
 use App\Models\Piso;
+use App\Models\Proceso;
+use App\Models\Proveedor;
 use App\Models\Sede;
 use App\Models\TipoEquipo;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Livewire\Livewire;
 use Livewire\Features\SupportTesting\Testable;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 /**
- * Registro de equipo (RF-01, RF-02, RF-04, RF-11, RF-19; RN-02, RN-03).
+ * Registro de equipo (RF-01, RF-02, RF-04, RF-11, RF-18, RF-19; RN-02, RN-03,
+ * RN-16, RN-21, RN-27), con los campos del modelo v4.
  */
 class RegistrarEquipoTest extends TestCase
 {
@@ -36,6 +41,8 @@ class RegistrarEquipoTest extends TestCase
 
     private Dependencia $dependencia;
 
+    private Proceso $procesoTic;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -44,8 +51,9 @@ class RegistrarEquipoTest extends TestCase
         $this->monitor = TipoEquipo::create(['nombre' => 'Monitor', 'familia' => 'video']);
         $this->marca = Marca::create(['nombre' => 'HP']);
         $this->sede = Sede::create(['nombre' => 'Palacio Naín']);
-        $this->piso = Piso::create(['numero' => 3]);
-        $this->dependencia = Dependencia::create(['nombre' => 'Dirección TIC']);
+        $this->piso = Piso::create(['numero' => 3, 'sede_id' => $this->sede->id]);
+        $this->procesoTic = Proceso::create(['nombre' => 'Gestión Tecnológica y de Sistemas de Información', 'tipo' => 'apoyo']);
+        $this->dependencia = Dependencia::create(['nombre' => 'Dirección TIC', 'proceso_id' => $this->procesoTic->id]);
     }
 
     /**
@@ -273,30 +281,165 @@ class RegistrarEquipoTest extends TestCase
         $this->assertNull(Equipo::sole()->caracteristicas);
     }
 
-    public function test_un_equipo_de_tercero_guarda_propietario_y_figura(): void
+    public function test_un_equipo_de_tercero_guarda_el_propietario_del_catalogo_y_la_figura(): void
     {
+        $ministerio = Proveedor::create(['razon_social' => 'Ministerio TIC', 'nit' => '899999053']);
+
         $this->formularioValido([
             'propiedad' => 'tercero',
-            'propietarioTercero' => 'Ministerio TIC',
+            'proveedorTerceroId' => $ministerio->id,
             'figura' => 'comodato',
         ])->call('guardar')->assertHasNoErrors();
 
         $equipo = Equipo::sole();
 
         $this->assertSame('tercero', $equipo->propiedad);
-        $this->assertSame('Ministerio TIC', $equipo->propietario_tercero);
+        $this->assertSame($ministerio->id, $equipo->proveedor_tercero_id);
         $this->assertSame('comodato', $equipo->figura_tercero);
+    }
+
+    public function test_un_equipo_de_tercero_exige_propietario(): void
+    {
+        $this->formularioValido(['propiedad' => 'tercero', 'figura' => 'convenio'])
+            ->call('guardar')
+            ->assertHasErrors(['proveedorTerceroId' => 'required']);
+
+        $this->assertSame(0, Equipo::count());
+    }
+
+    public function test_un_propietario_que_no_esta_se_agrega_al_catalogo(): void
+    {
+        $this->formularioValido([
+            'propiedad' => 'tercero',
+            'agregarProveedor' => true,
+            'proveedorNuevo' => '  Arrendamientos del Sinú S.A.S.  ',
+            'proveedorNuevoNit' => '900123456',
+            'figura' => 'arrendamiento',
+        ])->call('guardar')->assertHasNoErrors();
+
+        $proveedor = Proveedor::sole();
+
+        $this->assertSame('Arrendamientos del Sinú S.A.S.', $proveedor->razon_social);
+        $this->assertSame($proveedor->id, Equipo::sole()->proveedor_tercero_id);
+        $this->assertSame('arrendamiento', Equipo::sole()->figura_tercero);
     }
 
     public function test_la_figura_del_tercero_debe_ser_una_de_las_permitidas(): void
     {
         $this->formularioValido([
             'propiedad' => 'tercero',
-            'propietarioTercero' => 'Ministerio TIC',
+            'proveedorTerceroId' => Proveedor::create(['razon_social' => 'Ministerio TIC'])->id,
             'figura' => 'Otra',
         ])->call('guardar')->assertHasErrors(['figura' => 'in']);
 
         $this->assertSame(0, Equipo::count());
+    }
+
+    public function test_el_modelo_se_elige_del_catalogo_de_la_marca_y_el_tipo(): void
+    {
+        $p24 = ModeloEquipo::create(['marca_id' => $this->marca->id, 'tipo_equipo_id' => $this->monitor->id, 'nombre' => 'P24']);
+        $deOtraMarca = ModeloEquipo::create([
+            'marca_id' => Marca::create(['nombre' => 'Lenovo'])->id,
+            'tipo_equipo_id' => $this->monitor->id,
+            'nombre' => 'ThinkVision T24',
+        ]);
+
+        $this->formularioValido(['modeloId' => $deOtraMarca->id])
+            ->call('guardar')
+            ->assertHasErrors(['modeloId' => 'exists']);
+
+        $this->formularioValido(['modeloId' => $p24->id])->call('guardar')->assertHasNoErrors();
+
+        $this->assertSame($p24->id, Equipo::sole()->modelo_id);
+    }
+
+    public function test_un_modelo_que_no_esta_se_agrega_al_catalogo(): void
+    {
+        $this->formularioValido(['agregarModelo' => true, 'modeloNuevo' => ' E24 G5 '])
+            ->call('guardar')
+            ->assertHasNoErrors();
+
+        $modelo = ModeloEquipo::sole();
+
+        $this->assertSame('E24 G5', $modelo->nombre);
+        $this->assertSame($this->marca->id, $modelo->marca_id);
+        $this->assertSame($this->monitor->id, $modelo->tipo_equipo_id);
+        $this->assertSame($modelo->id, Equipo::sole()->modelo_id);
+    }
+
+    public function test_al_cambiar_la_marca_se_borra_el_modelo_elegido(): void
+    {
+        $p24 = ModeloEquipo::create(['marca_id' => $this->marca->id, 'tipo_equipo_id' => $this->monitor->id, 'nombre' => 'P24']);
+
+        $this->formularioValido(['modeloId' => $p24->id])
+            ->set('marcaId', Marca::create(['nombre' => 'Lenovo'])->id)
+            ->assertSet('modeloId', null);
+    }
+
+    public function test_el_numero_de_activo_lo_asigna_el_sistema(): void
+    {
+        $this->formularioValido()->assertSee('Se asigna al guardar')->call('guardar')->assertHasNoErrors();
+
+        $this->assertNotNull(Equipo::sole()->numero_activo);
+    }
+
+    public function test_el_proceso_por_defecto_es_el_de_la_dependencia(): void
+    {
+        $this->formularioValido(['descripcion' => 'Pantalla de la sala de juntas'])->call('guardar')->assertHasNoErrors();
+
+        $equipo = Equipo::sole();
+
+        $this->assertSame($this->procesoTic->id, $equipo->proceso_id);
+        $this->assertSame('Pantalla de la sala de juntas', $equipo->descripcion);
+
+        $otroProceso = Proceso::create(['nombre' => 'Gestión Documental', 'tipo' => 'apoyo']);
+
+        $this->formularioValido(['serial' => 'CN-0002', 'codigoActivo' => 'I1-024148', 'procesoId' => $otroProceso->id])
+            ->call('guardar')
+            ->assertHasNoErrors();
+
+        $this->assertSame($otroProceso->id, Equipo::where('serial', 'CN-0002')->value('proceso_id'));
+    }
+
+    public function test_el_piso_debe_ser_de_la_sede_elegida(): void
+    {
+        $pisoDeOtraSede = Piso::create(['numero' => 2, 'sede_id' => Sede::create(['nombre' => 'Edificio Morindó'])->id]);
+
+        $this->formularioValido(['pisoId' => $pisoDeOtraSede->id])
+            ->call('guardar')
+            ->assertHasErrors(['pisoId' => 'exists']);
+
+        $this->formularioValido()->call('guardar')->assertHasNoErrors();
+
+        // RN-21: la sede de la asignación es la del piso.
+        $this->assertSame($this->sede->id, Asignacion::sole()->piso->sede_id);
+    }
+
+    public function test_un_tipo_con_configuracion_de_computo_muestra_esa_seccion(): void
+    {
+        $pc = TipoEquipo::create(['nombre' => 'PC de escritorio', 'familia' => 'computo', 'usa_configuracion_computo' => true]);
+        $nas = TipoEquipo::create(['nombre' => 'NAS', 'familia' => 'computo', 'usa_configuracion_computo' => false]);
+
+        Livewire::actingAs($this->usuario)->test(Crear::class)
+            ->call('seleccionarTipo', $pc->id)
+            ->assertSet('usaConfiguracionComputo', true)
+            ->assertSee('4. Configuración de cómputo')
+            ->call('seleccionarTipo', $nas->id)
+            ->assertSet('usaConfiguracionComputo', false)
+            ->assertDontSee('4. Configuración de cómputo');
+    }
+
+    public function test_muestra_las_familias_nuevas_de_tipos(): void
+    {
+        TipoEquipo::create(['nombre' => 'Cámara de vigilancia', 'familia' => 'seguridad_electronica']);
+        TipoEquipo::create(['nombre' => 'Teléfono IP', 'familia' => 'telefonia']);
+        TipoEquipo::create(['nombre' => 'Tipo retirado', 'familia' => 'telefonia', 'activo' => false]);
+
+        Livewire::actingAs($this->usuario)->test(Crear::class)
+            ->assertSee('Seguridad electrónica')
+            ->assertSee('Cámara de vigilancia')
+            ->assertSee('Teléfono IP')
+            ->assertDontSee('Tipo retirado');
     }
 
     public function test_el_serial_es_unico_sin_importar_mayusculas_ni_espacios(): void
@@ -322,22 +465,78 @@ class RegistrarEquipoTest extends TestCase
     {
         $conResponsable = [
             'asignarResponsable' => true,
-            'responsableNombre' => 'Ana Pérez',
+            'responsableNombres' => 'Ana',
             'vinculacion' => 'planta',
         ];
 
-        $this->formularioValido($conResponsable + ['responsableCedula' => 'No estaba funcionario'])
+        $this->formularioValido($conResponsable + ['responsableDocumento' => 'No estaba funcionario'])
             ->call('guardar')
-            ->assertHasErrors(['responsableCedula' => 'regex']);
+            ->assertHasErrors(['responsableDocumento' => 'regex']);
 
-        $this->formularioValido($conResponsable + ['responsableCedula' => '1.067.888.999'])
-            ->assertSet('responsableCedula', '1067888999')
+        $this->formularioValido($conResponsable + ['responsableDocumento' => '1.067.888.999'])
+            ->assertSet('responsableDocumento', '1067888999')
             ->call('guardar')
             ->assertHasNoErrors();
 
         $asignacion = Asignacion::with('persona')->sole();
 
-        $this->assertSame('1067888999', $asignacion->persona->cedula);
+        $this->assertSame('1067888999', $asignacion->persona->numero_documento);
         $this->assertSame('en_servicio', Equipo::sole()->estado_ciclo_vida);
+    }
+
+    public function test_un_pasaporte_admite_letras(): void
+    {
+        $this->formularioValido([
+            'asignarResponsable' => true,
+            'responsableNombres' => 'John',
+            'responsableTipoDocumento' => 'PA',
+            'responsableDocumento' => 'ab 123 456',
+            'vinculacion' => 'contratista',
+        ])->assertSet('responsableDocumento', 'AB123456')->call('guardar')->assertHasNoErrors();
+
+        $persona = Asignacion::with('persona')->sole()->persona;
+
+        $this->assertSame('PA', $persona->tipo_documento);
+        $this->assertSame('AB123456', $persona->numero_documento);
+    }
+
+    public function test_el_responsable_se_guarda_con_los_campos_v4(): void
+    {
+        $profesional = Cargo::create(['codigo' => '219', 'denominacion' => 'Profesional Universitario', 'nivel' => 'profesional']);
+
+        $this->formularioValido([
+            'asignarResponsable' => true,
+            'responsableNombres' => '  Ana María ',
+            'responsableApellidos' => 'Pérez Díaz',
+            'responsableDocumento' => '1067888999',
+            'responsableCargoId' => $profesional->id,
+            'responsableEncargo' => true,
+            'vinculacion' => 'pasante',
+        ])->call('guardar')->assertHasNoErrors();
+
+        $persona = Asignacion::with('persona')->sole()->persona;
+
+        $this->assertSame('Ana María', $persona->nombres);
+        $this->assertSame('Pérez Díaz', $persona->apellidos);
+        $this->assertSame('Ana María Pérez Díaz', $persona->nombreCompleto());
+        $this->assertSame($profesional->id, $persona->cargo_id);
+        $this->assertSame('Profesional Universitario (E)', $persona->cargoTexto());
+        $this->assertSame('pasante', $persona->tipo_vinculacion);
+        $this->assertSame($this->dependencia->id, $persona->dependencia_id);
+    }
+
+    public function test_un_documento_ya_registrado_reutiliza_la_persona(): void
+    {
+        $datos = [
+            'asignarResponsable' => true,
+            'responsableNombres' => 'Ana',
+            'responsableDocumento' => '1067888999',
+            'vinculacion' => 'planta',
+        ];
+
+        $this->formularioValido($datos)->call('guardar')->assertHasNoErrors();
+        $this->formularioValido($datos + ['serial' => 'CN-0002', 'codigoActivo' => 'I1-024148'])->call('guardar')->assertHasNoErrors();
+
+        $this->assertSame(1, Asignacion::distinct('persona_id')->count('persona_id'));
     }
 }
