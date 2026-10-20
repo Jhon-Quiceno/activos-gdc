@@ -6,7 +6,5 @@ use Maatwebsite\Excel\Concerns\ToArray;
 
 class InventarioExcel implements ToArray
 {
-    public function array(array $array): void
-    {
-    }
+    public function array(array $array): void {}
 }
