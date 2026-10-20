@@ -1,158 +1,210 @@
+{{--
+    Vista de App\Livewire\Importacion\Index: carga de datos al modelo oficial
+    (RF-38 a RF-41, RF-55, §12 del análisis v4.1).
+--}}
+@php
+    $claseSelect = 'h-10 rounded-lg border-line-input text-[14px] text-ink focus:border-primary focus:ring-primary';
+    $ayudas = [
+        'equipos' => __('Una fila por equipo con las columnas de la plantilla oficial. Los catálogos (tipo, marca, sede, dependencia…) van como listas desplegables para que no entre texto libre.'),
+        'personas' => __('Planta de Talento Humano (Central o Educación). Solo se leen documento, nombre, cargo, grado, dependencia real, jefe, provisión, correo institucional y fecha de retiro: salario, RH, dirección y el resto de columnas se descartan al leer y nunca se guardan (RNF-19).'),
+        'valoraciones' => __('Matriz FOR.01 diligenciada por un proceso. Cada fila se cruza por «ID ACTIVO» (número de activo) o código de activo, y se valora con las reglas del Manual GT-M4.'),
+        'adquisicion' => __('Archivo de Almacén con código de activo, fecha, valor, proveedor, contrato y factura. Solo se cambia lo que trae el archivo, y cada cambio queda en la hoja de vida con su valor anterior.'),
+        'inventario' => __('Excel del inventario 2026 (Microsoft Forms). Se convierte a la plantilla oficial (una fila por equipo) y se carga como cualquier carga de equipos. Puedes descargarlo convertido para corregirlo en Excel antes.'),
+    ];
+@endphp
+
 <div class="space-y-6">
-    {{-- Wizard de 4 pasos --}}
-    <div class="flex flex-wrap items-center gap-2">
-        @foreach ($pasos as $numero => $etiqueta)
-            @php
-                $estado = $numero < $pasoActual ? 'done' : ($numero === $pasoActual ? 'activo' : 'pendiente');
+    @if (session('status'))
+        <div class="rounded-lg bg-success-bg px-4 py-3 text-[14px] text-success-text">{{ session('status') }}</div>
+    @endif
 
-                $chipClasses = match ($estado) {
-                    'activo' => 'bg-primary text-white shadow-sm',
-                    'done' => 'bg-success-bg text-success-text',
-                    default => 'bg-neutral-bg text-ink-muted',
-                };
-            @endphp
-
+    {{-- Tipo de carga --}}
+    <div class="flex flex-wrap gap-2" role="tablist">
+        @foreach ($tipos as $valor => $etiqueta)
             <button
                 type="button"
-                wire:click="irAPaso({{ $numero }})"
-                class="flex items-center gap-2 rounded-full px-4 py-2 text-[14px] font-semibold transition-colors duration-150 {{ $chipClasses }}"
-            >
-                @if ($estado === 'done')
-                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                    </svg>
-                @else
-                    <span class="flex h-5 w-5 items-center justify-center rounded-full text-[12px]
-                        {{ $estado === 'activo' ? 'bg-white/20' : 'bg-white' }}">
-                        {{ $numero }}
-                    </span>
-                @endif
-
-                {{ $etiqueta }}
-            </button>
-
-            @if (! $loop->last)
-                <span class="hidden text-ink-muted sm:inline" aria-hidden="true">&rarr;</span>
-            @endif
+                role="tab"
+                wire:click="$set('tipo', '{{ $valor }}')"
+                @class([
+                    'h-9 rounded-full border px-4 text-[13px] font-semibold transition-colors duration-150',
+                    'border-primary bg-primary text-white' => $tipo === $valor,
+                    'border-line-input bg-white text-ink hover:border-primary hover:text-primary' => $tipo !== $valor,
+                ])
+            >{{ __($etiqueta) }}</button>
         @endforeach
     </div>
 
-    @if ($pasoActual === 1)
-        <x-ui.card>
-            <p class="section-title">{{ __('Seleccionar archivo') }}</p>
-            <p class="mt-1 text-[13px] text-ink-muted">{{ __('Carga un archivo XLSX, XLS o CSV con la primera fila como encabezado.') }}</p>
+    {{-- 1. Archivo --}}
+    <x-ui.card>
+        <p class="section-title">{{ __('1. Archivo') }}</p>
+        <p class="mt-1 text-[14px] text-ink-muted">{{ $ayudas[$tipo] }}</p>
 
-            <div class="mt-4 rounded-lg border border-dashed border-line-input bg-app-bg px-4 py-6">
-                <input type="file" wire:model="archivo" accept=".xlsx,.xls,.csv"
-                    class="block w-full text-[14px] text-ink-muted file:mr-4 file:rounded-lg file:border-0 file:bg-primary file:px-4 file:py-2 file:text-[13px] file:font-semibold file:text-white" />
-                <div wire:loading wire:target="archivo" class="mt-2 text-[13px] text-ink-muted">{{ __('Leyendo archivo...') }}</div>
-                @error('archivo') <p class="mt-2 text-[13px] text-danger-text">{{ $message }}</p> @enderror
+        <div class="mt-4 flex flex-wrap items-end gap-4">
+            <div>
+                <label for="archivo" class="text-[13px] font-semibold text-ink-label">{{ __('Excel o CSV') }}</label>
+                <input id="archivo" type="file" wire:model="archivo" accept=".xlsx,.xls,.csv" class="mt-1 block text-[14px] text-ink">
+                <div wire:loading wire:target="archivo" class="mt-1 text-[13px] text-ink-muted">{{ __('Leyendo el archivo…') }}</div>
             </div>
 
-            @if ($archivo)
-                <div class="mt-4 flex items-center justify-between rounded-lg border border-line bg-app-bg px-4 py-3">
-                    <span class="font-mono text-[14px] text-ink">{{ $archivo->getClientOriginalName() }}</span>
-                    <x-ui.badge variant="success">{{ __('Cargado') }}</x-ui.badge>
+            @if ($tipo === 'personas')
+                <div>
+                    <label for="planta" class="text-[13px] font-semibold text-ink-label">{{ __('Planta') }}</label>
+                    <select id="planta" wire:model.live="planta" class="mt-1 block {{ $claseSelect }}">
+                        <option value="central">{{ __('Central') }}</option>
+                        <option value="educacion">{{ __('Educación') }}</option>
+                    </select>
                 </div>
-            @endif
-        </x-ui.card>
-    @elseif ($pasoActual === 2)
-        <x-ui.card>
-            <p class="section-title">{{ __('Equivalencias') }}</p>
-            <p class="mt-1 text-[13px] text-ink-muted">{{ __('Algunos valores del archivo no coinciden exactamente con el catálogo. Confirma o corrige el valor oficial.') }}</p>
-
-            <div class="mt-4">
-                @include('livewire.importacion.partials.equivalencias-table')
-            </div>
-        </x-ui.card>
-    @elseif ($pasoActual === 3)
-        {{-- KPIs de la importación --}}
-        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 nav:grid-cols-4">
-            <x-ui.kpi-card :value="$kpis['filas_leidas']" label="{{ __('Filas leídas') }}" accent="primary" />
-            <x-ui.kpi-card :value="$kpis['equipos_detectados']" label="{{ __('Equipos detectados') }}" accent="info" />
-            <x-ui.kpi-card :value="$kpis['con_advertencias']" label="{{ __('Con advertencias') }}" accent="warning" />
-            <x-ui.kpi-card :value="$kpis['excluidos']" label="{{ __('Excluidos (personales)') }}" accent="neutral" />
-        </div>
-
-        {{-- Aviso de serial pendiente de verificar --}}
-        <div class="flex items-start gap-3 rounded-lg border border-warning-text/20 bg-warning-bg px-4 py-3 text-[14px] text-warning-text">
-            <svg class="mt-0.5 h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
-            </svg>
-            <p>
-                {{ __('El inventario no trae el serial del equipo principal:') }}
-                {{ __('todos los equipos entrarán como') }}
-                <strong>{{ __('Pendiente de verificar') }}</strong>
-                {{ __('hasta tomarlo en sitio.') }}
-            </p>
-        </div>
-
-        <div class="grid grid-cols-1 gap-4 nav:grid-cols-2">
-            <x-ui.card :padding="false">
-                <div class="px-5 py-4">
-                    <p class="section-title">{{ __('Advertencias por fila') }}</p>
-                </div>
-
-                <x-ui.table>
-                    <thead>
-                        <tr>
-                            <th>{{ __('Fila') }}</th>
-                            <th>{{ __('Valor') }}</th>
-                            <th>{{ __('Detalle') }}</th>
-                            <th>{{ __('Tipo') }}</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach ($advertencias as $advertencia)
-                            @php
-                                $tipo = $tiposAdvertencia[$advertencia['tipo']] ?? ['variant' => 'neutral', 'label' => $advertencia['tipo']];
-                            @endphp
-                            <tr wire:key="advertencia-{{ $advertencia['fila'] }}-{{ $advertencia['tipo'] }}">
-                                <td class="font-mono">{{ $advertencia['fila'] }}</td>
-                                <td class="font-mono">{{ $advertencia['valor'] }}</td>
-                                <td class="text-ink-muted">{{ $advertencia['detalle'] }}</td>
-                                <td><x-ui.badge :variant="$tipo['variant']">{{ $tipo['label'] }}</x-ui.badge></td>
-                            </tr>
+                <div>
+                    <label for="ordenNombre" class="text-[13px] font-semibold text-ink-label">{{ __('Si el nombre viene en una sola columna') }}</label>
+                    <select id="ordenNombre" wire:model.live="ordenNombre" class="mt-1 block {{ $claseSelect }}">
+                        @foreach ($ordenesNombre as $valor => $etiqueta)
+                            <option value="{{ $valor }}">{{ __($etiqueta) }}</option>
                         @endforeach
-                    </tbody>
-                </x-ui.table>
-            </x-ui.card>
-
-            <x-ui.card :padding="false">
-                <div class="px-5 py-4">
-                    <p class="section-title">{{ __('Equivalencias') }}</p>
+                    </select>
                 </div>
-
-                @include('livewire.importacion.partials.equivalencias-table')
-            </x-ui.card>
-        </div>
-    @else
-        <x-ui.card class="text-center">
-            <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-info-bg text-info-text">
-                <svg class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
-                </svg>
-            </div>
-
-            <p class="mx-auto mt-4 max-w-md text-[14px] text-ink-muted">
-                {{ __(':equipos equipos quedarán registrados con estado :estado. La fila de origen y el evento de alta quedarán guardados.', ['equipos' => $kpis['equipos_detectados'], 'estado' => __('Pendiente de verificar')]) }}
-            </p>
-            @if (session('status'))
-                <p class="mt-4 text-[14px] font-semibold text-success-text">{{ session('status') }}</p>
             @endif
-        </x-ui.card>
+
+            @if ($tipo === 'equipos')
+                <x-ui.button variant="secondary" type="button" wire:click="descargarPlantilla">{{ __('Descargar plantilla oficial') }}</x-ui.button>
+            @endif
+
+            @if ($tipo === 'inventario' && $archivo)
+                <x-ui.button variant="secondary" type="button" wire:click="descargarInventarioConvertido">{{ __('Descargar convertido a la plantilla') }}</x-ui.button>
+            @endif
+
+            @if ($archivo || $resultados)
+                <x-ui.button variant="ghost" type="button" wire:click="reiniciar">{{ __('Empezar de nuevo') }}</x-ui.button>
+            @endif
+        </div>
+
+        <x-input-error :messages="$errors->get('archivo')" class="mt-2" />
+    </x-ui.card>
+
+    @if ($resumen)
+        {{-- Resultado de la simulación o de la carga --}}
+        <div @class(['rounded-lg px-4 py-3 text-[14px]', 'bg-info-bg text-info-text' => $simulado, 'bg-success-bg text-success-text' => ! $simulado])>
+            <p class="font-semibold">{{ $simulado ? __('Simulación: así quedaría la carga (no se guardó nada).') : __('Carga confirmada.') }}</p>
+            <ul class="mt-1 flex flex-wrap gap-x-5">
+                @foreach ($resumen as $clave => $cantidad)
+                    <li>{{ __(ucfirst(str_replace('_', ' ', $clave))) }}: <span class="font-semibold">{{ $cantidad }}</span></li>
+                @endforeach
+            </ul>
+        </div>
     @endif
 
-    {{-- Footer del wizard --}}
-    <div class="flex items-center justify-between gap-4">
-        <x-ui.button variant="secondary" type="button" wire:click="volver" :disabled="$pasoActual === 1">
-            {{ __('Volver') }}
-        </x-ui.button>
+    @if ($resultados)
+        {{-- 2. Revisión --}}
+        <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
+            <x-ui.kpi-card :value="$kpis['filas']" :label="$tipo === 'inventario' ? __('Equipos detectados') : __('Filas leídas')" />
+            <x-ui.kpi-card :value="$kpis['listas']" :label="__('Se cargan')" accent="success" />
+            <x-ui.kpi-card :value="$kpis['advertencias']" :label="__('Con advertencias')" accent="warning" />
+            <x-ui.kpi-card :value="$kpis['errores']" :label="__('Con errores (no se cargan)')" accent="danger" />
+        </div>
 
-        <x-ui.button variant="primary" type="button"
-            wire:click="{{ $pasoActual === 4 ? 'confirmar' : 'continuar' }}"
-            :disabled="$pasoActual === 4 && count($filas) === 0">
-            {{ $pasoActual < 4 ? __('Continuar a confirmar') : __('Confirmar importación') }}
-        </x-ui.button>
-    </div>
+        @if ($tipo === 'inventario')
+            <p class="text-[13px] text-ink-muted">
+                {{ __(':leidas filas del formulario · :excluidas excluidas por ser equipo personal (RN-01).', ['leidas' => $lectura['leidas'], 'excluidas' => $lectura['excluidas']]) }}
+            </p>
+        @endif
+
+        @if ($pendientes)
+            {{-- RF-39: equivalencias de dependencia que faltan --}}
+            <x-ui.card>
+                <p class="section-title">{{ __('Dependencias sin equivalencia') }}</p>
+                <p class="mt-1 text-[13px] text-ink-muted">{{ __('Estos textos del archivo no coinciden con ninguna dependencia oficial. Elige a cuál corresponden: la equivalencia queda guardada para las próximas cargas y las filas se vuelven a revisar.') }}</p>
+
+                <div class="mt-3 space-y-2">
+                    @foreach ($pendientes as $i => $pendiente)
+                        <div class="flex flex-wrap items-center gap-2" wire:key="pendiente-{{ $i }}">
+                            <span class="min-w-[220px] text-[14px] font-semibold text-ink">«{{ $pendiente['texto'] }}»</span>
+                            <span class="text-ink-muted" aria-hidden="true">→</span>
+                            <select wire:model="pendientes.{{ $i }}.dependencia_id" class="{{ $claseSelect }} max-w-[360px]" aria-label="{{ __('Dependencia oficial') }}">
+                                <option value="">{{ __('Selecciona la dependencia oficial…') }}</option>
+                                @foreach ($dependencias as $dependencia)
+                                    <option value="{{ $dependencia->id }}">{{ str_repeat("\u{00A0}\u{00A0}\u{00A0}", $dependencia->profundidad) }}{{ $dependencia->nombre }}</option>
+                                @endforeach
+                            </select>
+                            <x-ui.button variant="secondary" size="sm" type="button" wire:click="guardarEquivalencia({{ $i }})">{{ __('Guardar equivalencia') }}</x-ui.button>
+                            <x-input-error :messages="$errors->get('pendientes.'.$i.'.dependencia_id')" class="w-full" />
+                        </div>
+                    @endforeach
+                </div>
+            </x-ui.card>
+        @endif
+
+        <x-ui.table>
+            <x-slot name="filters">
+                <select wire:model.live="vista" class="{{ $claseSelect }}" aria-label="{{ __('Mostrar') }}">
+                    <option value="">{{ __('Mostrar: todas las filas') }}</option>
+                    <option value="errores">{{ __('Solo con errores') }}</option>
+                    <option value="advertencias">{{ __('Solo con advertencias') }}</option>
+                </select>
+                <span class="ml-auto text-[13px] text-ink-muted">
+                    {{ $totalVisibles > 300 ? __('Se muestran 300 de :total filas.', ['total' => $totalVisibles]) : '' }}
+                </span>
+            </x-slot>
+
+            <thead>
+                <tr>
+                    <th class="w-16">{{ __('Fila') }}</th>
+                    <th>{{ __('Registro') }}</th>
+                    <th class="w-32">{{ __('Estado') }}</th>
+                    <th>{{ __('Detalle') }}</th>
+                </tr>
+            </thead>
+            <tbody>
+                @forelse ($visibles as $resultado)
+                    <tr wire:key="fila-{{ $resultado['numero'] }}-{{ $loop->index }}">
+                        <td class="font-mono text-ink-muted">{{ $resultado['numero'] }}</td>
+                        <td>
+                            {{ $resultado['resumen'] ?: '—' }}
+                            @if (! empty($resultado['calculo']))
+                                <span class="block text-[12px] text-ink-muted">{{ __('Total e importancia: :c', ['c' => $resultado['calculo']]) }}</span>
+                            @endif
+                        </td>
+                        <td>
+                            @if ($resultado['errores'])
+                                <x-ui.badge variant="danger">{{ __('No se carga') }}</x-ui.badge>
+                            @elseif ($resultado['omitida'] ?? false)
+                                <x-ui.badge variant="neutral">{{ __('Se omite') }}</x-ui.badge>
+                            @elseif ($resultado['advertencias'])
+                                <x-ui.badge variant="warning">{{ __('Con advertencias') }}</x-ui.badge>
+                            @else
+                                <x-ui.badge variant="success">{{ __('Lista') }}</x-ui.badge>
+                            @endif
+                        </td>
+                        <td class="text-[13px]">
+                            <ul class="space-y-0.5">
+                                @foreach ($resultado['errores'] as $mensaje)
+                                    <li class="text-danger-text">{{ $mensaje }}</li>
+                                @endforeach
+                                @foreach ($resultado['advertencias'] as $mensaje)
+                                    <li class="text-warning-text">{{ $mensaje }}</li>
+                                @endforeach
+                                @foreach (($resultado['cambios'] ?? []) as $campo => $cambio)
+                                    <li class="text-ink">{{ __(\Illuminate\Support\Str::ucfirst(str_replace('_', ' ', $campo))) }}: <span class="text-ink-muted line-through">{{ $cambio['antes'] ?? __('(vacío)') }}</span> → {{ $cambio['despues'] }}</li>
+                                @endforeach
+                            </ul>
+                        </td>
+                    </tr>
+                @empty
+                    <tr><td colspan="4" class="py-8 text-center text-ink-muted">{{ __('Ninguna fila con ese filtro.') }}</td></tr>
+                @endforelse
+            </tbody>
+        </x-ui.table>
+
+        {{-- 3. Simular y confirmar --}}
+        <x-ui.card>
+            <p class="section-title">{{ __('3. Simular y confirmar') }}</p>
+            <p class="mt-1 text-[14px] text-ink-muted">
+                {{ __('Solo se cargan las filas sin errores. La simulación hace todo el proceso y lo deshace al final, para que veas el resultado sin guardar nada.') }}
+            </p>
+            <div class="mt-4 flex flex-wrap gap-2">
+                <x-ui.button variant="secondary" type="button" wire:click="simular" wire:loading.attr="disabled">{{ __('Simular') }}</x-ui.button>
+                <x-ui.button variant="primary" type="button" wire:click="confirmar" wire:loading.attr="disabled" wire:confirm="{{ __('¿Cargar las :n filas sin errores?', ['n' => $kpis['listas']]) }}">
+                    {{ __('Confirmar carga') }}
+                </x-ui.button>
+            </div>
+        </x-ui.card>
+    @endif
 </div>

@@ -1,6 +1,6 @@
-<x-layouts.app-shell title="Importación">
+<x-layouts.app-shell title="Carga de datos">
     <div class="space-y-6">
-        <x-ui.page-header :title="__('Importar inventario desde Excel')" subtitle="INVENTARIO DE LA INFRAESTRUCTURA TECNOLÓGICA 2026 (1-461).xlsx" />
+        <x-ui.page-header :title="__('Carga de datos')" :subtitle="__('Equipos, personas, valoraciones y adquisición al modelo oficial')" />
 
         <livewire:importacion.index />
     </div>
