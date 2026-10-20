@@ -101,7 +101,8 @@ trait DatosDeAdquisicion
     }
 
     /**
-     * Quita los puntos de miles: «2.350.000,50» queda «2350000,50».
+     * Quita los puntos de miles: «2.350.000,50» queda «2350000,50» (y
+     * «2350000.50», escrito con punto decimal, también).
      */
     public function updatedValorAdquisicion(): void
     {
@@ -119,6 +120,11 @@ trait DatosDeAdquisicion
     protected function normalizarValor(string $valor): string
     {
         $valor = preg_replace('/[\s$]+/u', '', trim($valor));
+
+        // «2350000.5»: un solo punto con 1 o 2 decimales al final es la coma decimal, no de miles.
+        if (preg_match('/^\d+\.\d{1,2}$/', $valor)) {
+            return str_replace('.', ',', $valor);
+        }
 
         return str_replace('.', '', $valor);
     }

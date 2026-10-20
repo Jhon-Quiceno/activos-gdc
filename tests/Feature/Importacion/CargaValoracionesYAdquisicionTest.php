@@ -145,3 +145,19 @@ it('una celda vacía no borra lo que ya tenía el equipo y sin cambios no hay ev
     expect($this->pc->fresh()->numero_contrato)->toBe('CD-001')
         ->and(Evento::count())->toBe(0);
 });
+
+it('volver a cargar la misma matriz no crea reclasificaciones idénticas', function () {
+    $matriz = fn () => for01([['id' => $this->pc->numero_activo, 'c' => '4', 'i' => '2', 'd' => '2']]);
+
+    cargar('valoraciones', $matriz())->call('confirmar')->assertHasNoErrors();
+
+    cargar('valoraciones', $matriz())
+        ->assertSet('resultados.0.advertencias', ['Igual a la valoración vigente: no se crea una reclasificación.'])
+        ->call('confirmar')
+        ->assertHasNoErrors()
+        ->assertSet('resumen.sin_cambios', 1)
+        ->assertSet('resumen.creadas', 0);
+
+    expect(ValoracionActivo::count())->toBe(1)
+        ->and(Evento::where('tipo', 'valoracion')->count())->toBe(1);
+});

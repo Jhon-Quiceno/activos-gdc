@@ -204,6 +204,14 @@ class ValorarActivo extends Component
 
     public function guardar(): void
     {
+        // CU-16: un equipo dado de baja no se valora. La vista ya oculta el botón,
+        // pero la baja pudo registrarse desde otra pantalla con la ventana abierta.
+        if (Equipo::query()->whereKey($this->equipo->id)->value('estado_ciclo_vida') === 'dado_de_baja') {
+            $this->addError('equipo', __('El equipo está dado de baja: no se puede valorar.'));
+
+            return;
+        }
+
         $this->validate();
 
         $controles = implode(', ', $this->controlesMonitoreo);

@@ -180,3 +180,50 @@ it('la dirección de la Casa Refugio no aparece en ningún PDF (RN-28)', functio
             ->not->toContain('Calle reservada 1');
     }
 });
+
+it('verificar después de generar el acta devuelve el levantamiento a «En curso»', function () {
+    $equipo = equipoEn($this->direccion, $this->piso, ['verificacion' => 'pendiente_de_verificar']);
+    $levantamiento = levantamiento();
+    $gestor = app(GestorLevantamientos::class);
+
+    $gestor->acta($levantamiento, $this->usuario);
+    expect($levantamiento->fresh()->estado)->toBe('pendiente_de_firma');
+
+    $gestor->verificar($levantamiento->fresh(), $equipo, $this->usuario);
+
+    expect($levantamiento->fresh()->estado)->toBe('en_curso');
+});
+
+it('no acepta un acta si los equipos cambiaron después de generarla', function () {
+    equipoEn($this->direccion, $this->piso);
+    $levantamiento = levantamiento();
+    $gestor = app(GestorLevantamientos::class);
+    $gestor->acta($levantamiento, $this->usuario);
+
+    // Un equipo llega a la dependencia después de imprimir el acta.
+    $this->travel(1)->minutes();
+    equipoEn($this->area, $this->piso);
+
+    expect(fn () => $gestor->aceptar($levantamiento->fresh(), Apoyo::pdfFirmado(), $this->usuario))->toThrow(ValidationException::class);
+    expect($levantamiento->fresh()->estado)->toBe('en_curso');
+
+    // Con el acta generada de nuevo, ya se acepta.
+    $this->travel(1)->minutes();
+    $gestor->acta($levantamiento->fresh(), $this->usuario);
+    $gestor->aceptar($levantamiento->fresh(), Apoyo::pdfFirmado(), $this->usuario);
+
+    expect($levantamiento->fresh()->estado)->toBe('aceptado');
+});
+
+it('ver el acta firmada que ya no está en el disco da 404 y no error 500', function () {
+    equipoEn($this->direccion, $this->piso);
+    $levantamiento = levantamiento();
+    $gestor = app(GestorLevantamientos::class);
+    $gestor->acta($levantamiento, $this->usuario);
+    $gestor->aceptar($levantamiento->fresh(), Apoyo::pdfFirmado(), $this->usuario);
+    Storage::disk('local')->delete($levantamiento->fresh()->acta_path);
+
+    Livewire::test(Detalle::class, ['levantamiento' => $levantamiento->fresh()])
+        ->call('verActaFirmada')
+        ->assertStatus(404);
+});

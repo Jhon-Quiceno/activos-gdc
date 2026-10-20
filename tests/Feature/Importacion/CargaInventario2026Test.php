@@ -31,6 +31,7 @@ function formsCsv(array $filas): UploadedFile
         'Dispositivo de impresión', 'Marca del dispositivo de impresión', 'Modelo del dispositivo de impresión', 'Código activo del dispositivo de impresión',
         'Versión Sistema operativo dispositivo de procesamiento (responda N/A si no aplica)',
         'El dispositivo cuenta con antivirus (responda N/A si no aplica)',
+        '¿El equipo cuenta con Teclado?', '¿El equipo cuenta con Mouse?',
         'Describa el estado de funcionamiento actual del equipo', 'Describa las Observaciones adicionales del equipo',
         'Sede donde se encuentra el equipo', 'Piso donde se encuentra el equipo', 'Dependencia responsable del equipo',
         'Nombre del responsable del equipo', 'Numero de Cedula del responsable del equipo', 'Tipo de Vinculacion',
@@ -189,4 +190,45 @@ it('el inventario convertido se puede descargar como plantilla', function () {
         ->set('archivo', formsCsv([filaForms()]))
         ->call('descargarInventarioConvertido')
         ->assertFileDownloaded('inventario-2026-en-plantilla.xlsx');
+});
+
+it('un piso con nombre se deja igual y uno con número queda solo el número', function () {
+    $conversion = ConversorInventario2026::convertir(rutaCsv(formsCsv([
+        filaForms(['Sede donde se encuentra el equipo' => 'Rentas', 'Piso donde se encuentra el equipo' => 'Local 44']),
+        filaForms(['ID' => '2', 'Piso donde se encuentra el equipo' => '3er piso']),
+    ])));
+
+    expect($conversion['filas'][0])->toMatchArray(['sede' => 'Places Mall', 'piso' => 'Local 44'])
+        ->and($conversion['filas'][2]['piso'])->toBe('3');
+});
+
+it('«Dirección de Personal» o un «disco externo» no vuelven personal ni de tercero al equipo', function () {
+    $conversion = ConversorInventario2026::convertir(rutaCsv(formsCsv([
+        filaForms(['Dependencia responsable del equipo' => 'DIRECCION DE PERSONAL']),
+        filaForms(['ID' => '2', 'Describa las Observaciones adicionales del equipo' => 'Tiene un disco externo conectado']),
+        filaForms(['ID' => '3', 'Describa las Observaciones adicionales del equipo' => 'Equipo en comodato con el proveedor']),
+    ])));
+
+    expect($conversion['excluidas'])->toBe(0)
+        ->and($conversion['filas'])->toHaveCount(6)
+        ->and($conversion['filas'][0]['propiedad'])->toBe('Gobernación')
+        ->and($conversion['filas'][2]['propiedad'])->toBe('Gobernación')
+        ->and($conversion['filas'][4]['propiedad'])->toBe('Tercero');
+});
+
+it('un código de activo mal escrito no se vuelve serial', function () {
+    $conversion = ConversorInventario2026::convertir(rutaCsv(formsCsv([
+        filaForms(['Código activo dispositivo de procesamiento' => 'I1-2410']),
+    ])));
+
+    expect($conversion['filas'][0])->toMatchArray(['codigo_activo' => 'I1-2410', 'serial' => null]);
+});
+
+it('los periféricos marcados con SI van solo en el PC de la fila', function () {
+    $conversion = ConversorInventario2026::convertir(rutaCsv(formsCsv([
+        filaForms(['¿El equipo cuenta con Teclado?' => 'SI', '¿El equipo cuenta con Mouse?' => 'NO']),
+    ])));
+
+    expect($conversion['filas'][0]['perifericos'])->toBe('Teclado')
+        ->and($conversion['filas'][1]['perifericos'])->toBeNull();
 });

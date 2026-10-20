@@ -218,4 +218,16 @@ class ValoracionActivoTest extends TestCase
             ->assertSee('Valoración registrada.')
             ->assertDontSee('Este activo aún no tiene valoración.');
     }
+
+    public function test_no_valora_un_equipo_que_se_dio_de_baja_con_la_ventana_abierta(): void
+    {
+        $formulario = $this->formulario();
+
+        // La baja se registra desde otra pantalla mientras la ventana sigue abierta.
+        Equipo::whereKey($this->pc->id)->update(['estado_ciclo_vida' => 'dado_de_baja']);
+
+        $formulario->call('guardar')->assertHasErrors('equipo');
+
+        $this->assertSame(0, ValoracionActivo::count());
+    }
 }

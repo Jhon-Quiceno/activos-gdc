@@ -3,8 +3,10 @@
 namespace App\Livewire\Levantamientos\Soporte;
 
 use App\Livewire\Movimientos\Soporte\FormatosPdf;
+use App\Models\Asignacion;
 use App\Models\Dependencia;
 use App\Models\Equipo;
+use App\Models\Evento;
 use App\Models\LevantamientoActivos;
 use App\Models\User;
 use App\Services\HistorialService;
@@ -27,6 +29,11 @@ use Illuminate\Validation\ValidationException;
  *    levantamiento pasa a «Pendiente de firma».
  * 5. Firman el propietario y el custodio; al subir el acta firmada queda
  *    «Aceptado». Sin acta firmada nunca queda aceptado.
+ *
+ * Lo firmado tiene que ser lo que queda aceptado: un cambio en el levantamiento
+ * después de generar el acta (verificar, valorar) lo devuelve a «En curso», y
+ * no se acepta si sus equipos cambiaron desde el acta (traslados o valoraciones
+ * hechos desde otra pantalla). En los dos casos hay que generar el acta de nuevo.
  */
 class GestorLevantamientos
 {
@@ -88,6 +95,7 @@ class GestorLevantamientos
 
         DB::transaction(function () use ($levantamiento, $equipo, $usuario) {
             $equipo->update(['verificacion' => 'verificado']);
+            $this->registrarCambio($levantamiento);
 
             $this->historial->registrar(
                 equipo: $equipo,
@@ -121,7 +129,8 @@ class GestorLevantamientos
             throw ValidationException::withMessages(['acta' => __('El levantamiento no tiene equipos: no hay nada que aceptar.')]);
         }
 
-        $levantamiento->update(['estado' => 'pendiente_de_firma']);
+        // touch(): updated_at marca cuándo se generó el acta, aunque ya estuviera pendiente.
+        $levantamiento->forceFill(['estado' => 'pendiente_de_firma'])->touch();
 
         return Pdf::loadView('livewire.levantamientos.pdf.acta', [
             'levantamiento' => $levantamiento->load(['dependencia', 'proceso', 'sede', 'propietario.cargoOficial', 'custodio.cargoOficial']),
@@ -140,6 +149,12 @@ class GestorLevantamientos
             throw ValidationException::withMessages(['actaFirmada' => __('Primero genera el acta prellenada para que la firmen.')]);
         }
 
+        if ($this->cambioDesdeElActa($levantamiento)) {
+            $levantamiento->update(['estado' => 'en_curso']);
+
+            throw ValidationException::withMessages(['actaFirmada' => __('Los equipos del levantamiento cambiaron después de generar el acta (traslados o valoraciones): genera el acta de nuevo y hazla firmar.')]);
+        }
+
         $ruta = $actaFirmada->storeAs("levantamientos/{$levantamiento->id}", 'acta-firmada.pdf', self::DISCO);
 
         $levantamiento->update([
@@ -152,6 +167,40 @@ class GestorLevantamientos
     public function actaFirmadaExiste(LevantamientoActivos $levantamiento): bool
     {
         return $levantamiento->acta_path !== null && Storage::disk(self::DISCO)->exists($levantamiento->acta_path);
+    }
+
+    /**
+     * Un cambio hecho desde el levantamiento después de generar el acta la deja
+     * desactualizada: vuelve a «En curso» para que se genere de nuevo.
+     */
+    public function registrarCambio(LevantamientoActivos $levantamiento): void
+    {
+        if ($levantamiento->estado === 'pendiente_de_firma') {
+            $levantamiento->update(['estado' => 'en_curso']);
+        }
+    }
+
+    /**
+     * ¿Entró, salió o se reclasificó algún equipo del levantamiento después de
+     * generar el acta? (updated_at de un levantamiento pendiente de firma es el
+     * momento en que se generó, ver acta()).
+     */
+    private function cambioDesdeElActa(LevantamientoActivos $levantamiento): bool
+    {
+        $desde = $levantamiento->updated_at;
+        $rama = Dependencia::idsDeRama($levantamiento->dependencia_id);
+
+        $asignacionMovida = Asignacion::query()
+            ->whereIn('dependencia_id', $rama)
+            ->whereHas('piso', fn ($p) => $p->where('pisos.sede_id', $levantamiento->sede_id))
+            ->where(fn ($q) => $q->where('created_at', '>', $desde)->orWhere('updated_at', '>', $desde))
+            ->exists();
+
+        return $asignacionMovida || Evento::query()
+            ->where('tipo', 'valoracion')
+            ->where('created_at', '>', $desde)
+            ->whereIn('equipo_id', $this->equipos($levantamiento)->select('equipos.id'))
+            ->exists();
     }
 
     private function asegurarEnCurso(LevantamientoActivos $levantamiento): void

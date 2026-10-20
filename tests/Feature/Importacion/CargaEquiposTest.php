@@ -14,6 +14,7 @@ use App\Models\Persona;
 use App\Models\Piso;
 use App\Models\Proceso;
 use App\Models\Sede;
+use App\Models\TipoComponente;
 use App\Models\TipoEquipo;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -214,4 +215,67 @@ it('un archivo que no es la plantilla se rechaza con un mensaje claro', function
     $archivo = UploadedFile::fake()->createWithContent('otra-cosa.csv', "\"columna\",\"otra\"\n\"1\",\"2\"\n");
 
     cargaEquipos($archivo)->assertHasErrors('archivo');
+});
+
+it('registra los periféricos del PC y los ignora en un equipo que no es de cómputo', function () {
+    TipoComponente::create(['nombre' => 'Teclado', 'es_periferico' => true]);
+    TipoComponente::create(['nombre' => 'Mouse', 'es_periferico' => true]);
+
+    $carga = cargaEquipos(plantillaCsv([
+        filaPlantilla(['perifericos' => 'Teclado, Mouse y Parlante']),
+        filaPlantilla(['tipo_equipo' => 'Monitor', 'serial' => 'MON-1', 'codigo_activo' => 'I1-024148', 'perifericos' => 'Teclado']),
+    ]));
+
+    expect($carga->get('resultados.0.advertencias'))->toContain('El periférico «Parlante» no está en el catálogo: se omite.')
+        ->and($carga->get('resultados.1.advertencias'))->toContain('Los periféricos solo se registran en equipos de cómputo: se omiten.');
+
+    $carga->call('confirmar')->assertHasNoErrors();
+
+    expect(Equipo::where('serial', 'MXL0001')->first()->componentes()->with('tipoComponente')->get()->pluck('tipoComponente.nombre')->sort()->values()->all())->toBe(['Mouse', 'Teclado'])
+        ->and(Equipo::where('serial', 'MON-1')->first()->componentes()->count())->toBe(0);
+});
+
+it('un texto más largo que su columna da error en la fila y no tumba la carga', function () {
+    $carga = cargaEquipos(plantillaCsv([
+        filaPlantilla(['modelo' => str_repeat('M', 101)]),
+        filaPlantilla(['serial' => 'MXL0002', 'codigo_activo' => 'I1-024148']),
+    ]));
+
+    expect($carga->get('resultados.0.errores'))->toContain('Modelo tiene 101 caracteres: el máximo es 100.');
+
+    $carga->call('confirmar')->assertHasNoErrors();
+
+    expect(Equipo::pluck('serial')->all())->toBe(['MXL0002']);
+});
+
+it('volver a cargar el mismo archivo no duplica los equipos sin serial ni código', function () {
+    $archivo = fn () => plantillaCsv([filaPlantilla(['serial' => '', 'codigo_activo' => ''])]);
+
+    cargaEquipos($archivo())->call('confirmar')->assertHasNoErrors();
+    $primero = Equipo::sole();
+
+    $otraVez = cargaEquipos($archivo());
+
+    expect($otraVez->get('resultados.0.errores'))->toContain("Esta fila ya se cargó de «carga-equipos.csv» (equipo N.º {$primero->numero_activo}): no se vuelve a crear.");
+
+    $otraVez->call('confirmar');
+
+    expect(Equipo::count())->toBe(1);
+});
+
+it('un responsable sin documento se crea una sola vez y se reutiliza en la siguiente carga', function () {
+    $sinCedula = ['responsable_nombres' => 'Juan', 'responsable_apellidos' => 'Pérez'];
+
+    cargaEquipos(plantillaCsv([
+        filaPlantilla($sinCedula),
+        filaPlantilla(['tipo_equipo' => 'Monitor', 'serial' => 'MON-1', 'codigo_activo' => 'I1-024148'] + $sinCedula),
+    ]))->call('confirmar')->assertHasNoErrors();
+
+    cargaEquipos(plantillaCsv([
+        filaPlantilla(['serial' => 'MXL0003', 'codigo_activo' => 'I1-024149'] + $sinCedula),
+    ]))->call('confirmar')->assertHasNoErrors();
+
+    expect(Equipo::count())->toBe(3)
+        ->and(Persona::count())->toBe(1)
+        ->and(Asignacion::whereNotNull('persona_id')->distinct()->pluck('persona_id')->all())->toBe([Persona::sole()->id]);
 });

@@ -10,6 +10,7 @@ use App\Models\Asignacion;
 use App\Models\Dependencia;
 use App\Models\Equipo;
 use App\Models\Persona;
+use Illuminate\Support\Arr;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -118,7 +119,8 @@ class Index extends Component
 
         if ($this->editandoId) {
             $persona = Persona::findOrFail($this->editandoId);
-            $persona->update($datos);
+            // Editar los datos no reactiva a una persona retirada.
+            $persona->update(Arr::except($datos, 'activo'));
             $this->mensaje = __('Datos de :nombre actualizados.', ['nombre' => $persona->nombreCompleto()]);
         } else {
             $persona = Persona::create($datos);

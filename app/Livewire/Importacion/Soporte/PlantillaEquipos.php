@@ -63,6 +63,7 @@ final class PlantillaEquipos
         'procesador' => ['Procesador', false, null, 'Solo cómputo.'],
         'memoria_ram' => ['Memoria RAM', false, null, 'Solo cómputo.'],
         'disco' => ['Disco', false, null, 'Solo cómputo. Ej.: SSD 512GB.'],
+        'perifericos' => ['Periféricos', false, null, 'Solo cómputo. Ej.: Teclado, Mouse, Sonido.'],
         'antivirus' => ['Antivirus', false, null, 'Sí, No o el nombre del producto.'],
         'nombre_red' => ['Nombre de red', false, null, ''],
         'ofimatica' => ['Ofimática', false, null, ''],
@@ -188,7 +189,10 @@ final class PlantillaEquipos
         $hoja->freezePane('A2');
         $libro->setActiveSheetIndex(0);
 
-        $ruta = tempnam(sys_get_temp_dir(), 'plantilla').'.xlsx';
+        // tempnam() crea el archivo: se renombra a .xlsx para no dejar uno vacío por descarga.
+        $base = tempnam(sys_get_temp_dir(), 'plantilla');
+        $ruta = $base.'.xlsx';
+        rename($base, $ruta);
         (new Xlsx($libro))->save($ruta);
 
         return $ruta;
