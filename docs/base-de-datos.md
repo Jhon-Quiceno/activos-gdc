@@ -483,6 +483,12 @@ Cuando todos los bloques usen las columnas nuevas (días 1 y 2 del plan), Jhon c
 
 Migración: `database/migrations/2026_10_20_120001_cerrar_migracion_dos_tiempos.php`.
 
+**Decisiones registradas al cerrar la Fase 2** (no son fallas; las tomó el líder):
+
+- **`personas.numero_documento` nullable** — ver el punto 2.
+- **El tablero no compara contra el PAMP** (RF-36): falta esa fuente de datos en el sistema.
+- **RF-39: la tabla editable de equivalencias es solo para dependencias** (`dependencia_equivalencias`, pantalla Administración → Dependencias), que es donde hacía falta por las 175 variantes del inventario 2026 y los renombres del Decreto 609. Las variantes de **sedes, marcas, modelos y sistemas operativos** se resuelven en código durante la carga (normalización en `Importacion/Soporte/Normalizar` y `ConversorInventario2026`, más emparejado por nombre o `firstOrCreate`), sin tabla editable ni migración. Si aparece un caso que el código no resuelve, se ajusta la normalización.
+
 **Antes de abrir el PR de cierre**, cada dueño confirma que su bloque ya no usa ninguna columna vieja:
 
 ```bash
@@ -1218,4 +1224,62 @@ Table importaciones {
 
 ---
 
-**Ver también:** [Análisis de requerimientos v4](./analisis-requerimientos.md) · [Plan de Fase 2](./plan-fase2.md) · [Normas de trabajo](./normas-de-trabajo.md)
+## 10. Fase 3 — cambios de esquema (los crea el líder)
+
+> Esta sección **describe** lo que la Fase 3 necesita en la base de datos; las migraciones todavía no existen. **Solo Jhon las crea** ([normas-de-trabajo.md §2](./normas-de-trabajo.md#2-migraciones)). La migración en dos tiempos de la Fase 2 está **cerrada** y no se reabre: estas son migraciones nuevas, cada una con su `down()`. El reparto y el orden están en [plan-fase3.md](./plan-fase3.md) y [jhon.md](./jhon.md).
+
+### 10.1 Lo que ya existe y no necesita migración
+
+| RF | Ya está en el esquema |
+|---|---|
+| RF-05 Puestos de trabajo | `puestos_trabajo` (`nombre_o_codigo`, `piso_id`, `dependencia_id`; su `sede_id` se borró en el cierre de la Fase 2), `asignaciones.puesto_trabajo_id` y `equipos.puesto_trabajo_id`. El seeder siembra 25 puestos de ejemplo. Falta la pantalla, no la tabla (salvo los ajustes de la migración F3-1). |
+| RF-16 Configuración en una fecha | `componentes.fecha_instalacion` y `componentes.fecha_retiro` (null = instalado hoy), y `eventos.valores` (JSON `antes`/`despues`) para los cambios de la configuración de cómputo. |
+| RF-17 Destino de lo retirado | `cambios_componente.destino_retirado` (`bodega`, `otro_equipo`, `descarte`) y `cambios_componente.equipo_destino_id` (agregado en la Fase 2, todavía sin uso en pantalla). |
+| RF-31 Pendientes de firma | `eventos.estado_firma` y `documentos.firmado`. |
+| RF-42 Cargas posteriores | `equipos.serial` único, `equipos.codigo_activo` indexado, `eventos.valores` para registrar qué cambió, `importaciones` para la trazabilidad. |
+
+### 10.2 Migraciones a crear, en este orden
+
+| # | Migración | Qué hace | Habilita |
+|---|---|---|---|
+| **F3-1** | `ajustar_puestos_trabajo` | `puestos_trabajo` + `activo` (boolean, default `true`) y `unique(piso_id, nombre_o_codigo)`. **Decisión del líder:** la fuente de verdad del puesto de un equipo es la asignación abierta (`asignaciones.puesto_trabajo_id`), igual que el piso; `equipos.puesto_trabajo_id` es un resto de v3 que ningún código escribe hoy. Recomendación: borrarlo en esta misma migración (o dejarlo y documentarlo como no usado). | RF-05 (Juan José) |
+| **F3-2** | `create_fotos_equipo_table` | Tabla nueva `fotos_equipo` (ver 10.3). | RF-06 (Juan José) |
+| **F3-3** | `create_tipos_evento_table` | Tabla nueva `tipos_evento` (ver 10.4), sembrada con los 8 tipos del sistema; `eventos.tipo` pasa de `enum` a `varchar(40)` con llave foránea a `tipos_evento.clave`, **conservando exactamente las mismas claves** para no tocar ningún evento existente. | RF-13 (Jhon) |
+
+### 10.3 `fotos_equipo` (RF-06)
+
+| Columna | Tipo | Regla |
+|---|---|---|
+| `id` | bigint PK | |
+| `equipo_id` | FK → equipos | `restrict`: la foto es parte de la hoja de vida y no se borra con el equipo (los equipos tampoco se borran). |
+| `archivo_path` | varchar(255) | Ruta en el mismo disco privado de los documentos firmados (`FormatosPdf::DISCO`); nunca en `public/`. |
+| `descripcion` | varchar(160) nullable | «Vista frontal», «placa con el serial»… |
+| `tomada_en` | date nullable | Fecha de la foto (puede ser anterior a la carga). |
+| `es_principal` | boolean, default `false` | La que se muestra en la ficha; como máximo una por equipo (lo valida el modelo, igual que la valoración vigente). |
+| `subida_por` | FK → users | Autor (RF-11). |
+| `created_at`, `updated_at` | timestamp | |
+
+Índice: `equipo_id`. No es un `documento` porque los documentos cuelgan de un evento (`documentos.evento_id` es obligatorio) y la foto del equipo no; subir o retirar una foto sí deja un evento `actualizacion_datos` en el historial.
+
+### 10.4 `tipos_evento` (RF-13)
+
+| Columna | Tipo | Regla |
+|---|---|---|
+| `id` | bigint PK | |
+| `clave` | varchar(40), único | La que se guarda en `eventos.tipo`. Las 8 del sistema: `alta`, `traslado_responsable`, `cambio_componente`, `diagnostico`, `valoracion`, `baja`, `actualizacion_datos`, `anulacion_aclaracion`. |
+| `nombre` | varchar(80) | Etiqueta en pantalla («Traslado / cambio de responsable»). |
+| `descripcion` | varchar(255) nullable | Para qué se usa. |
+| `requiere_firma` | boolean, default `false` | Si es `true`, el evento nace «pendiente de firma» (RF-30, RN-05). |
+| `es_sistema` | boolean, default `false` | Los 8 del sistema: su clave no se edita ni se desactiva, porque tienen efectos propios (traslado, baja, valoración…). |
+| `activo` | boolean, default `true` | Un tipo configurable se desactiva, nunca se borra (los eventos lo referencian). |
+| `created_at`, `updated_at` | timestamp | |
+
+`eventos.tipo` → `varchar(40)` + `foreign('tipo')->references('clave')->on('tipos_evento')`. Los tipos configurables **no tienen efectos sobre el equipo**: solo registran un hecho con fecha, descripción, autor y adjuntos, y pasan por `HistorialService::registrar()` como todos.
+
+### 10.5 Sin migración
+
+RF-16, RF-17, RF-31 y RF-42 se resuelven con el esquema actual. Si en el camino aparece la necesidad de una columna, se le pide a Jhon el mismo día (no se agrega por cuenta propia).
+
+---
+
+**Ver también:** [Análisis de requerimientos v4](./analisis-requerimientos.md) · [Plan de Fase 3](./plan-fase3.md) · [Normas de trabajo](./normas-de-trabajo.md)

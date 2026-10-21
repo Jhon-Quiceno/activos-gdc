@@ -3,7 +3,7 @@
 **Gobernación de Córdoba · Dirección TIC**
 Sistema de Hoja de Vida de Equipos
 
-> Reglas de trabajo del equipo, explicadas para que cualquiera las aplique sin ambigüedad. Valen para todas las fases; el plan actual es el [Plan de Fase 2](./plan-fase2.md).
+> Reglas de trabajo del equipo, explicadas para que cualquiera las aplique sin ambigüedad. Valen para todas las fases; el plan actual es el [Plan de Fase 3](./plan-fase3.md).
 
 Cinco personas tocando el mismo repositorio en paralelo solo funciona si cada una sabe exactamente dónde puede escribir y qué no debe tocar. Estas normas existen para eso: evitar choques de migraciones, archivos pisados y eventos registrados de forma inconsistente.
 
@@ -28,6 +28,8 @@ Cinco personas tocando el mismo repositorio en paralelo solo funciona si cada un
 | Juan José (desde el 9 oct) | Etiquetas QR | `feature/qr-<tarea>` |
 | Manuel | Inicio / tablero (Fase 2) | `feature/inicio-<tarea>` |
 | Anuar | Levantamientos (Fase 2) | `feature/levantamientos-<tarea>` |
+
+**Desde la Fase 3** los bloques de Anuar (Movimientos y Levantamientos) y de Juan Camilo (Importación) son de Juan José, y los de Alex (Reportes) y Manuel (Administración e Inicio) son de Jhon. Los prefijos de rama no cambian. Ver el [Plan de Fase 3](./plan-fase3.md#2-reparto).
 
 ### Flujo paso a paso (copiar y pegar, cambiando el nombre de la rama)
 
@@ -215,4 +217,4 @@ Lo que el usuario final ve (textos de pantalla, mensajes de validación, correos
 
 ---
 
-**Ver también:** [Análisis de requerimientos](./analisis-requerimientos.md) · [Plan de Fase 2](./plan-fase2.md)
+**Ver también:** [Análisis de requerimientos](./analisis-requerimientos.md) · [Plan de Fase 3](./plan-fase3.md)
