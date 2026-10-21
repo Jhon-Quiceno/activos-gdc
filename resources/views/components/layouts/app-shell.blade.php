@@ -19,6 +19,7 @@
     $adminItems = [
         ['label' => 'Usuarios', 'route' => 'admin.usuarios', 'pattern' => 'admin.usuarios', 'icon' => 'admin'],
         ['label' => 'Listas', 'route' => 'admin.listas', 'pattern' => 'admin.listas', 'icon' => 'listas'],
+        ['label' => 'Dependencias', 'route' => 'admin.dependencias', 'pattern' => 'admin.dependencias', 'icon' => 'listas'],
     ];
 
     // RF-30/RN-05: eventos cuyo movimiento aún no tiene los documentos firmados.
