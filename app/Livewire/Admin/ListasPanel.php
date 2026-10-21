@@ -12,15 +12,19 @@ use Livewire\Component;
 
 /**
  * Pantalla "Listas" (Manuel, bloque de Administración): patrón maestro-detalle
- * sobre los catálogos planos de la app (un solo `nombre`): tipos de equipo y de
- * componente, marcas, sistemas operativos y motivos de baja.
+ * sobre los catálogos planos de la app: tipos de equipo y de componente, marcas,
+ * sistemas operativos y motivos de baja.
  *
  * Modelo v4: sedes, pisos y dependencias salieron de este panel genérico. En v4
  * son catálogos relacionales (la sede necesita municipio, el piso necesita sede
  * y número único por sede, la dependencia es un árbol con tipo y padre), así que
- * tienen sus propias pantallas en el bloque de Administración. Dejarlos en el
- * editor plano los rompería apenas corra la migración de cierre, que vuelve
- * obligatorios `sedes.municipio_id` y `pisos.sede_id`.
+ * tienen sus propias pantallas en el bloque de Administración.
+ *
+ * Además del nombre, tres catálogos tienen campos propios de v4 que también se
+ * mantienen aquí (RF-45): el tipo de equipo (familia, tipo de activo GT-M4,
+ * configuración de cómputo, vida útil y activo), el sistema operativo (fin de
+ * soporte, para la obsolescencia) y el tipo de componente (obligatorio en cómputo,
+ * RF-14). Los campos extra viven en `$extra` (agregar) y `$editandoExtra` (editar).
  *
  * "Tipos de evento" sigue fuera: es el enum fijo `Evento::tipo`, no una tabla.
  */
@@ -30,13 +34,15 @@ class ListasPanel extends Component
 
     public string $nuevoValor = '';
 
-    public string $nuevaFamilia = '';
+    /** Campos propios del catálogo activo al agregar. */
+    public array $extra = [];
 
     public ?int $editandoId = null;
 
     public string $editandoValor = '';
 
-    public string $editandoFamilia = '';
+    /** Campos propios del catálogo activo al editar. */
+    public array $editandoExtra = [];
 
     /**
      * @var array<string, array{label: string, singular: string, model: class-string}>
@@ -50,9 +56,8 @@ class ListasPanel extends Component
     ];
 
     /**
-     * Etiquetas de `tipos_equipo.familia` (mismo enum que App\Livewire\Equipos\Crear).
-     * La columna es NOT NULL en BD, así que el catálogo "Tipos de equipo" es el
-     * único que necesita este campo extra tanto al agregar como al editar.
+     * Etiquetas de `tipos_equipo.familia`: los 10 valores del enum de v4
+     * (migración 2026_10_18_100009).
      *
      * @var array<string, string>
      */
@@ -64,6 +69,15 @@ class ListasPanel extends Component
         'energia' => 'Energía',
         'conectividad' => 'Conectividad',
         'proyeccion' => 'Proyección',
+        'seguridad_electronica' => 'Seguridad electrónica',
+        'climatizacion' => 'Climatización',
+        'telefonia' => 'Telefonía',
+    ];
+
+    /** Tipo de activo del GT-M4 (tabla 2): el soporte no se valora (RN-25). */
+    private const TIPOS_ACTIVO = [
+        'hardware' => 'Hardware',
+        'soporte' => 'Soporte',
     ];
 
     /**
@@ -80,6 +94,11 @@ class ListasPanel extends Component
         'motivos_baja' => 'Uso',
     ];
 
+    public function mount(): void
+    {
+        $this->extra = $this->extraPorDefecto();
+    }
+
     public function seleccionarLista(string $clave): void
     {
         if (! array_key_exists($clave, self::CATALOGOS)) {
@@ -87,7 +106,8 @@ class ListasPanel extends Component
         }
 
         $this->listaActiva = $clave;
-        $this->reset(['nuevoValor', 'nuevaFamilia']);
+        $this->reset(['nuevoValor']);
+        $this->extra = $this->extraPorDefecto();
         $this->resetErrorBag();
     }
 
@@ -99,28 +119,86 @@ class ListasPanel extends Component
         return self::CATALOGOS[$this->listaActiva];
     }
 
+    /** Valores iniciales de los campos propios del catálogo activo. */
+    private function extraPorDefecto(): array
+    {
+        return match ($this->listaActiva) {
+            'tipos_equipo' => ['familia' => '', 'tipo_activo' => 'hardware', 'usa_configuracion_computo' => false, 'vida_util_meses' => '', 'activo' => true],
+            'sistemas_operativos' => ['fin_soporte' => ''],
+            'tipos_componente' => ['obligatorio_en_computo' => false],
+            default => [],
+        };
+    }
+
+    /** Reglas de los campos propios, con el prefijo de la propiedad que los guarda. */
+    private function reglasExtra(string $prefijo): array
+    {
+        $reglas = match ($this->listaActiva) {
+            'tipos_equipo' => [
+                'familia' => ['required', Rule::in(array_keys(self::FAMILIAS))],
+                'tipo_activo' => ['required', Rule::in(array_keys(self::TIPOS_ACTIVO))],
+                'usa_configuracion_computo' => ['boolean'],
+                'vida_util_meses' => ['nullable', 'integer', 'min:1', 'max:600'],
+                'activo' => ['boolean'],
+            ],
+            'sistemas_operativos' => [
+                'fin_soporte' => ['nullable', 'date'],
+            ],
+            'tipos_componente' => [
+                'obligatorio_en_computo' => ['boolean'],
+            ],
+            default => [],
+        };
+
+        return collect($reglas)->mapWithKeys(fn ($r, $campo) => ["{$prefijo}.{$campo}" => $r])->all();
+    }
+
+    private function atributosExtra(string $prefijo): array
+    {
+        return [
+            "{$prefijo}.familia" => __('familia'),
+            "{$prefijo}.tipo_activo" => __('tipo de activo'),
+            "{$prefijo}.vida_util_meses" => __('vida útil'),
+            "{$prefijo}.fin_soporte" => __('fin de soporte'),
+        ];
+    }
+
+    /** Columnas listas para guardar a partir de los campos propios. */
+    private function datosExtra(array $extra): array
+    {
+        return match ($this->listaActiva) {
+            'tipos_equipo' => [
+                'familia' => $extra['familia'],
+                'tipo_activo' => $extra['tipo_activo'],
+                'usa_configuracion_computo' => (bool) ($extra['usa_configuracion_computo'] ?? false),
+                'vida_util_meses' => ($extra['vida_util_meses'] ?? '') !== '' ? (int) $extra['vida_util_meses'] : null,
+                'activo' => (bool) ($extra['activo'] ?? true),
+            ],
+            'sistemas_operativos' => [
+                'fin_soporte' => ($extra['fin_soporte'] ?? '') !== '' ? $extra['fin_soporte'] : null,
+            ],
+            'tipos_componente' => [
+                'obligatorio_en_computo' => (bool) ($extra['obligatorio_en_computo'] ?? false),
+            ],
+            default => [],
+        };
+    }
+
     public function agregar(): void
     {
         $config = $this->config();
         $tabla = (new $config['model'])->getTable();
 
-        $rules = ['nuevoValor' => ['required', 'string', 'max:255', Rule::unique($tabla, 'nombre')]];
+        $this->validate(
+            ['nuevoValor' => ['required', 'string', 'max:255', Rule::unique($tabla, 'nombre')]] + $this->reglasExtra('extra'),
+            [],
+            ['nuevoValor' => __('nombre')] + $this->atributosExtra('extra'),
+        );
 
-        if ($this->listaActiva === 'tipos_equipo') {
-            $rules['nuevaFamilia'] = ['required', 'in:'.implode(',', array_keys(self::FAMILIAS))];
-        }
+        $config['model']::create(['nombre' => $this->nuevoValor] + $this->datosExtra($this->extra));
 
-        $this->validate($rules);
-
-        $datos = ['nombre' => $this->nuevoValor];
-
-        if ($this->listaActiva === 'tipos_equipo') {
-            $datos['familia'] = $this->nuevaFamilia;
-        }
-
-        $config['model']::create($datos);
-
-        $this->reset(['nuevoValor', 'nuevaFamilia']);
+        $this->reset(['nuevoValor']);
+        $this->extra = $this->extraPorDefecto();
 
         session()->flash('status', __(':singular agregado correctamente.', ['singular' => $config['singular']]));
     }
@@ -132,7 +210,18 @@ class ListasPanel extends Component
 
         $this->editandoId = $registro->id;
         $this->editandoValor = (string) $registro->nombre;
-        $this->editandoFamilia = $this->listaActiva === 'tipos_equipo' ? (string) $registro->familia : '';
+        $this->editandoExtra = match ($this->listaActiva) {
+            'tipos_equipo' => [
+                'familia' => (string) $registro->familia,
+                'tipo_activo' => (string) ($registro->tipo_activo ?? 'hardware'),
+                'usa_configuracion_computo' => (bool) $registro->usa_configuracion_computo,
+                'vida_util_meses' => (string) ($registro->vida_util_meses ?? ''),
+                'activo' => (bool) $registro->activo,
+            ],
+            'sistemas_operativos' => ['fin_soporte' => (string) $registro->fin_soporte?->toDateString()],
+            'tipos_componente' => ['obligatorio_en_computo' => (bool) $registro->obligatorio_en_computo],
+            default => [],
+        };
         $this->resetErrorBag();
 
         $this->dispatch('open-modal', 'editar-item');
@@ -143,22 +232,14 @@ class ListasPanel extends Component
         $config = $this->config();
         $tabla = (new $config['model'])->getTable();
 
-        $rules = ['editandoValor' => ['required', 'string', 'max:255', Rule::unique($tabla, 'nombre')->ignore($this->editandoId)]];
-
-        if ($this->listaActiva === 'tipos_equipo') {
-            $rules['editandoFamilia'] = ['required', 'in:'.implode(',', array_keys(self::FAMILIAS))];
-        }
-
-        $this->validate($rules);
+        $this->validate(
+            ['editandoValor' => ['required', 'string', 'max:255', Rule::unique($tabla, 'nombre')->ignore($this->editandoId)]] + $this->reglasExtra('editandoExtra'),
+            [],
+            ['editandoValor' => __('nombre')] + $this->atributosExtra('editandoExtra'),
+        );
 
         $registro = $config['model']::findOrFail($this->editandoId);
-        $datos = ['nombre' => $this->editandoValor];
-
-        if ($this->listaActiva === 'tipos_equipo') {
-            $datos['familia'] = $this->editandoFamilia;
-        }
-
-        $registro->update($datos);
+        $registro->update(['nombre' => $this->editandoValor] + $this->datosExtra($this->editandoExtra));
 
         $this->dispatch('close-modal', 'editar-item');
 
@@ -180,29 +261,47 @@ class ListasPanel extends Component
         };
     }
 
-    /**
-     * Columna "Detalle": solo Tipos de equipo tiene un dato real adicional
-     * (la familia). Los demás catálogos solo tienen `nombre`, así que muestran
-     * '—' en vez de inventar variantes o notas que no existen en la BD.
-     */
+    /** Columna "Detalle": los campos propios del catálogo, en una línea. */
     private function detalleDe(mixed $registro): string
     {
-        if ($this->listaActiva === 'tipos_equipo') {
-            return __('Familia').': '.(self::FAMILIAS[$registro->familia] ?? $registro->familia);
-        }
+        return match ($this->listaActiva) {
+            'tipos_equipo' => collect([
+                self::FAMILIAS[$registro->familia] ?? $registro->familia,
+                self::TIPOS_ACTIVO[$registro->tipo_activo] ?? null,
+                $registro->usa_configuracion_computo ? __('con configuración de cómputo') : null,
+                $registro->vida_util_meses ? __('vida útil :n meses', ['n' => $registro->vida_util_meses]) : null,
+            ])->filter()->implode(' · '),
+            'sistemas_operativos' => $registro->fin_soporte
+                ? __('Fin de soporte: :fecha', ['fecha' => $registro->fin_soporte->format('d/m/Y')])
+                : __('Con soporte vigente'),
+            'tipos_componente' => $registro->obligatorio_en_computo ? __('Obligatorio en cómputo (RF-14)') : '—',
+            default => '—',
+        };
+    }
 
-        return '—';
+    /** Solo los tipos de equipo tienen columna de estado (`activo`). */
+    private function tieneEstado(): bool
+    {
+        return $this->listaActiva === 'tipos_equipo';
     }
 
     /**
-     * TODO: estos catálogos planos todavía no tienen columna `activo`/estado en
-     * BD uniforme (fuera del alcance de esta tarea: no se tocan migraciones).
-     * Cuando exista, este método debe alternarla igual que
-     * UsuariosPanel::alternarActivo().
+     * Los tipos de equipo se desactivan con su columna `activo` (no se borran:
+     * los equipos los referencian). Los demás catálogos planos todavía no tienen
+     * columna de estado.
      */
     public function desactivar(int $id): void
     {
-        session()->flash('status', __('Función pendiente: este catálogo todavía no tiene columna de estado para desactivar elementos.'));
+        if (! $this->tieneEstado()) {
+            session()->flash('status', __('Este catálogo no tiene columna de estado: sus elementos no se desactivan.'));
+
+            return;
+        }
+
+        $tipo = TipoEquipo::findOrFail($id);
+        $tipo->update(['activo' => ! $tipo->activo]);
+
+        session()->flash('status', $tipo->activo ? __('Tipo de equipo reactivado.') : __('Tipo de equipo desactivado.'));
     }
 
     public function render()
@@ -217,6 +316,7 @@ class ListasPanel extends Component
             'registro' => $registro,
             'detalle' => $this->detalleDe($registro),
             'uso' => $this->usoDe($registro),
+            'activo' => $this->tieneEstado() ? (bool) $registro->activo : true,
         ]);
 
         return view('livewire.admin.listas-panel', [
@@ -225,6 +325,8 @@ class ListasPanel extends Component
             'config' => $config,
             'filas' => $filas,
             'familias' => self::FAMILIAS,
+            'tiposActivo' => self::TIPOS_ACTIVO,
+            'tieneEstado' => $this->tieneEstado(),
             'usoLabel' => self::USO_LABELS[$this->listaActiva] ?? __('Uso'),
         ]);
     }

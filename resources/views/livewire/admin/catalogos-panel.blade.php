@@ -18,8 +18,28 @@
         {{-- Alta / edición --}}
         <x-ui.card class="lg:col-span-1 h-fit">
             <p class="section-title">{{ $editandoId ? __('Editar') : __('Agregar') }}</p>
-            <form wire:submit="guardar" class="mt-4 space-y-3">
+            <form wire:submit="{{ $segmento === 'ubicaciones' ? 'agregarUbicacion' : 'guardar' }}" class="mt-4 space-y-3">
                 @switch($segmento)
+                    @case('ubicaciones')
+                        <div>
+                            <label for="ubSedeId" class="text-[13px] font-semibold text-ink-label">{{ __('Sede') }} *</label>
+                            <select id="ubSedeId" wire:model.live="ubSedeId" class="mt-1 h-11 w-full rounded-lg border-line-input text-[14px]">
+                                <option value="">{{ __('Selecciona…') }}</option>
+                                @foreach ($sedesActivas as $s)<option value="{{ $s->id }}">{{ $s->nombre }}</option>@endforeach
+                            </select>
+                            <x-input-error :messages="$errors->get('ubSedeId')" class="mt-1" />
+                        </div>
+                        <div>
+                            <label for="ubPisoId" class="text-[13px] font-semibold text-ink-label">{{ __('Piso') }} *</label>
+                            <select id="ubPisoId" wire:model="ubPisoId" @disabled(! $ubSedeId) class="mt-1 h-11 w-full rounded-lg border-line-input text-[14px] disabled:bg-app-bg">
+                                <option value="">{{ $ubSedeId ? __('Selecciona…') : __('Elige primero la sede') }}</option>
+                                @foreach ($pisosDeSede as $p)<option value="{{ $p->id }}">{{ $p->etiqueta() }}</option>@endforeach
+                            </select>
+                            <x-input-error :messages="$errors->get('ubPisoId')" class="mt-1" />
+                        </div>
+                        <x-ui.dependencia-select name="ubDependenciaId" :label="__('Dependencia') . ' *'" wire:model="ubDependenciaId" />
+                        <p class="text-[12px] text-ink-muted">{{ __('Al elegir esta sede y este piso en un traslado o registro, la dependencia aparecerá en la lista (RF-19).') }}</p>
+                        @break
                     @case('sedes')
                         <x-ui.input name="form.nombre" :label="__('Nombre') . ' *'" wire:model="form.nombre" />
                         <div>
@@ -116,6 +136,7 @@
                     <tr>
                         @switch($segmento)
                             @case('sedes')<th>{{ __('Sede') }}</th><th>{{ __('Municipio') }}</th><th>{{ __('Pisos') }}</th><th>{{ __('Estado') }}</th><th></th>@break
+                            @case('ubicaciones')<th>{{ __('Sede') }}</th><th>{{ __('Piso') }}</th><th>{{ __('Dependencias que funcionan ahí') }}</th>@break
                             @case('municipios')<th>{{ __('Código DANE') }}</th><th>{{ __('Nombre') }}</th><th></th>@break
                             @case('procesos')<th>{{ __('Proceso') }}</th><th>{{ __('Tipo') }}</th><th>{{ __('Estado') }}</th><th></th>@break
                             @case('cargos')<th>{{ __('Código') }}</th><th>{{ __('Denominación') }}</th><th>{{ __('Nivel') }}</th><th></th>@break
@@ -128,6 +149,29 @@
                     @forelse ($datos as $fila)
                         <tr wire:key="{{ $segmento }}-{{ $fila->id }}">
                             @switch($segmento)
+                                @case('ubicaciones')
+                                    <td class="font-semibold text-ink">{{ $fila->sede?->nombre }}</td>
+                                    <td class="whitespace-nowrap text-ink-muted">{{ $fila->etiqueta() }}</td>
+                                    <td>
+                                        @if ($fila->ubicaciones->isEmpty())
+                                            <span class="text-ink-muted">—</span>
+                                        @else
+                                            <div class="flex flex-wrap gap-1.5">
+                                                @foreach ($fila->ubicaciones as $ubicacion)
+                                                    <span wire:key="ub-{{ $ubicacion->id }}" class="inline-flex items-center gap-1 rounded-full bg-neutral-bg py-0.5 pl-2.5 pr-1 text-[13px] text-neutral-text">
+                                                        {{ $ubicacion->dependencia?->nombre }}
+                                                        <button
+                                                            type="button"
+                                                            wire:click="quitarUbicacion({{ $ubicacion->id }})"
+                                                            class="flex h-5 w-5 items-center justify-center rounded-full text-ink-muted hover:bg-white hover:text-danger-text"
+                                                            aria-label="{{ __('Quitar :dependencia de :piso', ['dependencia' => $ubicacion->dependencia?->nombre, 'piso' => $fila->etiqueta()]) }}"
+                                                        ><svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path stroke-linecap="round" d="M6 6l12 12M18 6L6 18" /></svg></button>
+                                                    </span>
+                                                @endforeach
+                                            </div>
+                                        @endif
+                                    </td>
+                                    @break
                                 @case('sedes')
                                     <td class="font-semibold text-ink">{{ $fila->nombre }}</td>
                                     <td class="text-ink-muted">{{ $fila->municipio?->nombre }}</td>
@@ -178,6 +222,14 @@
                     @endforelse
                 </tbody>
             </x-ui.table>
+
+            @if ($segmento === 'ubicaciones' && $sinUbicacion->isNotEmpty())
+                <x-ui.card class="mt-4">
+                    <p class="section-title">{{ __('Dependencias activas sin piso (:n)', ['n' => $sinUbicacion->count()]) }}</p>
+                    <p class="mt-1 text-[13px] text-ink-muted">{{ __('No aparecen al filtrar por sede; solo con «Ver todas las dependencias». Ubícalas cuando se confirme dónde funcionan.') }}</p>
+                    <p class="mt-3 text-[14px] text-ink">{{ $sinUbicacion->implode(' · ') }}</p>
+                </x-ui.card>
+            @endif
         </div>
     </div>
 </div>
