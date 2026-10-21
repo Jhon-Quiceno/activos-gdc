@@ -263,7 +263,7 @@ class Index extends Component
             'dependencias' => Dependencia::orderBy('nombre')->get(),
             'tipos' => TipoEquipo::orderBy('nombre')->get(),
             'marcas' => Marca::orderBy('nombre')->get(),
-            'personas' => Persona::orderBy('nombre')->get(),
+            'personas' => Persona::orderBy('apellidos')->orderBy('nombres')->get(),
             'vinculaciones' => Persona::query()
                 ->whereNotNull('tipo_vinculacion')
                 ->distinct()

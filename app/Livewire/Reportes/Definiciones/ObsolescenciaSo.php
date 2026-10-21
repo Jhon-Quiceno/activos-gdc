@@ -47,7 +47,7 @@ class ObsolescenciaSo extends ReporteDefinicion
             'Código de activo' => fn ($e) => $e->codigo_activo ?? 'Sin código de activo',
             'Tipo'             => fn ($e) => $e->tipoEquipo?->nombre,
             'Sistema operativo'=> fn ($e) => $e->configuracionComputo?->sistemaOperativo?->nombre,
-            'Responsable'      => fn ($e) => $e->asignacionActual?->persona?->nombre ?? 'Sin asignar',
+            'Responsable'      => fn ($e) => $e->asignacionActual?->persona?->nombreCompleto() ?? 'Sin asignar',
             'Dependencia'      => fn ($e) => $e->asignacionActual?->dependencia?->nombre ?? '—',
         ];
     }

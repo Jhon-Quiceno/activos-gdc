@@ -54,7 +54,7 @@ class PendientesFirma extends ReporteEventoDefinicion
                     ->map(fn ($d) => trim($d->tipo . ' ' . $d->consecutivo))
                     ->implode(', '),
                 'Estado de firma'    => fn ($e) => $e->estado_firma,
-                'Responsable actual' => fn ($e) => $e->equipo?->asignacionActual?->persona?->nombre,
+                'Responsable actual' => fn ($e) => $e->equipo?->asignacionActual?->persona?->nombreCompleto(),
                 'Registrado por'     => fn ($e) => $this->autor($e),
             ],
         );

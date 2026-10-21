@@ -26,9 +26,9 @@ class PorEstado extends ReporteDefinicion
             'Código de activo' => fn ($e) => $e->codigo_activo,
             'Tipo'             => fn ($e) => $e->tipoEquipo?->nombre,
             'Marca'            => fn ($e) => $e->marca?->nombre,
-            'Modelo'           => fn ($e) => $e->modelo,
+            'Modelo'           => fn ($e) => $e->modeloEquipo?->nombre,
             'Dependencia'      => fn ($e) => $e->asignacionActual?->dependencia?->nombre,
-            'Responsable'      => fn ($e) => $e->asignacionActual?->persona?->nombre,
+            'Responsable'      => fn ($e) => $e->asignacionActual?->persona?->nombreCompleto(),
         ];
     }
 }

@@ -117,9 +117,9 @@ class CalidadInventario extends ReporteDefinicion
             'Marca'            => fn ($e) => $e->marca?->nombre,
             'Estado'           => fn ($e) => $this->etiquetaEstado($e->estado_ciclo_vida),
             'Verificación'     => fn ($e) => $e->verificacion,
-            'Sede'             => fn ($e) => $e->asignacionActual?->sede?->nombre,
+            'Sede'             => fn ($e) => $e->asignacionActual?->piso?->sede?->nombre,
             'Dependencia'      => fn ($e) => $e->asignacionActual?->dependencia?->nombre,
-            'Responsable'      => fn ($e) => $e->asignacionActual?->persona?->nombre,
+            'Responsable'      => fn ($e) => $e->asignacionActual?->persona?->nombreCompleto(),
             'Problemas'        => fn ($e) => $this->problemas($e),
         ];
     }

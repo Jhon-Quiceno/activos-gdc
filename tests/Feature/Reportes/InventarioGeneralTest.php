@@ -221,3 +221,42 @@ it('dados de baja solo lista equipos con evento de baja', function () {
         ->assertSee($conBaja->serial)
         ->assertDontSee($sinBaja->serial);
 });
+// ---------------------------------------------------------------------------
+// Modelo v4: la sede sale del piso y el responsable de nombres/apellidos
+// (adaptación del paso 3; estas columnas viejas se borran en el cierre)
+// ---------------------------------------------------------------------------
+
+it('filtra por sede a través del piso y muestra el nombre completo del responsable', function () {
+    $sede = App\Models\Sede::forceCreate(['nombre' => 'Palacio de Naín', 'tipo' => 'administrativa']);
+    $otraSede = App\Models\Sede::forceCreate(['nombre' => 'Edificio Anexo', 'tipo' => 'administrativa']);
+    $piso = App\Models\Piso::forceCreate(['sede_id' => $sede->id, 'numero' => 2]);
+    $pisoOtra = App\Models\Piso::forceCreate(['sede_id' => $otraSede->id, 'numero' => 1]);
+    $dependencia = App\Models\Dependencia::forceCreate(['tipo' => 'direccion', 'nombre' => 'Dirección TIC', 'activa' => true]);
+
+    $persona = App\Models\Persona::factory()->create([
+        'nombres' => 'Marcela', 'apellidos' => 'Pérez Gómez',
+        'numero_documento' => '1067896226',
+    ]);
+
+    $aqui = App\Models\Equipo::factory()->create();
+    App\Models\Asignacion::create([
+        'equipo_id' => $aqui->id, 'persona_id' => $persona->id,
+        'piso_id' => $piso->id, 'dependencia_id' => $dependencia->id,
+        'fecha_inicio' => now(),
+    ]);
+
+    $alla = App\Models\Equipo::factory()->create();
+    App\Models\Asignacion::create([
+        'equipo_id' => $alla->id, 'piso_id' => $pisoOtra->id,
+        'dependencia_id' => $dependencia->id, 'fecha_inicio' => now(),
+    ]);
+
+    Livewire::test(Index::class)
+        ->call('seleccionarReporte', 'inventario_general')
+        ->set('filtroSede', (string) $sede->id)
+        ->assertSee($aqui->serial)
+        ->assertDontSee($alla->serial)
+        ->assertSee('Marcela Pérez Gómez')      // nombreCompleto()
+        ->assertSee('Palacio de Naín')          // sede vía piso
+        ->assertSee('****6226');                // documento enmascarado (RN-12)
+});
