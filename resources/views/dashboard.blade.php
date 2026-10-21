@@ -123,6 +123,62 @@
         'percent' => (int) round(($fila->total / $maxPorSede) * 100),
         'color' => 'bg-success',
     ]);
+
+    // --- Importancia de los activos valorados (GT-M4) y equipos sin valoración (RF-36) ---
+    $conteoImportancia = \App\Models\ValoracionActivo::where('vigente', true)
+        ->select('importancia', \Illuminate\Support\Facades\DB::raw('count(*) as total'))
+        ->groupBy('importancia')
+        ->pluck('total', 'importancia');
+
+    // Solo el hardware se valora (RN-25): «sin valoración» se mide sobre él.
+    $hardware = \App\Models\Equipo::whereHas('tipoEquipo', fn ($t) => $t->where('tipo_activo', 'hardware'))->count();
+    $valorados = (int) $conteoImportancia->sum();
+    $sinValoracion = max($hardware - $valorados, 0);
+
+    $coloresImportancia = ['muy_alta' => 'bg-danger-hover', 'alta' => 'bg-warning-text', 'media' => 'bg-primary', 'baja' => 'bg-success'];
+    $maxImportancia = max((int) $conteoImportancia->max(), $sinValoracion, 1);
+
+    $porImportancia = collect(\App\Models\ValoracionActivo::IMPORTANCIAS)
+        ->map(fn ($etiqueta, $clave) => [
+            'label' => $etiqueta,
+            'value' => (int) ($conteoImportancia[$clave] ?? 0),
+            'percent' => (int) round(((int) ($conteoImportancia[$clave] ?? 0) / $maxImportancia) * 100),
+            'color' => $coloresImportancia[$clave] ?? 'bg-primary',
+        ])
+        ->push([
+            'label' => __('Sin valoración'),
+            'value' => $sinValoracion,
+            'percent' => (int) round(($sinValoracion / $maxImportancia) * 100),
+            'color' => 'bg-neutral-text',
+        ])
+        ->values();
+
+    // --- Equipos por secretaría (raíz del árbol de la dependencia asignada) (RF-36, RF-60) ---
+    $dependencias = \App\Models\Dependencia::get(['id', 'padre_id', 'nombre'])->keyBy('id');
+    $raizDe = function (?int $id) use ($dependencias) {
+        $actual = $id ? $dependencias->get($id) : null;
+        while ($actual && $actual->padre_id && $dependencias->has($actual->padre_id)) {
+            $actual = $dependencias->get($actual->padre_id);
+        }
+        return $actual;
+    };
+
+    $conteoSecretaria = [];
+    foreach (\App\Models\Asignacion::whereNull('fecha_fin')->whereNotNull('dependencia_id')->pluck('dependencia_id') as $dependenciaId) {
+        if ($raiz = $raizDe($dependenciaId)) {
+            $conteoSecretaria[$raiz->nombre] = ($conteoSecretaria[$raiz->nombre] ?? 0) + 1;
+        }
+    }
+    arsort($conteoSecretaria);
+    $conteoSecretaria = array_slice($conteoSecretaria, 0, 7, true);
+    $maxSecretaria = $conteoSecretaria ? max($conteoSecretaria) : 1;
+
+    $equiposPorSecretaria = collect($conteoSecretaria)->map(fn ($total, $nombre) => [
+        'label' => $nombre,
+        'value' => $total,
+        'percent' => (int) round(($total / $maxSecretaria) * 100),
+        'color' => 'bg-primary',
+    ])->values();
 @endphp
 
 <x-layouts.app-shell title="Inicio">
@@ -235,6 +291,27 @@
                 <p class="section-title">{{ __('Equipos por sede') }}</p>
                 <div class="mt-4">
                     <x-ui.bar-list label-width="170px" :items="$equiposPorSede" />
+                </div>
+            </x-ui.card>
+        </div>
+
+        <div class="grid grid-cols-1 gap-4 nav:grid-cols-2">
+            <x-ui.card>
+                <div class="flex items-center justify-between gap-4">
+                    <p class="section-title">{{ __('Importancia de los activos') }}</p>
+                    <a href="{{ route('reportes.index') }}" wire:navigate class="text-[14px] font-semibold text-primary hover:text-primary-hover">
+                        {{ __('Ver reporte') }}
+                    </a>
+                </div>
+                <div class="mt-4">
+                    <x-ui.bar-list :items="$porImportancia" />
+                </div>
+            </x-ui.card>
+
+            <x-ui.card>
+                <p class="section-title">{{ __('Equipos por secretaría') }}</p>
+                <div class="mt-4">
+                    <x-ui.bar-list label-width="200px" :items="$equiposPorSecretaria" />
                 </div>
             </x-ui.card>
         </div>
