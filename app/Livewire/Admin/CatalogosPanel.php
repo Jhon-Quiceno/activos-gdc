@@ -3,6 +3,7 @@
 namespace App\Livewire\Admin;
 
 use App\Models\Cargo;
+use App\Models\Dependencia;
 use App\Models\Marca;
 use App\Models\Municipio;
 use App\Models\ModeloEquipo;
@@ -11,6 +12,7 @@ use App\Models\Proceso;
 use App\Models\Proveedor;
 use App\Models\Sede;
 use App\Models\TipoEquipo;
+use App\Models\UbicacionDependencia;
 use Illuminate\Validation\Rule;
 use Livewire\Component;
 
@@ -21,6 +23,11 @@ use Livewire\Component;
  *
  * Las sedes y los procesos se desactivan en vez de borrarse (tienen columna de
  * estado); el resto se puede crear y editar.
+ *
+ * «Ubicación de dependencias» (RF-45) mantiene `ubicaciones_dependencia`: qué
+ * dependencias funcionan en cada piso. Es lo que usa `x-ui.ubicacion-select` para
+ * filtrar las dependencias por sede y piso (RF-19); quitar una fila solo cambia ese
+ * filtro, no toca asignaciones ni historial.
  */
 class CatalogosPanel extends Component
 {
@@ -38,8 +45,16 @@ class CatalogosPanel extends Component
 
     public string $pisoNombre = '';
 
+    /** Alta de una ubicación: sede → piso de esa sede → dependencia. */
+    public ?int $ubSedeId = null;
+
+    public ?int $ubPisoId = null;
+
+    public ?int $ubDependenciaId = null;
+
     public const SEGMENTOS = [
         'sedes' => 'Sedes y pisos',
+        'ubicaciones' => 'Ubicación de dependencias',
         'municipios' => 'Municipios',
         'procesos' => 'Procesos',
         'cargos' => 'Cargos',
@@ -54,8 +69,46 @@ class CatalogosPanel extends Component
         }
 
         $this->segmento = $segmento;
-        $this->reset(['form', 'editandoId', 'pisoSedeId', 'pisoNumero', 'pisoNombre']);
+        $this->reset(['form', 'editandoId', 'pisoSedeId', 'pisoNumero', 'pisoNombre', 'ubSedeId', 'ubPisoId', 'ubDependenciaId']);
         $this->resetErrorBag();
+    }
+
+    /** El piso es de una sede: al cambiar la sede deja de servir. */
+    public function updatedUbSedeId(): void
+    {
+        $this->ubPisoId = null;
+    }
+
+    public function agregarUbicacion(): void
+    {
+        $this->validate([
+            'ubSedeId' => ['required', 'integer', Rule::exists('sedes', 'id')],
+            // RN-21: el piso tiene que ser de la sede elegida.
+            'ubPisoId' => ['required', 'integer', Rule::exists('pisos', 'id')->where('sede_id', $this->ubSedeId)],
+            'ubDependenciaId' => ['required', 'integer', Rule::exists('dependencias', 'id')->where('activa', true)],
+        ], [], [
+            'ubSedeId' => __('sede'),
+            'ubPisoId' => __('piso'),
+            'ubDependenciaId' => __('dependencia'),
+        ]);
+
+        $existe = UbicacionDependencia::where('piso_id', $this->ubPisoId)->where('dependencia_id', $this->ubDependenciaId)->exists();
+        if ($existe) {
+            $this->addError('ubDependenciaId', __('Esa dependencia ya está ubicada en ese piso.'));
+
+            return;
+        }
+
+        UbicacionDependencia::create(['piso_id' => $this->ubPisoId, 'dependencia_id' => $this->ubDependenciaId]);
+
+        $this->reset('ubDependenciaId');
+        session()->flash('status', __('Ubicación agregada.'));
+    }
+
+    public function quitarUbicacion(int $id): void
+    {
+        UbicacionDependencia::whereKey($id)->delete();
+        session()->flash('status', __('Ubicación quitada. La dependencia ya no se ofrece al elegir ese piso.'));
     }
 
     /** @return array{model: class-string, reglas: array, nombre: string} */
@@ -190,6 +243,18 @@ class CatalogosPanel extends Component
     {
         $datos = match ($this->segmento) {
             'sedes' => Sede::with('pisos', 'municipio')->orderBy('nombre')->get(),
+            // Una fila por piso con sus ubicaciones (cada una con su id, para quitarla).
+            'ubicaciones' => Piso::query()
+                ->select('pisos.*')
+                ->join('sedes', 'sedes.id', '=', 'pisos.sede_id')
+                ->with('sede')
+                ->orderBy('sedes.nombre')
+                ->orderBy('pisos.numero')
+                ->get()
+                ->each(fn (Piso $piso) => $piso->setRelation(
+                    'ubicaciones',
+                    UbicacionDependencia::with('dependencia')->where('piso_id', $piso->id)->get()->sortBy('dependencia.nombre')->values(),
+                )),
             'municipios' => Municipio::orderBy('nombre')->get(),
             'procesos' => Proceso::orderBy('nombre')->get(),
             'cargos' => Cargo::orderBy('denominacion')->get(),
@@ -207,6 +272,12 @@ class CatalogosPanel extends Component
             'tenencias' => Sede::TENENCIAS,
             'tiposProceso' => Proceso::TIPOS,
             'nivelesCargo' => Cargo::NIVELES,
+            'sedesActivas' => Sede::where('activa', true)->orderBy('nombre')->get(['id', 'nombre']),
+            'pisosDeSede' => $this->ubSedeId ? Piso::where('sede_id', $this->ubSedeId)->orderBy('numero')->get() : collect(),
+            // Activas que todavía no tienen piso: no aparecen al filtrar por sede (pregunta 12 del análisis).
+            'sinUbicacion' => $this->segmento === 'ubicaciones'
+                ? Dependencia::where('activa', true)->whereDoesntHave('pisos')->orderBy('nombre')->pluck('nombre')
+                : collect(),
         ]);
     }
 }

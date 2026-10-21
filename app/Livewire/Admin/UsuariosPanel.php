@@ -15,8 +15,9 @@ use Livewire\Component;
  * Por eso aquí no existe ningún método que borre un User; "Desactivar"/"Activar"
  * solo alternan esa columna.
  *
- * El restablecimiento de contraseña por correo queda como TODO aceptado (ver
- * CLAUDE.md de la tarea): `restablecerContrasena()` no tiene lógica real todavía.
+ * RF-47: `restablecerContrasena()` genera una contraseña temporal y obliga a
+ * cambiarla en el próximo ingreso. No va por correo porque todavía no hay correo
+ * saliente configurado.
  */
 class UsuariosPanel extends Component
 {

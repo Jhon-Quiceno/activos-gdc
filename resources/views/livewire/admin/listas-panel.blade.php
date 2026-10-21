@@ -57,16 +57,22 @@
                             <td class="text-ink-muted">{{ $fila['detalle'] }}</td>
                             <td>{{ $fila['uso'] }}</td>
                             <td>
-                                <x-ui.badge variant="success">{{ __('Activo') }}</x-ui.badge>
+                                @if ($fila['activo'])
+                                    <x-ui.badge variant="success">{{ __('Activo') }}</x-ui.badge>
+                                @else
+                                    <x-ui.badge variant="neutral">{{ __('Inactivo') }}</x-ui.badge>
+                                @endif
                             </td>
                             <td>
                                 <div class="flex flex-wrap items-center gap-2">
                                     <x-ui.button size="sm" variant="secondary" wire:click="abrirEdicion({{ $registro->id }})">
                                         {{ __('Editar') }}
                                     </x-ui.button>
-                                    <x-ui.button size="sm" variant="secondary" wire:click="desactivar({{ $registro->id }})">
-                                        {{ __('Desactivar') }}
-                                    </x-ui.button>
+                                    @if ($tieneEstado)
+                                        <x-ui.button size="sm" variant="secondary" wire:click="desactivar({{ $registro->id }})">
+                                            {{ $fila['activo'] ? __('Desactivar') : __('Activar') }}
+                                        </x-ui.button>
+                                    @endif
                                 </div>
                             </td>
                         </tr>
@@ -94,18 +100,7 @@
                         />
                     </div>
 
-                    @if ($listaActiva === 'tipos_equipo')
-                        <div class="w-full max-w-xs">
-                            <label class="text-[13px] font-semibold text-ink-label">{{ __('Familia') }} *</label>
-                            <select wire:model="nuevaFamilia" class="mt-1 h-11 w-full rounded-lg border-line-input text-[14px] text-ink focus:border-primary focus:ring-primary">
-                                <option value="">{{ __('Selecciona…') }}</option>
-                                @foreach ($familias as $valor => $etiqueta)
-                                    <option value="{{ $valor }}">{{ $etiqueta }}</option>
-                                @endforeach
-                            </select>
-                            <x-input-error :messages="$errors->get('nuevaFamilia')" class="mt-1" />
-                        </div>
-                    @endif
+                    @include('livewire.admin.partials.campos-lista', ['prefijo' => 'extra'])
 
                     <div class="flex w-full flex-wrap items-center justify-between gap-4">
                         <span class="text-[13px] text-ink-muted">
@@ -131,18 +126,9 @@
                 required
             />
 
-            @if ($listaActiva === 'tipos_equipo')
-                <div>
-                    <label class="text-[13px] font-semibold text-ink-label">{{ __('Familia') }} *</label>
-                    <select wire:model="editandoFamilia" class="mt-1 h-11 w-full rounded-lg border-line-input text-[14px] text-ink focus:border-primary focus:ring-primary">
-                        <option value="">{{ __('Selecciona…') }}</option>
-                        @foreach ($familias as $valor => $etiqueta)
-                            <option value="{{ $valor }}">{{ $etiqueta }}</option>
-                        @endforeach
-                    </select>
-                    <x-input-error :messages="$errors->get('editandoFamilia')" class="mt-1" />
-                </div>
-            @endif
+            <div class="flex flex-wrap gap-4">
+                @include('livewire.admin.partials.campos-lista', ['prefijo' => 'editandoExtra'])
+            </div>
         </form>
 
         <x-slot name="footer">

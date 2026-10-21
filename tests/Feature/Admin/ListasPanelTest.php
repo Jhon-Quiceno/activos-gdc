@@ -44,8 +44,8 @@ it('agrega un tipo de equipo con su familia y la valida', function () {
         ->call('seleccionarLista', 'tipos_equipo')
         ->set('nuevoValor', 'Portátil')
         ->call('agregar')
-        ->assertHasErrors(['nuevaFamilia']) // la familia es obligatoria
-        ->set('nuevaFamilia', 'computo')
+        ->assertHasErrors(['extra.familia']) // la familia es obligatoria
+        ->set('extra.familia', 'computo')
         ->call('agregar')
         ->assertHasNoErrors();
 
