@@ -30,7 +30,12 @@
                 <tbody>
                     @forelse ($usuarios as $usuario)
                         <tr wire:key="usuario-{{ $usuario->id }}">
-                            <td class="font-semibold text-ink">{{ $usuario->name }}</td>
+                            <td class="font-semibold text-ink">
+                                {{ $usuario->name }}
+                                @if ($usuario->persona)
+                                    <span class="block text-[12px] font-normal text-ink-muted">{{ __('Persona:') }} {{ $usuario->persona->nombreCompleto() }}</span>
+                                @endif
+                            </td>
                             <td class="font-mono tabular-nums">{{ $usuario->email }}</td>
                             <td>
                                 <x-ui.badge :variant="$usuario->perfil === 'administrador' ? 'info' : 'neutral'">
@@ -100,6 +105,17 @@
                         <x-input-error :messages="$errors->get('perfil')" class="mt-1" />
                     </div>
 
+                    <div>
+                        <label class="text-[13px] font-semibold text-ink-label">{{ __('Persona vinculada') }}</label>
+                        <select wire:model="personaId" class="mt-1 h-11 w-full rounded-lg border-line-input text-[14px] text-ink focus:border-primary focus:ring-primary">
+                            <option value="">{{ __('— Ninguna —') }}</option>
+                            @foreach ($personas as $persona)
+                                <option value="{{ $persona->id }}">{{ $persona->nombreCompleto() }} ({{ $persona->numero_documento }})</option>
+                            @endforeach
+                        </select>
+                        <x-input-error :messages="$errors->get('personaId')" class="mt-1" />
+                    </div>
+
                     <x-ui.input name="contrasena" type="password" :label="__('Contraseña inicial') . ' *'" wire:model="contrasena" required />
 
                     <label class="flex items-center gap-2 text-[13px] text-ink-muted">
@@ -127,6 +143,17 @@
                     <option value="administrador">{{ __('Administrador') }}</option>
                 </select>
                 <x-input-error :messages="$errors->get('editandoPerfil')" class="mt-1" />
+            </div>
+
+            <div>
+                <label class="text-[13px] font-semibold text-ink-label">{{ __('Persona vinculada') }}</label>
+                <select wire:model="editandoPersonaId" class="mt-1 h-11 w-full rounded-lg border-line-input text-[14px] text-ink focus:border-primary focus:ring-primary">
+                    <option value="">{{ __('— Ninguna —') }}</option>
+                    @foreach ($personas as $persona)
+                        <option value="{{ $persona->id }}">{{ $persona->nombreCompleto() }} ({{ $persona->numero_documento }})</option>
+                    @endforeach
+                </select>
+                <x-input-error :messages="$errors->get('editandoPersonaId')" class="mt-1" />
             </div>
         </form>
 
