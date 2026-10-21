@@ -23,6 +23,8 @@ use App\Livewire\Reportes\Definiciones\SinAntivirus;
 use App\Livewire\Reportes\Definiciones\Terceros;
 use App\Livewire\Reportes\Definiciones\Traslados;
 use App\Livewire\Reportes\Definiciones\VidaUtilSuperada;
+use App\Livewire\Reportes\Definiciones\EquiposPorEstructura;
+use App\Livewire\Reportes\Definiciones\PersonasPorRetirarse;
 use App\Livewire\Reportes\Exportes\MatrizFor01;
 use App\Livewire\Reportes\Exportes\ReporteExport;
 use App\Models\Dependencia;
@@ -160,6 +162,14 @@ class Index extends Component
             'titulo' => 'Vida útil superada',
             'descripcion' => 'Equipos que ya cumplieron su vida útil',
         ],
+        'personas_por_retirarse' => [
+            'titulo' => 'Personas por retirarse',
+            'descripcion' => 'Quién termina contrato y aún tiene equipos',
+        ],
+        'equipos_por_estructura' => [
+            'titulo' => 'Equipos por estructura',
+            'descripcion' => 'Qué tiene cada secretaría, con sus direcciones y áreas',
+        ],
     ];
 
     /** Reportes con datos reales: clave => clase de definición. */
@@ -184,6 +194,8 @@ class Index extends Component
         'por_importancia' => PorImportancia::class,
         'garantias_por_vencer' => GarantiasPorVencer::class,
         'vida_util_superada' => VidaUtilSuperada::class,
+        'personas_por_retirarse' => PersonasPorRetirarse::class,
+        'equipos_por_estructura' => EquiposPorEstructura::class,
     ];
 
     public const ESTADOS = [
