@@ -21,12 +21,11 @@ class ObsolescenciaSo extends ReporteDefinicion
                 'asignacionActual.persona',
                 'asignacionActual.dependencia',
             ])
-            ->whereHas('configuracionComputo.sistemaOperativo', function ($query) {
-                $query->where(function ($so) {
-                    $so->where('nombre', 'like', '%7%')
-                        ->orWhere('nombre', 'like', '%8%');
-                });
-            });
+            // Obsolescencia por fecha real de fin de soporte, no por el nombre
+            // del sistema: un SO está sin soporte cuando su fin_soporte ya pasó.
+            ->whereHas('configuracionComputo.sistemaOperativo', fn ($so) => $so
+                ->whereNotNull('fin_soporte')
+                ->whereDate('fin_soporte', '<=', now()->toDateString()));
     }
 
     public function consulta(array $filtros): Builder
@@ -47,6 +46,7 @@ class ObsolescenciaSo extends ReporteDefinicion
             'Código de activo' => fn ($e) => $e->codigo_activo ?? 'Sin código de activo',
             'Tipo'             => fn ($e) => $e->tipoEquipo?->nombre,
             'Sistema operativo'=> fn ($e) => $e->configuracionComputo?->sistemaOperativo?->nombre,
+            'Fin de soporte'   => fn ($e) => $e->configuracionComputo?->sistemaOperativo?->fin_soporte?->format('d/m/Y'),
             'Responsable'      => fn ($e) => $e->asignacionActual?->persona?->nombreCompleto() ?? 'Sin asignar',
             'Dependencia'      => fn ($e) => $e->asignacionActual?->dependencia?->nombre ?? '—',
         ];
