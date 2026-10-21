@@ -7,25 +7,31 @@ use App\Livewire\Reportes\Definiciones\CambiosComponentes;
 use App\Livewire\Reportes\Definiciones\DadosDeBaja;
 use App\Livewire\Reportes\Definiciones\HistorialEquipo;
 use App\Livewire\Reportes\Definiciones\InventarioGeneral;
+use App\Livewire\Reportes\Definiciones\MatrizInventarioFor01;
 use App\Livewire\Reportes\Definiciones\ObsolescenciaSo;
 use App\Livewire\Reportes\Definiciones\PendientesFirma;
 use App\Livewire\Reportes\Definiciones\PorDependencia;
 use App\Livewire\Reportes\Definiciones\PorEstado;
 use App\Livewire\Reportes\Definiciones\PorFuncionario;
+use App\Livewire\Reportes\Definiciones\PorImportancia;
 use App\Livewire\Reportes\Definiciones\PorSedePiso;
 use App\Livewire\Reportes\Definiciones\PorTipoMarcaModelo;
 use App\Livewire\Reportes\Definiciones\ReporteDefinicion;
+use App\Livewire\Reportes\Definiciones\RequiereGestionRiesgo;
 use App\Livewire\Reportes\Definiciones\SinAntivirus;
 use App\Livewire\Reportes\Definiciones\Terceros;
 use App\Livewire\Reportes\Definiciones\Traslados;
+use App\Livewire\Reportes\Exportes\MatrizFor01;
 use App\Livewire\Reportes\Exportes\ReporteExport;
 use App\Models\Dependencia;
 use App\Models\Marca;
 use App\Models\Persona;
 use App\Models\Piso;
+use App\Models\Proceso;
 use App\Models\Sede;
 use App\Models\SistemaOperativo;
 use App\Models\TipoEquipo;
+use App\Models\ValoracionActivo;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -57,6 +63,13 @@ class Index extends Component
     public string $filtroPersona = '';
 
     public string $filtroVinculacion = '';
+
+    public string $filtroProceso = '';
+
+    public string $filtroImportancia = '';
+
+    /** Al filtrar por dependencia, incluir o no sus subdependencias (RF-34). */
+    public bool $filtroSoloDependencia = false;
 
     public string $filtroDesde = '';
 
@@ -126,6 +139,18 @@ class Index extends Component
             'titulo' => 'Calidad del inventario',
             'descripcion' => 'Sin serial, sin código, repetidos',
         ],
+        'matriz_for01' => [
+            'titulo' => 'Matriz de inventario (FOR.01)',
+            'descripcion' => 'Formato oficial de activos de información',
+        ],
+        'requiere_gestion_riesgo' => [
+            'titulo' => 'Requieren gestión de riesgos',
+            'descripcion' => 'CID = 4 o importancia alta o muy alta',
+        ],
+        'por_importancia' => [
+            'titulo' => 'Por importancia',
+            'descripcion' => 'Activos valorados, de mayor a menor',
+        ],
     ];
 
     /** Reportes con datos reales: clave => clase de definición. */
@@ -145,6 +170,9 @@ class Index extends Component
         'traslados' => Traslados::class,
         'pendientes_firma' => PendientesFirma::class,
         'calidad_inventario' => CalidadInventario::class,
+        'matriz_for01' => MatrizInventarioFor01::class,
+        'requiere_gestion_riesgo' => RequiereGestionRiesgo::class,
+        'por_importancia' => PorImportancia::class,
     ];
 
     public const ESTADOS = [
@@ -173,7 +201,8 @@ class Index extends Component
         $this->reset([
             'filtroSede', 'filtroDependencia', 'filtroEstado', 'filtroSistemaOperativo',
             'filtroPiso', 'filtroTipo', 'filtroMarca', 'filtroPropiedad',
-            'filtroPersona', 'filtroVinculacion', 'filtroDesde', 'filtroHasta',
+            'filtroPersona', 'filtroVinculacion', 'filtroProceso', 'filtroImportancia',
+            'filtroSoloDependencia', 'filtroDesde', 'filtroHasta',
         ]);
         $this->resetPage();
     }
@@ -205,6 +234,9 @@ class Index extends Component
             'propiedad' => $this->filtroPropiedad,
             'persona' => $this->filtroPersona,
             'vinculacion' => $this->filtroVinculacion,
+            'proceso' => $this->filtroProceso,
+            'importancia' => $this->filtroImportancia,
+            'solo_dependencia' => $this->filtroSoloDependencia,
             'desde' => $this->filtroDesde,
             'hasta' => $this->filtroHasta,
             'especifico' => $this->filtroSistemaOperativo,
@@ -217,6 +249,15 @@ class Index extends Component
 
         if (! $definicion) {
             return null;
+        }
+
+        // La matriz FOR.01 se exporta en el formato oficial (encabezado y grupos),
+        // no con el export genérico de reportes.
+        if ($this->reporteActivo === 'matriz_for01') {
+            return Excel::download(
+                new MatrizFor01($definicion->consulta($this->filtros())->get()),
+                'matriz-inventario-for01.xlsx'
+            );
         }
 
         return Excel::download(
@@ -261,6 +302,8 @@ class Index extends Component
             'sedes' => Sede::orderBy('nombre')->get(),
             'pisos' => Piso::orderBy('numero')->get(),
             'dependencias' => Dependencia::orderBy('nombre')->get(),
+            'procesos' => Proceso::orderBy('nombre')->get(),
+            'importancias' => ValoracionActivo::IMPORTANCIAS,
             'tipos' => TipoEquipo::orderBy('nombre')->get(),
             'marcas' => Marca::orderBy('nombre')->get(),
             'personas' => Persona::orderBy('apellidos')->orderBy('nombres')->get(),
