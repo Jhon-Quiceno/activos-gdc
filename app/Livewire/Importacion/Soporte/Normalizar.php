@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Importacion\Soporte;
 
+use App\Support\Identificadores;
 use Carbon\Carbon;
 use PhpOffice\PhpSpreadsheet\Shared\Date as FechaExcel;
 use Throwable;
@@ -37,7 +38,7 @@ final class Normalizar
     {
         $texto = self::texto($valor);
 
-        return $texto === null ? null : mb_strtoupper(preg_replace('/\s+/u', '', $texto));
+        return $texto === null ? null : Identificadores::serial($texto);
     }
 
     /**
@@ -51,24 +52,8 @@ final class Normalizar
             return null;
         }
 
-        $compacto = mb_strtoupper(preg_replace('/[\s\-.]+/u', '', $texto));
-        $compacto = preg_replace('/^L1/', 'I1', $compacto);
-
-        if (preg_match('/^I1(\d{5,6})$/', $compacto, $m)) {
-            return 'I1-'.$m[1];
-        }
-
-        // Solo los dígitos, sin el prefijo de Almacén: «020410» → «I1-020410».
-        if (preg_match('/^(\d{5,6})$/', $compacto, $m)) {
-            return 'I1-'.$m[1];
-        }
-
-        // El código dentro de un texto: «I1-003788 Pc todo en Uno».
-        if (preg_match('/\b[IL]1[\s\-]?(\d{5,6})\b/iu', $texto, $m)) {
-            return 'I1-'.$m[1];
-        }
-
-        throw new \InvalidArgumentException("El código de activo «{$texto}» no tiene el formato I1-######.");
+        return Identificadores::codigoActivo($texto)
+            ?? throw new \InvalidArgumentException("El código de activo «{$texto}» no tiene el formato I1-######.");
     }
 
     /** ¿Tiene forma de código de activo (aunque esté mal escrito)? */
@@ -92,7 +77,7 @@ final class Normalizar
         // Excel suele guardar la cédula como número: «1067888999.0».
         $texto = preg_replace('/\.0+$/', '', $texto);
 
-        return mb_strtoupper(preg_replace('/[\s.,\-]+/u', '', $texto));
+        return Identificadores::documento($texto);
     }
 
     /** Pesos colombianos: «$ 2.350.000,50» → «2350000.50». */
