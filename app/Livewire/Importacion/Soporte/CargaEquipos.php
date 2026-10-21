@@ -632,7 +632,11 @@ final class CargaEquipos
 
         $clave = Normalizar::clave($texto);
 
-        return collect(PlantillaEquipos::ESTADOS)->first(fn ($estado) => Normalizar::clave($estado) === $clave || str_starts_with(Normalizar::clave($estado), $clave.' ') || ($clave === 'malo' && str_starts_with(Normalizar::clave($estado), 'malo')));
+        // Se empareja contra las etiquetas del formato (PlantillaEquipos::ESTADOS)
+        // y se guarda la clave del enum (bueno/regular/malo/no_funcional).
+        $etiqueta = collect(PlantillaEquipos::ESTADOS)->first(fn ($estado) => Normalizar::clave($estado) === $clave || str_starts_with(Normalizar::clave($estado), $clave.' ') || ($clave === 'malo' && str_starts_with(Normalizar::clave($estado), 'malo')));
+
+        return $etiqueta === null ? null : (array_search($etiqueta, Equipo::ESTADOS_FUNCIONAMIENTO, true) ?: null);
     }
 
     /**

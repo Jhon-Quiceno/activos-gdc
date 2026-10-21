@@ -98,13 +98,9 @@
                     <label class="text-[13px] font-semibold text-ink-label">{{ __('Estado de funcionamiento') }} *</label>
                     <select wire:model="estadoFuncionamiento" class="mt-1 h-11 w-full rounded-lg border-line-input text-[14px] text-ink focus:border-primary focus:ring-primary">
                         <option value="">{{ __('Selecciona…') }}</option>
-                        @foreach (['Bueno', 'Regular', 'Malo, requiere cambio de componentes', 'No funcional'] as $estado)
-                            <option value="{{ $estado }}">{{ __($estado) }}</option>
+                        @foreach (\App\Models\Equipo::ESTADOS_FUNCIONAMIENTO as $valor => $etiqueta)
+                            <option value="{{ $valor }}">{{ __($etiqueta) }}</option>
                         @endforeach
-                        @if ($estadoFuncionamiento !== '' && ! in_array($estadoFuncionamiento, ['Bueno', 'Regular', 'Malo, requiere cambio de componentes', 'No funcional'], true))
-                            {{-- Valor que no está en la lista (p. ej. importado del inventario): se conserva. --}}
-                            <option value="{{ $estadoFuncionamiento }}">{{ $estadoFuncionamiento }}</option>
-                        @endif
                     </select>
                     <x-input-error :messages="$errors->get('estadoFuncionamiento')" class="mt-1" />
                 </div>

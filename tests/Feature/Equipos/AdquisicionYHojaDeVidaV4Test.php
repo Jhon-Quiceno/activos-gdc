@@ -62,7 +62,7 @@ class AdquisicionYHojaDeVidaV4Test extends TestCase
             'serial' => 'CN-0001',
             'codigoActivo' => 'I1-024147',
             'marcaId' => $this->marca->id,
-            'estadoFuncionamiento' => 'Bueno',
+            'estadoFuncionamiento' => 'bueno',
             'sedeId' => $this->sede->id,
             'pisoId' => $this->piso->id,
             'dependenciaId' => $this->dependencia->id,
@@ -80,7 +80,7 @@ class AdquisicionYHojaDeVidaV4Test extends TestCase
             'tipo_equipo_id' => $this->pc->id,
             'marca_id' => $this->marca->id,
             'propiedad' => 'gobernacion',
-            'estado_funcionamiento' => 'Bueno',
+            'estado_funcionamiento' => 'bueno',
         ], $datos));
     }
 

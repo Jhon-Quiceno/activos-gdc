@@ -25,6 +25,15 @@ class Componente extends Model
         'fecha_retiro',
     ];
 
+    /** Estado físico del componente: la misma lista cerrada que el equipo. */
+    public const ESTADOS = Equipo::ESTADOS_FUNCIONAMIENTO;
+
+    /** Etiqueta legible del estado del componente. */
+    public function estadoTexto(): ?string
+    {
+        return self::ESTADOS[$this->estado] ?? $this->estado;
+    }
+
     protected function casts(): array
     {
         return [

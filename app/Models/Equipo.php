@@ -56,6 +56,20 @@ class Equipo extends Model
         'carga_inicial' => 'Carga inicial',
     ];
 
+    /** Estado de funcionamiento (lista cerrada, §9 del análisis). Clave => etiqueta. */
+    public const ESTADOS_FUNCIONAMIENTO = [
+        'bueno' => 'Bueno',
+        'regular' => 'Regular',
+        'malo' => 'Malo, requiere cambio de componentes',
+        'no_funcional' => 'No funcional',
+    ];
+
+    /** Etiqueta legible del estado de funcionamiento. */
+    public function estadoFuncionamientoTexto(): ?string
+    {
+        return self::ESTADOS_FUNCIONAMIENTO[$this->estado_funcionamiento] ?? $this->estado_funcionamiento;
+    }
+
     protected function casts(): array
     {
         return [

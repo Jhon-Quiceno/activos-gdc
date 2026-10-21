@@ -239,7 +239,7 @@ class Crear extends Component
                 'max:1000',
             ],
             'marcaId' => ['required', 'exists:marcas,id'],
-            'estadoFuncionamiento' => ['required', 'string'],
+            'estadoFuncionamiento' => ['required', Rule::in(array_keys(Equipo::ESTADOS_FUNCIONAMIENTO))],
             'propiedad' => ['required', 'in:gobernacion,tercero'],
             // RF-19 / RN-21: la ubicación siempre lleva sede, un piso de esa sede
             // y dependencia, tenga o no responsable.

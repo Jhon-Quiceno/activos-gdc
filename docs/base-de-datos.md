@@ -478,7 +478,7 @@ Cuando todos los bloques usen las columnas nuevas (días 1 y 2 del plan), Jhon c
 
 1. Borra `personas.nombre`, `personas.cedula`, `personas.cargo`, `equipos.modelo`, `equipos.propietario_tercero`, `asignaciones.sede_id` y `puestos_trabajo.sede_id`. ✅ hecho
 2. Vuelve obligatorios `pisos.sede_id` y `sedes.municipio_id`. ✅ hecho. **`personas.numero_documento` NO se volvió obligatorio** (cambio frente al plan original): la carga de inventario crea a propósito responsables sin documento cuando el Excel no trae la cédula (`CargaEquipos::personaSinDocumento`, RF-38/39) y los reutiliza por nombre; el índice único ya convive con varios `NULL` en MySQL.
-3. **Pendiente, en PR aparte:** normalizar `equipos.estado_funcionamiento` y `componentes.estado` a la lista `bueno`, `regular`, `malo`, `no_funcional` y convertirlos en enum. Se dejó fuera del cierre porque cambia la visualización en los formularios de Equipos, la importación y los PDF, y merece su propio PR.
+3. ✅ hecho (PR aparte): `equipos.estado_funcionamiento` y `componentes.estado` pasaron a la lista cerrada `bueno`, `regular`, `malo`, `no_funcional` (enum). La clave se guarda y la etiqueta se muestra con `Equipo::ESTADOS_FUNCIONAMIENTO` / `Componente::ESTADOS` (migración `2026_10_21_100001_estado_funcionamiento_a_enum`).
 4. Quita de los modelos la sincronización de los campos viejos. ✅ hecho
 
 Migración: `database/migrations/2026_10_20_120001_cerrar_migracion_dos_tiempos.php`.

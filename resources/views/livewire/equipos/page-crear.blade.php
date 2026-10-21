@@ -147,10 +147,9 @@
                     <label class="text-[13px] font-semibold text-ink-label">{{ __('Estado de funcionamiento') }} *</label>
                     <select wire:model="estadoFuncionamiento" class="mt-1 h-11 w-full rounded-lg border-line-input text-[14px] text-ink focus:border-primary focus:ring-primary">
                         <option value="">{{ __('Selecciona…') }}</option>
-                        <option value="Bueno">{{ __('Bueno') }}</option>
-                        <option value="Regular">{{ __('Regular') }}</option>
-                        <option value="Malo, requiere cambio de componentes">{{ __('Malo, requiere cambio de componentes') }}</option>
-                        <option value="No funcional">{{ __('No funcional') }}</option>
+                        @foreach (\App\Models\Equipo::ESTADOS_FUNCIONAMIENTO as $valor => $etiqueta)
+                            <option value="{{ $valor }}">{{ __($etiqueta) }}</option>
+                        @endforeach
                     </select>
                     <x-input-error :messages="$errors->get('estadoFuncionamiento')" class="mt-1" />
                 </div>

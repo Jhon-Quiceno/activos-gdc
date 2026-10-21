@@ -204,7 +204,7 @@
         </tr>
         <tr>
             <td class="etiqueta">{{ __('Estado de funcionamiento') }}</td>
-            <td colspan="3">{{ $equipo->estado_funcionamiento ?? $placeholder }}</td>
+            <td colspan="3">{{ $equipo->estadoFuncionamientoTexto() ?? $placeholder }}</td>
         </tr>
     </table>
 
@@ -370,7 +370,7 @@
                 <td>{{ $componente->capacidad_caracteristica ?? $placeholder }}</td>
                 <td>{{ $componente->marca ?? $placeholder }}</td>
                 <td class="mono">{{ $componente->serial ?? $placeholder }}</td>
-                <td>{{ $componente->estado ?? $placeholder }}</td>
+                <td>{{ $componente->estadoTexto() ?? $placeholder }}</td>
             </tr>
         @empty
             <tr><td colspan="5" class="muted">{{ __('Este equipo no tiene componentes registrados actualmente.') }}</td></tr>

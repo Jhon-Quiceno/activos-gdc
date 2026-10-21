@@ -233,7 +233,7 @@ class FormatosPdf
 
         $fecha = self::fecha($evento?->fecha ?? now());
         $estado = $equipo->estado_funcionamiento
-            ? __('Estado de funcionamiento: :estado.', ['estado' => $equipo->estado_funcionamiento])
+            ? __('Estado de funcionamiento: :estado.', ['estado' => $equipo->estadoFuncionamientoTexto()])
             : null;
         $componentes = self::textoComponentes($equipo);
         $motivo = self::motivoDelEvento($evento);
