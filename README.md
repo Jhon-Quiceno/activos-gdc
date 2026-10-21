@@ -9,7 +9,7 @@ El sistema reemplaza hojas de cálculo y procesos en papel dispersos por un inve
 Para el detalle funcional completo, ver:
 
 - [Análisis de requerimientos](docs/analisis-requerimientos.md) — documento de referencia permanente: 35 requerimientos esenciales, modelo de dominio, reglas de negocio y casos de uso.
-- [Plan de trabajo de dos semanas](docs/plan-2-semanas.md) — plan de la Fase 1 y reparto de tareas del equipo.
+- [Plan de Fase 3](docs/plan-fase3.md) — plan y reparto de trabajo actual (las Fases 1 y 2 están cerradas).
 
 ## Stack
 
@@ -161,11 +161,11 @@ tests/           Pruebas Pest, organizadas por bloque funcional
 
 La carpeta `docs/` contiene:
 
-- [`analisis-requerimientos.md`](docs/analisis-requerimientos.md) — requerimientos, modelo de dominio y reglas de negocio.
-- [`plan-2-semanas.md`](docs/plan-2-semanas.md) — plan de trabajo de la Fase 1.
-- [`plan-fase2.md`](docs/plan-fase2.md) — qué sigue después de la Fase 1.
+- [`analisis-requerimientos.md`](docs/analisis-requerimientos.md) — requerimientos, modelo de dominio y reglas de negocio (v4; versión Word en `analisis-requerimientos-v4.docx`).
+- [`base-de-datos.md`](docs/base-de-datos.md) — modelo de datos v4 y el esquema que falta para la Fase 3.
+- [`plan-fase3.md`](docs/plan-fase3.md) — plan y reparto de la Fase 3 (la Fase 2 está cerrada, `v2.0`).
 - [`normas-de-trabajo.md`](docs/normas-de-trabajo.md) — reglas de ramas, migraciones, carpetas y eventos para trabajar en equipo sin pisarse.
-- `juan-jose.md`, `anuar.md`, `juan-camilo.md` — tareas específicas de cada integrante del equipo (los de Alex y Manuel se retiraron al quedar sus bloques completos).
+- [`juan-jose.md`](docs/juan-jose.md) y [`jhon.md`](docs/jhon.md) — tareas de la Fase 3 de cada integrante.
 
 ## Ramas y flujo de trabajo
 

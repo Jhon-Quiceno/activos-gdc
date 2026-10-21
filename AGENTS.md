@@ -4,7 +4,7 @@ Gobernación de Córdoba · Dirección TIC. Lleva el ciclo de vida completo de c
 tecnológico (registro, componentes, traslados, diagnóstico, baja) con formatos PDF
 firmados y código QR por equipo. Ver `docs/analisis-requerimientos.md` para el detalle
 funcional completo (35 RF esenciales, modelo de dominio, reglas de negocio, casos de uso)
-y `docs/plan-2-semanas.md` para el plan y reparto de trabajo del equipo.
+y `docs/plan-fase3.md` para el plan y reparto de trabajo del equipo.
 
 ## Stack
 
@@ -104,10 +104,9 @@ colores, tamaños ni íconos que no estén ya en `tailwind.config.js` o en los c
 ## Documentación completa
 
 - `docs/analisis-requerimientos.md` — requerimientos, modelo de dominio, reglas de negocio.
-- `docs/plan-2-semanas.md` — plan de trabajo de la Fase 1.
+- `docs/base-de-datos.md` — modelo de datos v4 y el esquema de la Fase 3 (§10).
+- `docs/plan-fase3.md` — plan y reparto de la Fase 3 (la Fase 2 está cerrada, `v2.0`).
 - `docs/normas-de-trabajo.md` — reglas de ramas/carpetas/eventos en detalle.
-- `docs/juan-jose.md`, `docs/anuar.md`, `docs/juan-camilo.md` — tareas
-  específicas de cada integrante (los de Alex y Manuel se retiraron al
-  quedar sus bloques completos, ver `docs/plan-2-semanas.md` sección 0).
+- `docs/juan-jose.md` y `docs/jhon.md` — tareas de la Fase 3 de cada integrante.
 - `odd/tasks/bootstrap-hoja-vida-equipos.md` — historial del bootstrap inicial del
   proyecto (qué se construyó, decisiones tomadas, problemas de entorno encontrados).
