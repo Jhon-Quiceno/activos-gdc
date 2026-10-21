@@ -21,7 +21,7 @@ class PorEstado extends ReporteDefinicion
     {
         return [
             'Estado'           => fn ($e) => $this->etiquetaEstado($e->estado_ciclo_vida),
-            'Funcionamiento'   => fn ($e) => $e->estado_funcionamiento,
+            'Funcionamiento'   => fn ($e) => $e->estadoFuncionamientoTexto(),
             'Serial'           => fn ($e) => $e->serial,
             'Código de activo' => fn ($e) => $e->codigo_activo,
             'Tipo'             => fn ($e) => $e->tipoEquipo?->nombre,

@@ -9,6 +9,7 @@ use App\Livewire\Equipos\Concerns\NormalizaIdentificadores;
 use App\Livewire\Equipos\Soporte\TextosEquipo;
 use App\Models\ConfiguracionComputo;
 use App\Models\Equipo;
+use Illuminate\Validation\Rule;
 use App\Models\Marca;
 use App\Models\Proceso;
 use App\Models\SistemaOperativo;
@@ -176,7 +177,7 @@ class Editar extends Component
                 'max:1000',
             ],
             'marcaId' => ['required', 'exists:marcas,id'],
-            'estadoFuncionamiento' => ['required', 'string'],
+            'estadoFuncionamiento' => ['required', Rule::in(array_keys(Equipo::ESTADOS_FUNCIONAMIENTO))],
             'propiedad' => ['required', 'in:gobernacion,tercero'],
             'observaciones' => ['nullable', 'string', 'max:2000'],
         ] + $this->reglasCatalogo() + $this->reglasAdquisicion() + $this->reglasCaracteristicas();

@@ -70,7 +70,7 @@ class RegistrarEquipoTest extends TestCase
             'serial' => 'CN-0001',
             'codigoActivo' => 'I1-024147',
             'marcaId' => $this->marca->id,
-            'estadoFuncionamiento' => 'Bueno',
+            'estadoFuncionamiento' => 'bueno',
             'sedeId' => $this->sede->id,
             'pisoId' => $this->piso->id,
             'dependenciaId' => $this->dependencia->id,

@@ -36,7 +36,7 @@ class InventarioGeneral extends ReporteDefinicion
             'Propiedad'        => fn ($e) => $e->propiedad,
             'Propietario'      => fn ($e) => $e->proveedorTercero?->razon_social,
             'Estado'           => fn ($e) => $e->estado_ciclo_vida,
-            'Funcionamiento'   => fn ($e) => $e->estado_funcionamiento,
+            'Funcionamiento'   => fn ($e) => $e->estadoFuncionamientoTexto(),
             'Verificación'     => fn ($e) => $e->verificacion,
             'Sede'             => fn ($e) => $e->asignacionActual?->piso?->sede?->nombre,
             'Piso'             => fn ($e) => $e->asignacionActual?->piso?->numero,

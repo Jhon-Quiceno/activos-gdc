@@ -86,9 +86,8 @@
     $estadoComponenteEstilos = [
         'bueno' => 'success',
         'regular' => 'warning',
-        'dañado' => 'danger',
         'malo' => 'danger',
-        'no funcional' => 'danger',
+        'no_funcional' => 'danger',
     ];
 
     $firmaEstilos = [
@@ -328,8 +327,8 @@
                             <td class="font-mono">{{ $componente->serial ?? '—' }}</td>
                             <td>
                                 @if($componente->estado)
-                                    <x-ui.badge :variant="$estadoComponenteEstilos[mb_strtolower($componente->estado)] ?? 'neutral'">
-                                        {{ $componente->estado }}
+                                    <x-ui.badge :variant="$estadoComponenteEstilos[$componente->estado] ?? 'neutral'">
+                                        {{ $componente->estadoTexto() }}
                                     </x-ui.badge>
                                 @else
                                     <span class="text-ink-muted">—</span>

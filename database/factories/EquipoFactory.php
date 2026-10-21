@@ -31,7 +31,7 @@ class EquipoFactory extends Factory
             'forma_ingreso' => fake()->randomElement(['compra', 'compra', 'carga_inicial', 'donacion']),
             'fecha_adquisicion' => fake()->dateTimeBetween('-8 years', '-1 month')->format('Y-m-d'),
             'valor_adquisicion' => fake()->numberBetween(800, 6000) * 1000,
-            'estado_funcionamiento' => fake()->randomElement(['Bueno', 'Regular', 'Malo']),
+            'estado_funcionamiento' => fake()->randomElement(['bueno', 'regular', 'malo']),
             'estado_ciclo_vida' => 'en_servicio',
             'verificacion' => fake()->randomElement(['verificado', 'pendiente_de_verificar']),
             'puesto_trabajo_id' => null,

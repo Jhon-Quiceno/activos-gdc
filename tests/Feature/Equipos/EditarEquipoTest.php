@@ -58,7 +58,7 @@ class EditarEquipoTest extends TestCase
             'marca_id' => $this->hp->id,
             'modelo_id' => $this->p24->id,
             'propiedad' => 'gobernacion',
-            'estado_funcionamiento' => 'Bueno',
+            'estado_funcionamiento' => 'bueno',
             'caracteristicas' => ['tamano_pulgadas' => '24', 'conexion' => 'HDMI'],
         ], $datos));
     }

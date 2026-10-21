@@ -34,7 +34,7 @@ class ComponenteFactory extends Factory
             'capacidad_caracteristica' => fake()->randomElement(self::CARACTERISTICAS),
             'marca' => fake('es_ES')->company(),
             'serial' => fake()->unique()->bothify('CMP-????####'),
-            'estado' => fake()->randomElement(['Bueno', 'Regular', 'Dañado']),
+            'estado' => fake()->randomElement(['bueno', 'regular', 'malo']),
             'fecha_instalacion' => fake()->dateTimeBetween('-3 years', 'now'),
             'fecha_retiro' => null,
         ];
