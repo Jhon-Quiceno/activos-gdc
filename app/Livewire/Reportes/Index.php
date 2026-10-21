@@ -5,6 +5,7 @@ namespace App\Livewire\Reportes;
 use App\Livewire\Reportes\Definiciones\CalidadInventario;
 use App\Livewire\Reportes\Definiciones\CambiosComponentes;
 use App\Livewire\Reportes\Definiciones\DadosDeBaja;
+use App\Livewire\Reportes\Definiciones\GarantiasPorVencer;
 use App\Livewire\Reportes\Definiciones\HistorialEquipo;
 use App\Livewire\Reportes\Definiciones\InventarioGeneral;
 use App\Livewire\Reportes\Definiciones\MatrizInventarioFor01;
@@ -21,6 +22,7 @@ use App\Livewire\Reportes\Definiciones\RequiereGestionRiesgo;
 use App\Livewire\Reportes\Definiciones\SinAntivirus;
 use App\Livewire\Reportes\Definiciones\Terceros;
 use App\Livewire\Reportes\Definiciones\Traslados;
+use App\Livewire\Reportes\Definiciones\VidaUtilSuperada;
 use App\Livewire\Reportes\Exportes\MatrizFor01;
 use App\Livewire\Reportes\Exportes\ReporteExport;
 use App\Models\Dependencia;
@@ -29,7 +31,6 @@ use App\Models\Persona;
 use App\Models\Piso;
 use App\Models\Proceso;
 use App\Models\Sede;
-use App\Models\SistemaOperativo;
 use App\Models\TipoEquipo;
 use App\Models\ValoracionActivo;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -76,7 +77,7 @@ class Index extends Component
     public string $filtroHasta = '';
 
     /**
-     * Catálogo de los 15 reportes del prototipo "Hoja de Vida de Equipos".
+     * Catálogo de reportes del prototipo "Hoja de Vida de Equipos".
      */
     public const REPORTES = [
         'inventario_general' => [
@@ -113,7 +114,7 @@ class Index extends Component
         ],
         'obsolescencia_so' => [
             'titulo' => 'Obsolescencia por sistema operativo',
-            'descripcion' => 'Equipos con Windows 7 u 8',
+            'descripcion' => 'Equipos cuyo sistema operativo ya no tiene soporte',
         ],
         'sin_antivirus' => [
             'titulo' => 'Sin antivirus',
@@ -137,7 +138,7 @@ class Index extends Component
         ],
         'calidad_inventario' => [
             'titulo' => 'Calidad del inventario',
-            'descripcion' => 'Sin serial, sin código, repetidos',
+            'descripcion' => 'Sin serial, sin código, sin valoración, repetidos',
         ],
         'matriz_for01' => [
             'titulo' => 'Matriz de inventario (FOR.01)',
@@ -150,6 +151,14 @@ class Index extends Component
         'por_importancia' => [
             'titulo' => 'Por importancia',
             'descripcion' => 'Activos valorados, de mayor a menor',
+        ],
+        'garantias_por_vencer' => [
+            'titulo' => 'Garantías por vencer',
+            'descripcion' => 'Equipos cuya garantía termina pronto',
+        ],
+        'vida_util_superada' => [
+            'titulo' => 'Vida útil superada',
+            'descripcion' => 'Equipos que ya cumplieron su vida útil',
         ],
     ];
 
@@ -173,6 +182,8 @@ class Index extends Component
         'matriz_for01' => MatrizInventarioFor01::class,
         'requiere_gestion_riesgo' => RequiereGestionRiesgo::class,
         'por_importancia' => PorImportancia::class,
+        'garantias_por_vencer' => GarantiasPorVencer::class,
+        'vida_util_superada' => VidaUtilSuperada::class,
     ];
 
     public const ESTADOS = [
@@ -312,11 +323,8 @@ class Index extends Component
                 ->distinct()
                 ->orderBy('tipo_vinculacion')
                 ->pluck('tipo_vinculacion'),
-            'sistemasOperativosObsoletos' => SistemaOperativo::query()
-                ->where('nombre', 'like', '%7%')
-                ->orWhere('nombre', 'like', '%8%')
-                ->orderBy('nombre')
-                ->get(),
+            // La vista de obsolescencia lista los sistemas sin soporte por su fecha real de fin de soporte.
+            'sistemasOperativosObsoletos' => ObsolescenciaSo::sistemasSinSoporte(),
         ]);
     }
 }

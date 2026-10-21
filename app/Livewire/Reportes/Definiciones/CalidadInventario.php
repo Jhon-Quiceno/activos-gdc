@@ -14,6 +14,8 @@ class CalidadInventario extends ReporteDefinicion
         'codigo_repetido' => 'Código de activo repetido',
         'pendiente_verificar' => 'Pendiente de verificar',
         'sin_etiqueta_qr' => 'Sin etiqueta QR impresa',
+        'sin_valoracion' => 'Sin valoración',
+        'sin_adquisicion' => 'Sin datos de adquisición',
     ];
 
     private ?array $codigosRepetidos = null;
@@ -34,7 +36,9 @@ class CalidadInventario extends ReporteDefinicion
 
     protected function consultaBase(): Builder
     {
-        return parent::consultaBase()->withCount('etiquetasQr');
+        return parent::consultaBase()
+            ->with('valoracionVigente')
+            ->withCount('etiquetasQr');
     }
 
     protected function aplicarFiltros(Builder $q, array $f): Builder
@@ -69,6 +73,13 @@ class CalidadInventario extends ReporteDefinicion
             'codigo_repetido' => $q->whereIn('equipos.codigo_activo', $this->codigosRepetidos()),
             'pendiente_verificar' => $q->where('equipos.verificacion', 'pendiente_de_verificar'),
             'sin_etiqueta_qr' => $q->whereDoesntHave('etiquetasQr'),
+            // RN-25: los activos de soporte (UPS, aires, plantas) no se valoran.
+            'sin_valoracion' => $q->where('equipos.estado_ciclo_vida', '!=', 'dado_de_baja')
+                ->whereDoesntHave('valoracionVigente')
+                ->whereHas('tipoEquipo', fn ($t) => $t->where(
+                    fn ($x) => $x->whereNull('tipo_activo')->orWhere('tipo_activo', '!=', 'soporte')
+                )),
+            'sin_adquisicion' => $q->whereNull('equipos.fecha_adquisicion'),
         };
     }
 
@@ -103,6 +114,14 @@ class CalidadInventario extends ReporteDefinicion
         }
         if (($e->etiquetas_qr_count ?? 0) === 0) {
             $lista[] = self::INDICADORES['sin_etiqueta_qr'];
+        }
+        if ($e->estado_ciclo_vida !== 'dado_de_baja'
+            && $e->valoracionVigente === null
+            && $e->tipoEquipo?->tipo_activo !== 'soporte') {
+            $lista[] = self::INDICADORES['sin_valoracion'];
+        }
+        if ($e->fecha_adquisicion === null) {
+            $lista[] = self::INDICADORES['sin_adquisicion'];
         }
 
         return implode(', ', $lista);

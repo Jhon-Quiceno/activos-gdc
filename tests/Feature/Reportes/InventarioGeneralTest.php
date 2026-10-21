@@ -2,10 +2,19 @@
 
 use App\Livewire\Reportes\Definiciones\InventarioGeneral;
 use App\Livewire\Reportes\Index;
+use App\Models\Asignacion;
+use App\Models\ConfiguracionComputo;
+use App\Models\Dependencia;
 use App\Models\Equipo;
 use App\Models\Marca;
+use App\Models\Municipio;
+use App\Models\Persona;
+use App\Models\Piso;
+use App\Models\Sede;
+use App\Models\SistemaOperativo;
 use App\Models\TipoEquipo;
 use App\Models\User;
+use App\Models\ValoracionActivo;
 use App\Services\HistorialService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
@@ -98,7 +107,11 @@ it('enmascara la cédula', function () {
 });
 
 // ---------------------------------------------------------------------------
-// Los 15 reportes cargan sin errores
+// Todos los reportes cargan sin errores
+//
+
+// ---------------------------------------------------------------------------
+// Todos los reportes cargan sin errores
 // ---------------------------------------------------------------------------
 
 it('carga sin errores cada uno de los reportes', function (string $clave) {
@@ -123,6 +136,11 @@ it('carga sin errores cada uno de los reportes', function (string $clave) {
     'traslados',
     'pendientes_firma',
     'calidad_inventario',
+    'matriz_for01',
+    'requiere_gestion_riesgo',
+    'por_importancia',
+    'garantias_por_vencer',
+    'vida_util_superada',
 ]);
 
 // ---------------------------------------------------------------------------
@@ -186,6 +204,40 @@ it('calidad señala los equipos pendientes de verificar', function () {
         ->assertDontSee($verificado->serial);
 });
 
+it('calidad señala los equipos sin valoración', function () {
+    $sinValorar = Equipo::factory()->create();
+    $valorado = Equipo::factory()->create();
+
+    ValoracionActivo::registrar($valorado, User::factory()->create(), [
+        'contiene_datos_personales' => 'no',
+        'clasificacion_datos' => 'no_aplica',
+        'infraestructura_critica' => 'no',
+        'continuidad_negocio' => 'no',
+        'propietario_cargo' => 'Director TIC',
+        'custodio_cargo' => 'Ingeniero de Soporte',
+        'confidencialidad' => 2,
+        'integridad' => 2,
+        'disponibilidad' => 2,
+    ]);
+
+    Livewire::test(Index::class)
+        ->call('seleccionarReporte', 'calidad_inventario')
+        ->set('filtroSistemaOperativo', 'sin_valoracion')
+        ->assertSee($sinValorar->serial)
+        ->assertDontSee($valorado->serial);
+});
+
+it('calidad señala los equipos sin datos de adquisición', function () {
+    $sinDatos = Equipo::factory()->create(['fecha_adquisicion' => null]);
+    $conDatos = Equipo::factory()->create(['fecha_adquisicion' => today()->subYear()]);
+
+    Livewire::test(Index::class)
+        ->call('seleccionarReporte', 'calidad_inventario')
+        ->set('filtroSistemaOperativo', 'sin_adquisicion')
+        ->assertSee($sinDatos->serial)
+        ->assertDontSee($conDatos->serial);
+});
+
 // ---------------------------------------------------------------------------
 // Reportes de movimientos (leen eventos creados por HistorialService)
 // ---------------------------------------------------------------------------
@@ -221,32 +273,33 @@ it('dados de baja solo lista equipos con evento de baja', function () {
         ->assertSee($conBaja->serial)
         ->assertDontSee($sinBaja->serial);
 });
+
 // ---------------------------------------------------------------------------
 // Modelo v4: la sede sale del piso y el responsable de nombres/apellidos
-// (adaptación del paso 3; estas columnas viejas se borran en el cierre)
 // ---------------------------------------------------------------------------
 
 it('filtra por sede a través del piso y muestra el nombre completo del responsable', function () {
-    $sede = App\Models\Sede::forceCreate(['municipio_id' => \App\Models\Municipio::firstOrCreate(['codigo_dane' => '23001'], ['nombre' => 'Montería'])->id, 'nombre' => 'Palacio de Naín', 'tipo' => 'administrativa']);
-    $otraSede = App\Models\Sede::forceCreate(['municipio_id' => \App\Models\Municipio::firstOrCreate(['codigo_dane' => '23001'], ['nombre' => 'Montería'])->id, 'nombre' => 'Edificio Anexo', 'tipo' => 'administrativa']);
-    $piso = App\Models\Piso::forceCreate(['sede_id' => $sede->id, 'numero' => 2]);
-    $pisoOtra = App\Models\Piso::forceCreate(['sede_id' => $otraSede->id, 'numero' => 1]);
-    $dependencia = App\Models\Dependencia::forceCreate(['tipo' => 'direccion', 'nombre' => 'Dirección TIC', 'activa' => true]);
+    $municipio = Municipio::firstOrCreate(['codigo_dane' => '23001'], ['nombre' => 'Montería']);
+    $sede = Sede::forceCreate(['municipio_id' => $municipio->id, 'nombre' => 'Palacio de Naín', 'tipo' => 'administrativa']);
+    $otraSede = Sede::forceCreate(['municipio_id' => $municipio->id, 'nombre' => 'Edificio Anexo', 'tipo' => 'administrativa']);
+    $piso = Piso::forceCreate(['sede_id' => $sede->id, 'numero' => 2]);
+    $pisoOtra = Piso::forceCreate(['sede_id' => $otraSede->id, 'numero' => 1]);
+    $dependencia = Dependencia::forceCreate(['tipo' => 'direccion', 'nombre' => 'Dirección TIC', 'activa' => true]);
 
-    $persona = App\Models\Persona::factory()->create([
+    $persona = Persona::factory()->create([
         'nombres' => 'Marcela', 'apellidos' => 'Pérez Gómez',
         'numero_documento' => '1067896226',
     ]);
 
-    $aqui = App\Models\Equipo::factory()->create();
-    App\Models\Asignacion::create([
+    $aqui = Equipo::factory()->create();
+    Asignacion::create([
         'equipo_id' => $aqui->id, 'persona_id' => $persona->id,
         'piso_id' => $piso->id, 'dependencia_id' => $dependencia->id,
         'fecha_inicio' => now(),
     ]);
 
-    $alla = App\Models\Equipo::factory()->create();
-    App\Models\Asignacion::create([
+    $alla = Equipo::factory()->create();
+    Asignacion::create([
         'equipo_id' => $alla->id, 'piso_id' => $pisoOtra->id,
         'dependencia_id' => $dependencia->id, 'fecha_inicio' => now(),
     ]);
@@ -259,4 +312,56 @@ it('filtra por sede a través del piso y muestra el nombre completo del responsa
         ->assertSee('Marcela Pérez Gómez')      // nombreCompleto()
         ->assertSee('Palacio de Naín')          // sede vía piso
         ->assertSee('****6226');                // documento enmascarado (RN-12)
+});
+
+// ---------------------------------------------------------------------------
+// Fase 2: obsolescencia por fin de soporte, garantías y vida útil
+// ---------------------------------------------------------------------------
+
+it('obsolescencia usa la fecha real de fin de soporte, no el nombre del sistema', function () {
+    $viejo = SistemaOperativo::create(['nombre' => 'Windows 7', 'fin_soporte' => '2020-01-14']);
+    $vigente = SistemaOperativo::create(['nombre' => 'Windows 11', 'fin_soporte' => today()->addYears(3)]);
+
+    $sinSoporte = Equipo::factory()->create();
+    $conSoporte = Equipo::factory()->create();
+    ConfiguracionComputo::create(['equipo_id' => $sinSoporte->id, 'sistema_operativo_id' => $viejo->id, 'tiene_antivirus' => true]);
+    ConfiguracionComputo::create(['equipo_id' => $conSoporte->id, 'sistema_operativo_id' => $vigente->id, 'tiene_antivirus' => true]);
+
+    expect($viejo->sinSoporte())->toBeTrue()
+        ->and($vigente->sinSoporte())->toBeFalse();
+
+    Livewire::test(Index::class)
+        ->call('seleccionarReporte', 'obsolescencia_so')
+        ->assertSee($sinSoporte->serial)
+        ->assertDontSee($conSoporte->serial);
+});
+
+it('garantías por vencer lista solo las que vencen dentro de la ventana', function () {
+    $pronto = Equipo::factory()->create(['fecha_fin_garantia' => today()->addDays(30)]);
+    $lejos = Equipo::factory()->create(['fecha_fin_garantia' => today()->addDays(200)]);
+    $vencida = Equipo::factory()->create(['fecha_fin_garantia' => today()->subDay()]);
+
+    // El reporte y el modelo aplican la misma regla (Equipo::garantiaPorVencer).
+    expect($pronto->garantiaPorVencer())->toBeTrue()
+        ->and($lejos->garantiaPorVencer())->toBeFalse()
+        ->and($vencida->garantiaPorVencer())->toBeFalse();
+
+    Livewire::test(Index::class)
+        ->call('seleccionarReporte', 'garantias_por_vencer')
+        ->assertSee($pronto->serial)
+        ->assertDontSee($lejos->serial)
+        ->assertDontSee($vencida->serial);
+});
+
+it('vida útil superada lista los equipos que ya cumplieron su vida útil', function () {
+    $viejo = Equipo::factory()->create(['fecha_adquisicion' => today()->subYears(5), 'vida_util_meses' => 36]);
+    $nuevo = Equipo::factory()->create(['fecha_adquisicion' => today()->subYear(), 'vida_util_meses' => 36]);
+
+    expect($viejo->vidaUtilSuperada())->toBeTrue()
+        ->and($nuevo->vidaUtilSuperada())->toBeFalse();
+
+    Livewire::test(Index::class)
+        ->call('seleccionarReporte', 'vida_util_superada')
+        ->assertSee($viejo->serial)
+        ->assertDontSee($nuevo->serial);
 });
