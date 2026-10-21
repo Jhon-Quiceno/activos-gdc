@@ -49,6 +49,12 @@
                         <option value="{{ $dependencia->id }}">{{ $dependencia->nombre }}</option>
                     @endforeach
                 </select>
+                @if ($filtroDependencia)
+                    <label class="mt-2 flex items-center gap-2 text-[13px] text-ink-muted">
+                        <input type="checkbox" wire:model.live="filtroSoloDependencia" class="rounded border-line-input text-primary focus:ring-primary" />
+                        {{ __('Solo esta dependencia (sin subdependencias)') }}
+                    </label>
+                @endif
             </div>
 
             <div>
@@ -84,6 +90,28 @@
                         <option>{{ __('No disponible todavía') }}</option>
                     </select>
                 @endif
+            </div>
+        </div>
+
+        <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div>
+                <label class="text-[13px] font-semibold text-ink-label">{{ __('Proceso') }}</label>
+                <select wire:model.live="filtroProceso" class="mt-1 h-11 w-full rounded-lg border-line-input text-[14px] text-ink focus:border-primary focus:ring-primary">
+                    <option value="">{{ __('Todos') }}</option>
+                    @foreach ($procesos as $proceso)
+                        <option value="{{ $proceso->id }}">{{ $proceso->nombre }}</option>
+                    @endforeach
+                </select>
+            </div>
+
+            <div>
+                <label class="text-[13px] font-semibold text-ink-label">{{ __('Importancia') }}</label>
+                <select wire:model.live="filtroImportancia" class="mt-1 h-11 w-full rounded-lg border-line-input text-[14px] text-ink focus:border-primary focus:ring-primary">
+                    <option value="">{{ __('Todas') }}</option>
+                    @foreach ($importancias as $valor => $etiqueta)
+                        <option value="{{ $valor }}">{{ $etiqueta }}</option>
+                    @endforeach
+                </select>
             </div>
         </div>
 

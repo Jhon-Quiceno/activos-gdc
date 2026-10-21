@@ -58,6 +58,10 @@ abstract class ReporteDefinicion
             ->when(filled($f['tipo'] ?? null), fn ($q) => $q->where('equipos.tipo_equipo_id', $f['tipo']))
             ->when(filled($f['marca'] ?? null), fn ($q) => $q->where('equipos.marca_id', $f['marca']))
             ->when(filled($f['propiedad'] ?? null), fn ($q) => $q->where('equipos.propiedad', $f['propiedad']))
+            ->when(filled($f['proceso'] ?? null), fn ($q) => $q->where('equipos.proceso_id', $f['proceso']))
+            ->when(filled($f['importancia'] ?? null), fn ($q) => $q->whereHas(
+                'valoracionVigente', fn ($v) => $v->where('importancia', $f['importancia'])
+            ))
             ->when(filled($f['desde'] ?? null), fn ($q) => $q->whereDate('equipos.created_at', '>=', $f['desde']))
             ->when(filled($f['hasta'] ?? null), fn ($q) => $q->whereDate('equipos.created_at', '<=', $f['hasta']))
             // Ubicación y responsable: siempre sobre la asignación actual (fecha_fin nulo)
@@ -68,9 +72,15 @@ abstract class ReporteDefinicion
             ->when(filled($f['piso'] ?? null), fn ($q) => $q->whereHas(
                 'asignacionActual', fn ($a) => $a->where('piso_id', $f['piso'])
             ))
-            ->when(filled($f['dependencia'] ?? null), fn ($q) => $q->whereHas(
-                'asignacionActual', fn ($a) => $a->where('dependencia_id', $f['dependencia'])
-            ))
+            // Dependencia: por defecto incluye toda su rama (sus subdependencias,
+            // Dependencia::idsDeRama); con «solo esta dependencia» se restringe al nodo.
+            ->when(filled($f['dependencia'] ?? null), function ($q) use ($f) {
+                $ids = empty($f['solo_dependencia'])
+                    ? Dependencia::idsDeRama((int) $f['dependencia'])
+                    : [(int) $f['dependencia']];
+
+                $q->whereHas('asignacionActual', fn ($a) => $a->whereIn('dependencia_id', $ids));
+            })
             ->when(filled($f['persona'] ?? null), fn ($q) => $q->whereHas(
                 'asignacionActual', fn ($a) => $a->where('persona_id', $f['persona'])
             ))
