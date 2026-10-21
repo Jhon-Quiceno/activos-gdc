@@ -14,6 +14,9 @@ class CalidadInventario extends ReporteDefinicion
         'codigo_repetido' => 'Código de activo repetido',
         'pendiente_verificar' => 'Pendiente de verificar',
         'sin_etiqueta_qr' => 'Sin etiqueta QR impresa',
+        // v4 (RF-37): valoración GT-M4 y datos de adquisición.
+        'sin_valoracion' => 'Sin valoración',
+        'sin_adquisicion' => 'Sin datos de adquisición',
     ];
 
     private ?array $codigosRepetidos = null;
@@ -34,7 +37,23 @@ class CalidadInventario extends ReporteDefinicion
 
     protected function consultaBase(): Builder
     {
-        return parent::consultaBase()->withCount('etiquetasQr');
+        return parent::consultaBase()->withCount('etiquetasQr')->with('valoracionVigente');
+    }
+
+    /**
+     * RN-25: solo el hardware se valora (el soporte no tiene clasificación de la
+     * información), y un equipo dado de baja ya no necesita valoración.
+     */
+    public static function debeValorarse(Builder $q): Builder
+    {
+        return $q->where('equipos.estado_ciclo_vida', '!=', 'dado_de_baja')
+            ->whereHas('tipoEquipo', fn ($t) => $t->where('tipo_activo', 'hardware'));
+    }
+
+    /** Sin fecha ni valor de adquisición (RF-52). */
+    public static function sinAdquisicion(Builder $q): Builder
+    {
+        return $q->whereNull('equipos.fecha_adquisicion')->whereNull('equipos.valor_adquisicion');
     }
 
     protected function aplicarFiltros(Builder $q, array $f): Builder
@@ -69,6 +88,8 @@ class CalidadInventario extends ReporteDefinicion
             'codigo_repetido' => $q->whereIn('equipos.codigo_activo', $this->codigosRepetidos()),
             'pendiente_verificar' => $q->where('equipos.verificacion', 'pendiente_de_verificar'),
             'sin_etiqueta_qr' => $q->whereDoesntHave('etiquetasQr'),
+            'sin_valoracion' => self::debeValorarse($q)->whereDoesntHave('valoracionVigente'),
+            'sin_adquisicion' => self::sinAdquisicion($q),
         };
     }
 
@@ -103,6 +124,12 @@ class CalidadInventario extends ReporteDefinicion
         }
         if (($e->etiquetas_qr_count ?? 0) === 0) {
             $lista[] = self::INDICADORES['sin_etiqueta_qr'];
+        }
+        if ($e->estado_ciclo_vida !== 'dado_de_baja' && $e->tipoEquipo?->tipo_activo === 'hardware' && ! $e->valoracionVigente) {
+            $lista[] = self::INDICADORES['sin_valoracion'];
+        }
+        if ($e->fecha_adquisicion === null && $e->valor_adquisicion === null) {
+            $lista[] = self::INDICADORES['sin_adquisicion'];
         }
 
         return implode(', ', $lista);

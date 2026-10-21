@@ -55,6 +55,11 @@
                 ->havingRaw('COUNT(*) > 1');
         })->count();
 
+    // v4: mismo criterio que el reporte de calidad (CalidadInventario).
+    $sinValoracionCalidad = \App\Livewire\Reportes\Definiciones\CalidadInventario::debeValorarse(\App\Models\Equipo::query())
+        ->whereDoesntHave('valoracionVigente')->count();
+    $sinAdquisicion = \App\Livewire\Reportes\Definiciones\CalidadInventario::sinAdquisicion(\App\Models\Equipo::query())->count();
+
     $pctDe = function (int $n) use ($totalEquipos) {
         return $totalEquipos > 0 ? (int) round(($n / $totalEquipos) * 100) : 0;
     };
@@ -64,6 +69,8 @@
     $pctSinResponsable = $pctDe($sinResponsable);
     $pctSinCedula = $pctDe($sinCedula);
     $pctRepetidos = $pctDe($codigosRepetidos);
+    $pctSinValoracion = $pctDe($sinValoracionCalidad);
+    $pctSinAdquisicion = $pctDe($sinAdquisicion);
 
     $calidadInventario = [
         ['label' => __('Pendientes de verificar serial'), 'value' => $pendientesVerificar . ' (' . $pctPendientes . '%)', 'percent' => $pctPendientes, 'color' => 'bg-warning-text'],
@@ -71,6 +78,8 @@
         ['label' => __('Sin responsable'), 'value' => $sinResponsable . ' (' . $pctSinResponsable . '%)', 'percent' => $pctSinResponsable, 'color' => 'bg-primary'],
         ['label' => __('Sin cédula del responsable'), 'value' => $sinCedula . ' (' . $pctSinCedula . '%)', 'percent' => $pctSinCedula, 'color' => 'bg-primary'],
         ['label' => __('Códigos de activo repetidos'), 'value' => $codigosRepetidos . ' (' . $pctRepetidos . '%)', 'percent' => $pctRepetidos, 'color' => 'bg-danger-hover'],
+        ['label' => __('Sin valoración (hardware)'), 'value' => $sinValoracionCalidad . ' (' . $pctSinValoracion . '%)', 'percent' => $pctSinValoracion, 'color' => 'bg-primary'],
+        ['label' => __('Sin datos de adquisición'), 'value' => $sinAdquisicion . ' (' . $pctSinAdquisicion . '%)', 'percent' => $pctSinAdquisicion, 'color' => 'bg-primary'],
     ];
 
     // --- Pendientes de firma (RF-30/RF-31) ---
