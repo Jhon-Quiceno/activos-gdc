@@ -9,8 +9,9 @@ use Illuminate\Validation\Rule;
 /**
  * Datos de la persona responsable con los campos del modelo v4 (RF-18):
  * tipo y número de documento, nombres y apellidos, correo institucional,
- * cargo del Decreto 607 con grado y encargo, vinculación, provisión, contrato
- * y fin de la vinculación (que alimenta el paz y salvo, RF-23).
+ * cargo del Decreto 607 con grado y encargo, jefe inmediato, planta (Central o
+ * Educación), vinculación, provisión, contrato y fin de la vinculación (que
+ * alimenta el paz y salvo, RF-23).
  *
  * Lo comparten Responsables (crear y editar) y el traslado (persona nueva).
  * La dependencia la pone cada pantalla, porque en el traslado es la del destino.
@@ -41,10 +42,42 @@ trait FormularioPersona
 
     public string $fechaFinVinculacion = '';
 
+    /** Jefe inmediato (otra persona) y el texto con el que se busca. */
+    public ?int $jefeInmediatoId = null;
+
+    public string $jefeBusqueda = '';
+
+    /** Planta de personal de la que viene: '' (no aplica), central o educacion. */
+    public string $planta = '';
+
     /** Campos del formulario, para limpiarlos de una vez. */
     protected function camposPersona(): array
     {
-        return ['tipoDocumento', 'numeroDocumento', 'nombres', 'apellidos', 'correoInstitucional', 'cargoId', 'grado', 'encargo', 'tipoVinculacion', 'tipoProvision', 'numeroContrato', 'fechaFinVinculacion'];
+        return ['tipoDocumento', 'numeroDocumento', 'nombres', 'apellidos', 'correoInstitucional', 'cargoId', 'grado', 'encargo', 'jefeInmediatoId', 'jefeBusqueda', 'planta', 'tipoVinculacion', 'tipoProvision', 'numeroContrato', 'fechaFinVinculacion'];
+    }
+
+    /** Valores de `personas.planta`: los mismos que guarda la carga de planta (RF-55). */
+    protected function plantasPersona(): array
+    {
+        return ['central' => __('Central'), 'educacion' => __('Educación')];
+    }
+
+    public function elegirJefe(int $personaId): void
+    {
+        $this->jefeInmediatoId = $personaId;
+        $this->jefeBusqueda = '';
+        $this->resetValidation('jefeInmediatoId');
+    }
+
+    public function quitarJefe(): void
+    {
+        $this->jefeInmediatoId = null;
+    }
+
+    /** La persona que se está editando, si la pantalla edita (Responsables); el traslado solo crea. */
+    protected function idPersonaEnEdicion(): ?int
+    {
+        return property_exists($this, 'editandoId') ? $this->editandoId : null;
     }
 
     /**
@@ -73,6 +106,9 @@ trait FormularioPersona
             'correoInstitucional' => ['nullable', 'email', 'max:120'],
             'cargoId' => ['nullable', 'exists:cargos,id'],
             'grado' => ['nullable', 'regex:/^\d{1,2}$/'],
+            // Nadie es su propio jefe inmediato.
+            'jefeInmediatoId' => ['nullable', 'integer', 'exists:personas,id', ...($ignorarId ? ['not_in:'.$ignorarId] : [])],
+            'planta' => ['nullable', Rule::in(array_keys($this->plantasPersona()))],
             'tipoVinculacion' => ['required', Rule::in(array_keys(Persona::VINCULACIONES))],
             'tipoProvision' => ['required', Rule::in(array_keys(Persona::PROVISIONES))],
             'numeroContrato' => [$this->tipoVinculacion === 'contratista' ? 'required' : 'nullable', 'string', 'max:40'],
@@ -88,6 +124,7 @@ trait FormularioPersona
                 : __('El documento solo lleva letras y números.'),
             'numeroDocumento.unique' => __('Ya hay una persona con ese documento.'),
             'numeroContrato.required' => __('Un contratista necesita el número de contrato.'),
+            'jefeInmediatoId.not_in' => __('Una persona no puede ser su propio jefe inmediato.'),
         ];
     }
 
@@ -98,6 +135,8 @@ trait FormularioPersona
             'numeroDocumento' => __('número de documento'),
             'correoInstitucional' => __('correo institucional'),
             'cargoId' => __('cargo'),
+            'jefeInmediatoId' => __('jefe inmediato'),
+            'planta' => __('planta'),
             'tipoVinculacion' => __('tipo de vinculación'),
             'tipoProvision' => __('provisión'),
             'numeroContrato' => __('número de contrato'),
@@ -120,6 +159,8 @@ trait FormularioPersona
             'grado' => $this->grado !== '' ? str_pad($this->grado, 2, '0', STR_PAD_LEFT) : null,
             'encargo' => $this->cargoId !== null && $this->encargo,
             'dependencia_id' => $dependenciaId,
+            'jefe_inmediato_id' => $this->jefeInmediatoId,
+            'planta' => $this->planta !== '' ? $this->planta : null,
             'tipo_vinculacion' => $this->tipoVinculacion,
             'tipo_provision' => $this->tipoProvision,
             'numero_contrato' => $texto($this->numeroContrato),
@@ -138,6 +179,9 @@ trait FormularioPersona
         $this->cargoId = $persona->cargo_id;
         $this->grado = (string) $persona->grado;
         $this->encargo = (bool) $persona->encargo;
+        $this->jefeInmediatoId = $persona->jefe_inmediato_id;
+        $this->jefeBusqueda = '';
+        $this->planta = (string) $persona->planta;
         $this->tipoVinculacion = (string) $persona->tipo_vinculacion;
         $this->tipoProvision = $persona->tipo_provision ?? 'no_aplica';
         $this->numeroContrato = (string) $persona->numero_contrato;
@@ -152,6 +196,36 @@ trait FormularioPersona
             'tiposDocumento' => Persona::TIPOS_DOCUMENTO,
             'vinculaciones' => Persona::VINCULACIONES,
             'provisiones' => Persona::PROVISIONES,
+            'plantas' => $this->plantasPersona(),
+            'jefeElegido' => $this->jefeInmediatoId ? Persona::with('cargoOficial')->find($this->jefeInmediatoId) : null,
+            'jefeCandidatos' => $this->candidatosAJefe(),
         ];
+    }
+
+    /**
+     * Hasta 8 personas activas por nombre o documento (la planta real tiene cientos,
+     * así que no cabe en un select). Nunca ofrece a la persona que se está editando.
+     */
+    protected function candidatosAJefe()
+    {
+        $termino = trim($this->jefeBusqueda);
+
+        if (mb_strlen($termino) < 2) {
+            return collect();
+        }
+
+        $documento = preg_replace('/[\s.,\-]/', '', $termino);
+
+        return Persona::query()
+            ->with('cargoOficial')
+            ->where('activo', true)
+            ->when($this->idPersonaEnEdicion(), fn ($q, $id) => $q->whereKeyNot($id))
+            ->where(fn ($q) => $q
+                ->whereRaw("CONCAT_WS(' ', nombres, apellidos) LIKE ?", ["%{$termino}%"])
+                ->when($documento !== '', fn ($q) => $q->orWhere('numero_documento', 'like', "%{$documento}%")))
+            ->orderBy('nombres')
+            ->orderBy('apellidos')
+            ->limit(8)
+            ->get();
     }
 }
