@@ -12,6 +12,8 @@ use App\Livewire\Reportes\Definiciones\ObsolescenciaSo;
 use App\Livewire\Reportes\Definiciones\PendientesFirma;
 use App\Livewire\Reportes\Definiciones\PorDependencia;
 use App\Livewire\Reportes\Definiciones\PorEstado;
+use App\Livewire\Reportes\Definiciones\GarantiasPorVencer;
+use App\Livewire\Reportes\Definiciones\PersonasPorRetirarse;
 use App\Livewire\Reportes\Definiciones\PorFuncionario;
 use App\Livewire\Reportes\Definiciones\PorImportancia;
 use App\Livewire\Reportes\Definiciones\PorSedePiso;
@@ -21,6 +23,7 @@ use App\Livewire\Reportes\Definiciones\RequiereGestionRiesgo;
 use App\Livewire\Reportes\Definiciones\SinAntivirus;
 use App\Livewire\Reportes\Definiciones\Terceros;
 use App\Livewire\Reportes\Definiciones\Traslados;
+use App\Livewire\Reportes\Definiciones\VidaUtilSuperada;
 use App\Livewire\Reportes\Exportes\MatrizFor01;
 use App\Livewire\Reportes\Exportes\ReporteExport;
 use App\Models\Dependencia;
@@ -151,6 +154,18 @@ class Index extends Component
             'titulo' => 'Por importancia',
             'descripcion' => 'Activos valorados, de mayor a menor',
         ],
+        'garantias_por_vencer' => [
+            'titulo' => 'Garantías por vencer',
+            'descripcion' => 'Vencen en los próximos 60 días',
+        ],
+        'vida_util_superada' => [
+            'titulo' => 'Vida útil superada',
+            'descripcion' => 'Pasaron su vida útil estimada',
+        ],
+        'personas_por_retirarse' => [
+            'titulo' => 'Personas por retirarse',
+            'descripcion' => 'Con equipos a cargo y vinculación por terminar',
+        ],
     ];
 
     /** Reportes con datos reales: clave => clase de definición. */
@@ -173,6 +188,9 @@ class Index extends Component
         'matriz_for01' => MatrizInventarioFor01::class,
         'requiere_gestion_riesgo' => RequiereGestionRiesgo::class,
         'por_importancia' => PorImportancia::class,
+        'garantias_por_vencer' => GarantiasPorVencer::class,
+        'vida_util_superada' => VidaUtilSuperada::class,
+        'personas_por_retirarse' => PersonasPorRetirarse::class,
     ];
 
     public const ESTADOS = [
@@ -313,8 +331,8 @@ class Index extends Component
                 ->orderBy('tipo_vinculacion')
                 ->pluck('tipo_vinculacion'),
             'sistemasOperativosObsoletos' => SistemaOperativo::query()
-                ->where('nombre', 'like', '%7%')
-                ->orWhere('nombre', 'like', '%8%')
+                ->whereNotNull('fin_soporte')
+                ->whereDate('fin_soporte', '<=', now()->toDateString())
                 ->orderBy('nombre')
                 ->get(),
         ]);
