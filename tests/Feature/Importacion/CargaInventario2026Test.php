@@ -78,7 +78,7 @@ beforeEach(function () {
     TipoEquipo::create(['nombre' => 'Monitor', 'familia' => 'video']);
     TipoEquipo::create(['nombre' => 'Impresora', 'familia' => 'impresion']);
     Marca::create(['nombre' => 'Acer']);
-    $sede = Sede::create(['nombre' => 'Palacio de Naín']);
+    $sede = Sede::create(['municipio_id' => \App\Models\Municipio::firstOrCreate(['codigo_dane' => '23001'], ['nombre' => 'Montería'])->id, 'nombre' => 'Palacio de Naín']);
     $this->piso = Piso::create(['sede_id' => $sede->id, 'numero' => 6]);
     $this->tic = Dependencia::create(['nombre' => 'Dirección de Tecnología, Informática y Comunicaciones (TICS)']);
     DependenciaEquivalencia::create(['dependencia_id' => $this->tic->id, 'texto' => 'DIRECION DE SISTEMAS', 'origen' => 'FOR.01']);

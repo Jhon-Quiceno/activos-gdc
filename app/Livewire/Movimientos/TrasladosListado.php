@@ -81,7 +81,7 @@ class TrasladosListado extends Component
 
         return Evento::query()
             ->where('tipo', 'traslado_responsable')
-            ->with(['usuario', 'equipo.tipoEquipo', 'anulaciones', 'asignacionesOrigen.persona', 'asignacionesOrigen.sede'])
+            ->with(['usuario', 'equipo.tipoEquipo', 'anulaciones', 'asignacionesOrigen.persona', 'asignacionesOrigen.piso.sede'])
             ->when(in_array($this->firma, ['pendiente_de_firma', 'completo'], true), fn ($q) => $q->where('estado_firma', $this->firma))
             ->when($termino !== '', function (Builder $query) use ($termino, $normalizado) {
                 $query->where(function (Builder $q) use ($termino, $normalizado) {

@@ -49,7 +49,7 @@ class AdquisicionYHojaDeVidaV4Test extends TestCase
         $this->usuario = User::factory()->create();
         $this->pc = TipoEquipo::create(['nombre' => 'PC de escritorio', 'familia' => 'computo', 'usa_configuracion_computo' => true, 'vida_util_meses' => 60]);
         $this->marca = Marca::create(['nombre' => 'HP']);
-        $this->sede = Sede::create(['nombre' => 'Palacio Naín', 'direccion' => 'Calle 27 No. 3-28']);
+        $this->sede = Sede::create(['municipio_id' => \App\Models\Municipio::firstOrCreate(['codigo_dane' => '23001'], ['nombre' => 'Montería'])->id, 'nombre' => 'Palacio Naín', 'direccion' => 'Calle 27 No. 3-28']);
         $this->piso = Piso::create(['numero' => 6, 'sede_id' => $this->sede->id]);
         $this->dependencia = Dependencia::create(['nombre' => 'Dirección TIC']);
     }
@@ -204,7 +204,7 @@ class AdquisicionYHojaDeVidaV4Test extends TestCase
 
     public function test_la_direccion_de_una_sede_reservada_no_se_muestra(): void
     {
-        $refugio = Sede::create(['nombre' => 'Casa Refugio', 'direccion' => 'Dirección reservada 123', 'direccion_reservada' => true]);
+        $refugio = Sede::create(['municipio_id' => \App\Models\Municipio::firstOrCreate(['codigo_dane' => '23001'], ['nombre' => 'Montería'])->id, 'nombre' => 'Casa Refugio', 'direccion' => 'Dirección reservada 123', 'direccion_reservada' => true]);
         $equipo = $this->pc();
         Asignacion::create([
             'equipo_id' => $equipo->id,

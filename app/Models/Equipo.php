@@ -45,10 +45,6 @@ class Equipo extends Model
         'puesto_trabajo_id',
         'importacion_id',
         'fila_origen_importacion',
-        // Campos viejos: se borran en la migración de cierre del día 2
-        // (docs/base-de-datos.md §6). Código nuevo: modelo_id y proveedor_tercero_id.
-        'modelo',
-        'propietario_tercero',
     ];
 
     public const FORMAS_INGRESO = [
@@ -106,29 +102,12 @@ class Equipo extends Model
         });
 
         static::saving(function (Equipo $equipo): void {
-            $equipo->sincronizarCamposViejos();
-
             if (! $equipo->exists
                 || $equipo->isDirty('codigo_activo')
                 || $equipo->isDirty('codigo_activo_justificacion')) {
                 self::validarJustificacionCodigoActivo($equipo);
             }
         });
-    }
-
-    /**
-     * Migración en dos tiempos: mientras convivan, `modelo` y
-     * `propietario_tercero` (texto) siguen a `modelo_id` y `proveedor_tercero_id`.
-     */
-    protected function sincronizarCamposViejos(): void
-    {
-        if ($this->modelo_id && ($this->isDirty('modelo_id') || blank($this->modelo))) {
-            $this->modelo = ModeloEquipo::query()->whereKey($this->modelo_id)->value('nombre');
-        }
-
-        if ($this->proveedor_tercero_id && ($this->isDirty('proveedor_tercero_id') || blank($this->propietario_tercero))) {
-            $this->propietario_tercero = Proveedor::query()->whereKey($this->proveedor_tercero_id)->value('razon_social');
-        }
     }
 
     /**

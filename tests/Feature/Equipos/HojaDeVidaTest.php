@@ -281,19 +281,18 @@ class HojaDeVidaTest extends TestCase
         $equipo = $this->crearEquipo();
         $diagnostico = $this->registrarDiagnostico($equipo);
         app(HistorialService::class)->registrar($equipo, 'anulacion_aclaracion', $this->usuario, descripcion: 'Anulado por prueba', eventoAnulado: $diagnostico);
-        $persona = \App\Models\Persona::create(['nombre' => 'Pedro Funcionario', 'cedula' => '1067886226']);
-        $sede = \App\Models\Sede::create(['nombre' => 'Palacio Naín']);
-        $piso = \App\Models\Piso::create(['numero' => 2]);
+        $persona = \App\Models\Persona::create(['nombres' => 'Pedro', 'apellidos' => 'Funcionario', 'numero_documento' => '1067886226']);
+        $sede = \App\Models\Sede::create(['municipio_id' => \App\Models\Municipio::firstOrCreate(['codigo_dane' => '23001'], ['nombre' => 'Montería'])->id, 'nombre' => 'Palacio Naín']);
+        $piso = \App\Models\Piso::create(['sede_id' => $sede->id, 'numero' => 2]);
         \App\Models\Asignacion::create([
             'equipo_id' => $equipo->id,
             'persona_id' => $persona->id,
-            'sede_id' => $sede->id,
             'piso_id' => $piso->id,
             'fecha_inicio' => now(),
         ]);
 
         $equipo->load([
-            'tipoEquipo', 'marca', 'asignacionActual.persona', 'asignacionActual.sede', 'asignacionActual.piso',
+            'tipoEquipo', 'marca', 'asignacionActual.persona', 'asignacionActual.piso.sede',
             'componentes', 'configuracionComputo',
             'eventos' => fn ($q) => $q->with(['usuario', 'cambioComponente', 'diagnostico.motivoBaja', 'anulaciones.usuario']),
         ]);

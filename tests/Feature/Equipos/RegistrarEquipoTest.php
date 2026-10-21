@@ -50,7 +50,7 @@ class RegistrarEquipoTest extends TestCase
         $this->usuario = User::factory()->create();
         $this->monitor = TipoEquipo::create(['nombre' => 'Monitor', 'familia' => 'video']);
         $this->marca = Marca::create(['nombre' => 'HP']);
-        $this->sede = Sede::create(['nombre' => 'Palacio Naín']);
+        $this->sede = Sede::create(['municipio_id' => \App\Models\Municipio::firstOrCreate(['codigo_dane' => '23001'], ['nombre' => 'Montería'])->id, 'nombre' => 'Palacio Naín']);
         $this->piso = Piso::create(['numero' => 3, 'sede_id' => $this->sede->id]);
         $this->procesoTic = Proceso::create(['nombre' => 'Gestión Tecnológica y de Sistemas de Información', 'tipo' => 'apoyo']);
         $this->dependencia = Dependencia::create(['nombre' => 'Dirección TIC', 'proceso_id' => $this->procesoTic->id]);
@@ -403,7 +403,7 @@ class RegistrarEquipoTest extends TestCase
 
     public function test_el_piso_debe_ser_de_la_sede_elegida(): void
     {
-        $pisoDeOtraSede = Piso::create(['numero' => 2, 'sede_id' => Sede::create(['nombre' => 'Edificio Morindó'])->id]);
+        $pisoDeOtraSede = Piso::create(['numero' => 2, 'sede_id' => Sede::create(['municipio_id' => \App\Models\Municipio::firstOrCreate(['codigo_dane' => '23001'], ['nombre' => 'Montería'])->id, 'nombre' => 'Edificio Morindó'])->id]);
 
         $this->formularioValido(['pisoId' => $pisoDeOtraSede->id])
             ->call('guardar')

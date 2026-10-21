@@ -43,7 +43,7 @@ beforeEach(function () {
 function equipoEn(Dependencia $dependencia, Piso $piso, array $atributos = []): Equipo
 {
     $equipo = Apoyo::equipo(conResponsable: false, atributos: $atributos);
-    Asignacion::where('equipo_id', $equipo->id)->update(['piso_id' => $piso->id, 'sede_id' => $piso->sede_id, 'dependencia_id' => $dependencia->id]);
+    Asignacion::where('equipo_id', $equipo->id)->update(['piso_id' => $piso->id, 'dependencia_id' => $dependencia->id]);
 
     return $equipo->fresh();
 }
@@ -153,7 +153,7 @@ it('un levantamiento sin equipos no genera acta', function () {
 });
 
 it('la dirección de la Casa Refugio no aparece en ningún PDF (RN-28)', function () {
-    $refugio = Sede::where('direccion_reservada', true)->first() ?? Sede::create(['nombre' => 'Casa Refugio', 'direccion' => 'Calle reservada 1', 'direccion_reservada' => true]);
+    $refugio = Sede::where('direccion_reservada', true)->first() ?? Sede::create(['municipio_id' => \App\Models\Municipio::firstOrCreate(['codigo_dane' => '23001'], ['nombre' => 'Montería'])->id, 'nombre' => 'Casa Refugio', 'direccion' => 'Calle reservada 1', 'direccion_reservada' => true]);
     $refugio->update(['direccion' => 'Calle reservada 1']);
     $pisoRefugio = Piso::firstOrCreate(['sede_id' => $refugio->id, 'numero' => 1]);
     $persona = Apoyo::persona(['dependencia_id' => $this->direccion->id]);

@@ -44,7 +44,7 @@
     })->count();
 
     $sinCedula = \App\Models\Equipo::whereHas('asignacionActual.persona', function ($q) {
-        $q->whereNull('cedula');
+        $q->whereNull('numero_documento');
     })->count();
 
     $codigosRepetidos = \App\Models\Equipo::whereNotNull('codigo_activo')
@@ -104,9 +104,10 @@
         'color' => 'bg-primary',
     ]);
 
-    // --- Equipos por sede (vía la asignación abierta) ---
+    // --- Equipos por sede (vía la asignación abierta; la sede sale del piso, RN-21) ---
     $equiposPorSede = \Illuminate\Support\Facades\DB::table('asignaciones')
-        ->join('sedes', 'sedes.id', '=', 'asignaciones.sede_id')
+        ->join('pisos', 'pisos.id', '=', 'asignaciones.piso_id')
+        ->join('sedes', 'sedes.id', '=', 'pisos.sede_id')
         ->whereNull('asignaciones.fecha_fin')
         ->select('sedes.nombre', \Illuminate\Support\Facades\DB::raw('count(*) as total'))
         ->groupBy('sedes.nombre')

@@ -187,7 +187,7 @@ class ValoracionActivoTest extends TestCase
         $levantamiento = \App\Models\LevantamientoActivos::create([
             'codigo' => 'LEV-2026-001',
             'dependencia_id' => \App\Models\Dependencia::create(['nombre' => 'Dirección TIC'])->id,
-            'sede_id' => \App\Models\Sede::create(['nombre' => 'Palacio Naín'])->id,
+            'sede_id' => \App\Models\Sede::create(['municipio_id' => \App\Models\Municipio::firstOrCreate(['codigo_dane' => '23001'], ['nombre' => 'Montería'])->id, 'nombre' => 'Palacio Naín'])->id,
             'fecha_inicio' => now()->toDateString(),
             'usuario_id' => $this->usuario->id,
         ]);

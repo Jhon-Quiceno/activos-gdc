@@ -27,9 +27,7 @@ class EquipoFactory extends Factory
             // qr_uuid se deja sin definir a propósito: Equipo::booted() lo genera solo.
             'tipo_equipo_id' => TipoEquipo::query()->inRandomOrder()->value('id'),
             'marca_id' => Marca::query()->inRandomOrder()->value('id'),
-            'modelo' => fake()->bothify('Modelo ??-####'),
             'propiedad' => fake()->randomElement(['gobernacion', 'tercero']),
-            'propietario_tercero' => null,
             'forma_ingreso' => fake()->randomElement(['compra', 'compra', 'carga_inicial', 'donacion']),
             'fecha_adquisicion' => fake()->dateTimeBetween('-8 years', '-1 month')->format('Y-m-d'),
             'valor_adquisicion' => fake()->numberBetween(800, 6000) * 1000,
