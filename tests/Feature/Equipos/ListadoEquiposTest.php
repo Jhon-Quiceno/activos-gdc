@@ -45,8 +45,8 @@ class ListadoEquiposTest extends TestCase
         $this->usuario = User::factory()->create();
         $this->pc = TipoEquipo::create(['nombre' => 'PC de escritorio', 'familia' => 'computo']);
         $this->monitor = TipoEquipo::create(['nombre' => 'Monitor', 'familia' => 'video']);
-        $this->palacio = Sede::create(['nombre' => 'Palacio Naín']);
-        $this->morindo = Sede::create(['nombre' => 'Morindo']);
+        $this->palacio = Sede::create(['municipio_id' => \App\Models\Municipio::firstOrCreate(['codigo_dane' => '23001'], ['nombre' => 'Montería'])->id, 'nombre' => 'Palacio Naín']);
+        $this->morindo = Sede::create(['municipio_id' => \App\Models\Municipio::firstOrCreate(['codigo_dane' => '23001'], ['nombre' => 'Montería'])->id, 'nombre' => 'Morindo']);
         $this->tic = Dependencia::create(['nombre' => 'Dirección TIC']);
         $this->marca = Marca::create(['nombre' => 'HP']);
     }

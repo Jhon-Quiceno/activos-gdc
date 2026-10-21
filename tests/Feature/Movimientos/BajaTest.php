@@ -127,7 +127,7 @@ it('anular una baja en trámite la saca de pendientes de firma', function () {
 });
 
 it('no da de baja equipos de terceros (CU-08)', function () {
-    $tercero = Apoyo::equipo(atributos: ['propiedad' => 'tercero', 'propietario_tercero' => 'Proveedor S.A.S.']);
+    $tercero = Apoyo::equipo(atributos: ['propiedad' => 'tercero', 'proveedor_tercero_id' => \App\Models\Proveedor::factory()->create(['razon_social' => 'Proveedor S.A.S.'])->id]);
 
     registrarBaja($tercero, $this->usuario);
 })->throws(ValidationException::class);

@@ -16,12 +16,9 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * responder por un equipo. Nada de salario, RH, estado civil, etnia, salud ni
  * dirección de residencia, aunque vengan en la planta de Talento Humano.
  *
- * Migración en dos tiempos (docs/base-de-datos.md §6): los campos viejos
- * `nombre`, `cedula` y `cargo` (texto) siguen existiendo hasta la migración
- * de cierre del día 2. Mientras tanto este modelo los mantiene sincronizados
- * con los nuevos (`nombres` + `apellidos`, `numero_documento`, `cargo_id`),
- * así el código que aún usa los viejos sigue funcionando. Código nuevo: usar
- * siempre los campos nuevos.
+ * El nombre vive en `nombres` + `apellidos`, el documento en `numero_documento`
+ * y el cargo en `cargo_id` (Decreto 607). Las columnas de texto viejas (`nombre`,
+ * `cedula`, `cargo`) se borraron en la migración de cierre (docs/base-de-datos.md §6).
  */
 class Persona extends Model
 {
@@ -68,10 +65,6 @@ class Persona extends Model
         'numero_contrato',
         'fecha_fin_vinculacion',
         'activo',
-        // Campos viejos: se borran en la migración de cierre del día 2.
-        'nombre',
-        'cedula',
-        'cargo',
     ];
 
     protected function casts(): array
@@ -83,47 +76,12 @@ class Persona extends Model
         ];
     }
 
-    protected static function booted(): void
-    {
-        static::saving(function (Persona $persona): void {
-            $persona->sincronizarCamposViejos();
-        });
-    }
-
     /**
-     * Mantiene iguales los campos viejos y los nuevos mientras conviven. Gana
-     * el que se haya cambiado; si los dos cambiaron, se respetan ambos.
-     */
-    protected function sincronizarCamposViejos(): void
-    {
-        $nombreCompleto = trim(($this->nombres ?? '').' '.($this->apellidos ?? ''));
-
-        if ($nombreCompleto !== '' && (blank($this->nombre) || ($this->isDirty(['nombres', 'apellidos']) && ! $this->isDirty('nombre')))) {
-            $this->nombre = $nombreCompleto;
-        } elseif (filled($this->nombre) && (blank($this->nombres) || ($this->isDirty('nombre') && ! $this->isDirty(['nombres', 'apellidos'])))) {
-            $this->nombres = $this->nombre;
-            $this->apellidos = null;
-        }
-
-        if (filled($this->numero_documento) && (blank($this->cedula) || ($this->isDirty('numero_documento') && ! $this->isDirty('cedula')))) {
-            $this->cedula = $this->numero_documento;
-        } elseif (filled($this->cedula) && (blank($this->numero_documento) || ($this->isDirty('cedula') && ! $this->isDirty('numero_documento')))) {
-            $this->numero_documento = $this->cedula;
-        }
-
-        if ($this->cargo_id && (blank($this->cargo) || ($this->isDirty('cargo_id') && ! $this->isDirty('cargo')))) {
-            $this->cargo = Cargo::query()->whereKey($this->cargo_id)->value('denominacion');
-        }
-    }
-
-    /**
-     * «Nombres Apellidos»; cae al campo viejo si aún no se migró la persona.
+     * «Nombres Apellidos».
      */
     public function nombreCompleto(): string
     {
-        $completo = trim(($this->nombres ?? '').' '.($this->apellidos ?? ''));
-
-        return $completo !== '' ? $completo : (string) $this->nombre;
+        return trim(($this->nombres ?? '').' '.($this->apellidos ?? ''));
     }
 
     /**
@@ -131,7 +89,7 @@ class Persona extends Model
      */
     public function cargoTexto(): ?string
     {
-        $denominacion = $this->cargoOficial?->denominacion ?? $this->cargo;
+        $denominacion = $this->cargoOficial?->denominacion;
 
         if (blank($denominacion)) {
             return null;

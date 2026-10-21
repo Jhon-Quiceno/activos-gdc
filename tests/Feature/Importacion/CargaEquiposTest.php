@@ -67,7 +67,7 @@ beforeEach(function () {
     $this->pc = TipoEquipo::create(['nombre' => 'PC de escritorio', 'familia' => 'computo', 'usa_configuracion_computo' => true]);
     TipoEquipo::create(['nombre' => 'Monitor', 'familia' => 'video']);
     Marca::create(['nombre' => 'HP']);
-    $this->sede = Sede::create(['nombre' => 'Palacio de Naín']);
+    $this->sede = Sede::create(['municipio_id' => \App\Models\Municipio::firstOrCreate(['codigo_dane' => '23001'], ['nombre' => 'Montería'])->id, 'nombre' => 'Palacio de Naín']);
     $this->piso = Piso::create(['sede_id' => $this->sede->id, 'numero' => 6]);
     $this->proceso = Proceso::create(['nombre' => 'Gestión Tecnológica', 'tipo' => 'apoyo']);
     $this->tic = Dependencia::create(['nombre' => 'Dirección de Tecnología, Informática y Comunicaciones (TICS)', 'nombre_corto' => 'Dirección TIC', 'proceso_id' => $this->proceso->id]);
@@ -141,7 +141,7 @@ it('desde la pantalla se crea la equivalencia que falta y la fila se corrige (RF
 });
 
 it('un piso que no existe en la sede da error de fila (RN-21)', function () {
-    Piso::create(['sede_id' => Sede::create(['nombre' => 'Edificio Morindó'])->id, 'numero' => 8]);
+    Piso::create(['sede_id' => Sede::create(['municipio_id' => \App\Models\Municipio::firstOrCreate(['codigo_dane' => '23001'], ['nombre' => 'Montería'])->id, 'nombre' => 'Edificio Morindó'])->id, 'numero' => 8]);
 
     $carga = cargaEquipos(plantillaCsv([filaPlantilla(['piso' => '8'])]));
 

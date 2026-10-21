@@ -75,7 +75,7 @@ it('filtra por tipo de equipo y por marca', function () {
 });
 
 it('filtra por propiedad', function () {
-    $propio = Equipo::factory()->create(['propiedad' => 'gobernacion', 'propietario_tercero' => null]);
+    $propio = Equipo::factory()->create(['propiedad' => 'gobernacion']);
     $tercero = Equipo::factory()->deTercero()->create();
 
     Livewire::test(Index::class)
@@ -130,7 +130,7 @@ it('carga sin errores cada uno de los reportes', function (string $clave) {
 // ---------------------------------------------------------------------------
 
 it('el reporte de terceros solo muestra equipos de terceros', function () {
-    $propio = Equipo::factory()->create(['propiedad' => 'gobernacion', 'propietario_tercero' => null]);
+    $propio = Equipo::factory()->create(['propiedad' => 'gobernacion']);
     $tercero = Equipo::factory()->deTercero()->create();
 
     Livewire::test(Index::class)
@@ -227,8 +227,8 @@ it('dados de baja solo lista equipos con evento de baja', function () {
 // ---------------------------------------------------------------------------
 
 it('filtra por sede a través del piso y muestra el nombre completo del responsable', function () {
-    $sede = App\Models\Sede::forceCreate(['nombre' => 'Palacio de Naín', 'tipo' => 'administrativa']);
-    $otraSede = App\Models\Sede::forceCreate(['nombre' => 'Edificio Anexo', 'tipo' => 'administrativa']);
+    $sede = App\Models\Sede::forceCreate(['municipio_id' => \App\Models\Municipio::firstOrCreate(['codigo_dane' => '23001'], ['nombre' => 'Montería'])->id, 'nombre' => 'Palacio de Naín', 'tipo' => 'administrativa']);
+    $otraSede = App\Models\Sede::forceCreate(['municipio_id' => \App\Models\Municipio::firstOrCreate(['codigo_dane' => '23001'], ['nombre' => 'Montería'])->id, 'nombre' => 'Edificio Anexo', 'tipo' => 'administrativa']);
     $piso = App\Models\Piso::forceCreate(['sede_id' => $sede->id, 'numero' => 2]);
     $pisoOtra = App\Models\Piso::forceCreate(['sede_id' => $otraSede->id, 'numero' => 1]);
     $dependencia = App\Models\Dependencia::forceCreate(['tipo' => 'direccion', 'nombre' => 'Dirección TIC', 'activa' => true]);

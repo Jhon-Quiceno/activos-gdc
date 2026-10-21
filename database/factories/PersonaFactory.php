@@ -38,10 +38,6 @@ class PersonaFactory extends Factory
                 : 'no_aplica',
             'numero_contrato' => $vinculacion === 'contratista' ? fake()->numerify('CPS-####-2026') : null,
             'activo' => true,
-            // Campos viejos (se borran el día 2): se derivan de los nuevos y se
-            // pueden sobrescribir igual que antes, p. ej. create(['nombre' => 'X']).
-            'nombre' => fn (array $a) => trim($a['nombres'].' '.$a['apellidos']),
-            'cedula' => fn (array $a) => $a['numero_documento'],
         ];
     }
 

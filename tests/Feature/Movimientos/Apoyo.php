@@ -52,7 +52,6 @@ class Apoyo
         $equipo = Equipo::factory()->create(array_merge([
             'tipo_equipo_id' => TipoEquipo::query()->where('familia', 'computo')->value('id'),
             'propiedad' => 'gobernacion',
-            'propietario_tercero' => null,
             'estado_ciclo_vida' => $persona ? 'en_servicio' : 'sin_asignar',
         ], $atributos));
 

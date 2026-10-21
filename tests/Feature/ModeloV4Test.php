@@ -141,8 +141,8 @@ describe('árbol de dependencias (RN-20, RF-60)', function () {
     });
 });
 
-describe('migración en dos tiempos', function () {
-    it('una persona nueva llena también los campos viejos', function () {
+describe('modelo v4 (estado final tras la migración de cierre)', function () {
+    it('el nombre y el cargo de la persona salen de los campos nuevos', function () {
         $cargo = Cargo::where('codigo', '219')->firstOrFail();
 
         $persona = Persona::create([
@@ -153,38 +153,23 @@ describe('migración en dos tiempos', function () {
             'tipo_vinculacion' => 'planta',
         ]);
 
-        expect($persona->nombre)->toBe('Ana María Pérez Gómez')
-            ->and($persona->cedula)->toBe('1067000001')
-            ->and($persona->cargo)->toBe('Profesional Universitario')
+        expect($persona->nombreCompleto())->toBe('Ana María Pérez Gómez')
             ->and($persona->cargoTexto())->toBe('Profesional Universitario');
-    });
-
-    it('el código viejo que escribe nombre y cédula sigue llenando los campos nuevos', function () {
-        $persona = Persona::create(['nombre' => 'Juan Pérez', 'cedula' => '123456', 'tipo_vinculacion' => 'contratista']);
-
-        expect($persona->nombres)->toBe('Juan Pérez')
-            ->and($persona->numero_documento)->toBe('123456');
-
-        $persona->update(['nombre' => 'Juan Carlos Pérez']);
-
-        expect($persona->fresh()->nombres)->toBe('Juan Carlos Pérez');
     });
 
     it('la asignación toma la sede del piso (RN-21)', function () {
         $piso = Sede::where('nombre', 'Edificio Morindó')->firstOrFail()->pisos->first();
-        $otraSede = Sede::where('nombre', 'Palacio de Naín')->firstOrFail();
 
         $asignacion = Asignacion::create([
             'equipo_id' => equipoDeTipo('Monitor')->id,
-            'sede_id' => $otraSede->id,
             'piso_id' => $piso->id,
             'fecha_inicio' => now()->toDateString(),
         ]);
 
-        expect($asignacion->sede_id)->toBe($piso->sede_id);
+        expect($asignacion->piso->sede_id)->toBe($piso->sede_id);
     });
 
-    it('modelo y propietario de tercero siguen a sus catálogos', function () {
+    it('el modelo y el propietario de tercero salen de sus catálogos', function () {
         $tipo = TipoEquipo::where('nombre', 'Monitor')->firstOrFail();
         $modelo = ModeloEquipo::create(['marca_id' => Marca::where('nombre', 'HP')->value('id'), 'tipo_equipo_id' => $tipo->id, 'nombre' => 'P22v G4']);
         $proveedor = Proveedor::factory()->create(['razon_social' => 'Comodante S.A.S.']);
@@ -195,8 +180,8 @@ describe('migración en dos tiempos', function () {
             'proveedor_tercero_id' => $proveedor->id,
         ]);
 
-        expect($equipo->modelo)->toBe('P22v G4')
-            ->and($equipo->propietario_tercero)->toBe('Comodante S.A.S.');
+        expect($equipo->modeloEquipo->nombre)->toBe('P22v G4')
+            ->and($equipo->proveedorTercero->razon_social)->toBe('Comodante S.A.S.');
     });
 });
 
