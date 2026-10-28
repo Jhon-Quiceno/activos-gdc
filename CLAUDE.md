@@ -7,7 +7,7 @@ oficial de la Gobernación (Manual GT-M4, formato FOR.01, Decretos 607/608/609 d
 Programa Anual de Mantenimiento solo como fuente de sedes y pisos); el Excel del inventario
 2026 solo se usa para cargar datos. El mantenimiento sigue fuera del alcance.
 Ver `docs/analisis-requerimientos.md` (v4), `docs/base-de-datos.md` (modelo de datos v4)
-y `docs/plan-fase2.md` (plan y reparto de trabajo actual).
+y `docs/plan-fase3.md` (plan y reparto de trabajo actual; la Fase 2 está cerrada).
 
 ## Stack
 
@@ -55,10 +55,11 @@ Detalle completo en `docs/normas-de-trabajo.md`. Resumen:
 - Cada bloque escribe solo en sus carpetas: `app/Livewire/<Bloque>`,
   `resources/views/livewire/<bloque>`, `tests/Feature/<Bloque>`. Lo compartido (componentes
   `x-ui.*`, el layout, `HistorialService`) lo cambia solo el líder.
-- **Migración en dos tiempos (Fase 2):** las columnas viejas `personas.nombre/cedula/cargo`,
-  `equipos.modelo/propietario_tercero` y `asignaciones.sede_id` siguen existiendo hasta el
-  cierre del día 2, pero el código nuevo usa siempre las nuevas (ver
-  `docs/base-de-datos.md` §6). La valoración GT-M4 se crea solo con
+- **Migración en dos tiempos (Fase 2): cerrada, no se reabre.** Las columnas viejas
+  `personas.nombre/cedula/cargo`, `equipos.modelo/propietario_tercero` y
+  `asignaciones.sede_id` ya no existen (ver `docs/base-de-datos.md`, sección 6). Las
+  migraciones de la Fase 3 son nuevas y las crea el líder (sección 10). La valoración
+  GT-M4 se crea solo con
   `ValoracionActivo::registrar()`.
 - **Todo cambio sobre un equipo pasa por `HistorialService::registrar()`.** Nunca se
   inserta un `Evento` a mano — el modelo lo bloquea a propósito (`update()`/`delete()`
@@ -122,10 +123,12 @@ colores, tamaños ni íconos que no estén ya en `tailwind.config.js` o en los c
 - `docs/analisis-requerimientos.md` — análisis v4: fuentes oficiales, requerimientos,
   reglas de negocio, casos de uso (versión Word en `docs/analisis-requerimientos-v4.docx`).
 - `docs/base-de-datos.md` — modelo de datos v4, diccionario, valores oficiales de los
-  catálogos y plan de migración. DBML (dbdiagram.io) y SQL en `database/dbml/`.
-- `docs/plan-fase2.md` — plan y reparto de la Fase 2 (reestructuración).
+  catálogos, plan de migración y (sección 10) el esquema que falta para la Fase 3. DBML
+  (dbdiagram.io) y SQL en `database/dbml/`.
+- `docs/plan-fase3.md` — plan y reparto de la Fase 3 (consolidación). La Fase 2 quedó
+  cerrada (`v2.0`).
 - `docs/normas-de-trabajo.md` — reglas de ramas/carpetas/eventos en detalle.
-- `docs/juan-jose.md`, `docs/anuar.md`, `docs/juan-camilo.md`, `docs/alex.md`,
-  `docs/manuel.md` — tareas de la Fase 2 de cada integrante.
+- `docs/jhon.md`, `docs/juan-jose.md`, `docs/anuar.md`, `docs/juan-camilo.md`,
+  `docs/alex.md`, `docs/manuel.md` — tareas de la Fase 3 de cada integrante.
 - `odd/tasks/bootstrap-hoja-vida-equipos.md` — historial del bootstrap inicial del
   proyecto (qué se construyó, decisiones tomadas, problemas de entorno encontrados).

@@ -3,7 +3,7 @@
 **Gobernación de Córdoba · Dirección TIC**
 Sistema de Hoja de Vida de Equipos
 
-> Reglas de trabajo del equipo, explicadas para que cualquiera las aplique sin ambigüedad. Valen para todas las fases; el plan actual es el [Plan de Fase 2](./plan-fase2.md).
+> Reglas de trabajo del equipo, explicadas para que cualquiera las aplique sin ambigüedad. Valen para todas las fases; el plan actual es el [Plan de Fase 3](./plan-fase3.md).
 
 Cinco personas tocando el mismo repositorio en paralelo solo funciona si cada una sabe exactamente dónde puede escribir y qué no debe tocar. Estas normas existen para eso: evitar choques de migraciones, archivos pisados y eventos registrados de forma inconsistente.
 
@@ -215,4 +215,4 @@ Lo que el usuario final ve (textos de pantalla, mensajes de validación, correos
 
 ---
 
-**Ver también:** [Análisis de requerimientos](./analisis-requerimientos.md) · [Plan de Fase 2](./plan-fase2.md)
+**Ver también:** [Análisis de requerimientos](./analisis-requerimientos.md) · [Plan de Fase 3](./plan-fase3.md)

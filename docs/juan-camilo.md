@@ -1,42 +1,33 @@
 # Juan Camilo — Carga de datos
 
 **Sistema de Hoja de Vida de Activos Tecnológicos · Gobernación de Córdoba · Dirección TIC**
-Fase 2 · Bloque: Apoyo · Ver el [Plan de Fase 2](./plan-fase2.md)
+Fase 3 · Bloque: Importación · Ver el [Plan de Fase 3](./plan-fase3.md)
 
 ## Rol
 
-El Excel del inventario 2026 **dejó de ser la base del sistema**: ahora es solo una fuente de datos más. Tu bloque pasa de «importar ese Excel» a **cargar datos en el modelo oficial**: equipos con una plantilla propia, personas desde la planta de Talento Humano, valoraciones desde la matriz FOR.01 y datos de adquisición desde Almacén.
+Cierras el único «importante» que quedó pendiente de tu bloque: las cargas posteriores al inventario inicial, sin duplicar lo que ya existe.
 
-## Lo que ya te dejó Jhon
+## Lo que te deja Jhon
 
-- **`DependenciaEquivalencia::resolver($texto)`**: devuelve la dependencia oficial por nombre, nombre corto o equivalencia, sin importar mayúsculas, tildes ni espacios, y `null` si no hay coincidencia exacta. Reemplaza el emparejamiento por similitud (Levenshtein): sin coincidencia, la fila queda con error.
-- 26 equivalencias sembradas, entre ellas los nombres anteriores al Decreto 609 («DIRECION DE SISTEMAS», «Nómina Central»…).
-- `importaciones.tipo` (`equipos`, `personas`, `valoraciones`) y `eventos.es_historico` para las altas de carga inicial.
-- `Cargo` (código + denominación) para resolver los cargos de la planta, y `Persona` con los campos permitidos (RNF-19).
-- `ValoracionActivo::registrar()` para crear valoraciones con su evento y sus reglas.
+Todo lo de la Fase 2: `DependenciaEquivalencia::resolver()`, la plantilla oficial de carga de equipos, las cargas de personas, valoraciones y datos de adquisición ya funcionando sobre el modelo v4.
 
 ## Tareas por día
 
 | Días | Tareas | Entregable |
 |---|---|---|
-| 1–2 | **Adaptar el importador** (paso 3 del plan): resolver dependencias con `DependenciaEquivalencia::resolver()` (sin coincidencia = error de fila), sede → piso de esa sede (un piso que no existe en la sede = error), y escribir personas y equipos con los campos nuevos (`nombres`, `numero_documento`, `modelo_id`…), no con los viejos. Altas con `es_historico = true`. | Importador sin columnas viejas. |
-| 3 | **Plantilla oficial de carga de equipos** (`.xlsx` descargable): columnas del modelo v4 con listas desplegables de los catálogos. | Plantilla publicada. |
-| 4–5 | **Carga de personas desde la planta (RF-55):** de las plantas Central y Educación solo se toman documento, nombres, cargo (código y grado), dependencia real, jefe inmediato, planta, vinculación, provisión y correo institucional. El resto de columnas se descarta en memoria y nunca se guarda (RNF-19). | Personas cargadas sin datos sensibles. |
-| 6 | **Carga de valoraciones** desde una matriz FOR.01: cruzar cada fila con su equipo, pasar las respuestas de C, I y D a 1–4 y crear con `ValoracionActivo::registrar()`. | Valoraciones de una dependencia. |
-| 7 | **Inventario 2026 por la plantilla:** convertir el Excel de Forms a la plantilla (dividir filas en equipos y normalizar códigos, como ya hacías) y cargarlo por el flujo normal. Llenar las equivalencias de sus 175 variantes de dependencia junto a Manuel. | Inventario 2026 cargado. |
-| 8 | **Datos de adquisición** desde Almacén (fecha, valor, proveedor, contrato, factura), cruzando por código de activo; listar los que no crucen. Revisar los criterios de la §12 del análisis. | Reporte de la carga. |
-| 9–10 | Prueba cruzada del bloque de Equipos y valoración (Juan José); correcciones. | Pest en verde. |
+| 7 | **RF-42, parte 1:** al cargar una plantilla de equipos, reconocer filas que ya existen (por serial o código de activo) en vez de crear un duplicado; separar en la vista previa los que son altas nuevas de los que son actualizaciones. | Reconocimiento de equipos existentes. |
+| 8 | **RF-42, parte 2:** actualizar solo los datos de la ficha de los equipos reconocidos (nunca ubicación ni responsable, que exigen traslado firmado, RF-20); las diferencias de ubicación o responsable se listan como «requiere traslado» en el reporte de la carga, dejando un evento `actualizacion_datos` con lo que cambió. | Carga posterior sin duplicar ni pisar movimientos. |
+| 9–10 | Prueba cruzada del bloque de Equipos (Juan José); correcciones. | Pest en verde. |
 
 ## Requerimientos a cargo
 
-RF-38, RF-39, RF-40, RF-41, RF-55 y las cargas de valoraciones y de adquisición (§12 del [Análisis v4.1](./analisis-requerimientos.md)).
+RF-42. Detalle en el [Análisis v4.2](./analisis-requerimientos.md), sección 13.
 
 ## Pruebas mínimas
 
-- Una carga de planta con columnas de salario, RH o dirección no guarda ninguna de ellas (comprobado en la base).
-- Una dependencia escrita con su nombre anterior al Decreto 609 se resuelve; una desconocida da error de fila.
-- Un piso que no existe en la sede indicada da error de fila (RN-21).
-- **Nunca** se usan las plantas reales en pruebas ni se suben al repositorio: las pruebas usan Excel sintéticos con las mismas cabeceras.
+- Cargar dos veces el mismo archivo no duplica ningún equipo.
+- Una fila con ubicación distinta a la actual queda marcada «requiere traslado», no actualiza la asignación.
+- La carga posterior deja un evento por cada equipo que cambió, con el campo, el valor anterior y el nuevo.
 
 ## Normas
 
@@ -44,5 +35,9 @@ Rama `feature/importacion-<tarea>` desde `develop`; escribes en `app/Livewire/Im
 
 ```bash
 git checkout develop && git pull origin develop
-git checkout -b feature/importacion-modelo-v4
+git checkout -b feature/importacion-cargas-posteriores
 ```
+
+---
+
+**Ver también:** [Plan de Fase 3](./plan-fase3.md) · [Análisis de requerimientos](./analisis-requerimientos.md) · [Normas de trabajo](./normas-de-trabajo.md)

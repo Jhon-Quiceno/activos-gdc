@@ -1,7 +1,7 @@
 # Análisis de requerimientos — Sistema de Hoja de Vida de Activos Tecnológicos
 
-**Gobernación de Córdoba · Dirección TIC · Versión 4.1**
-17 de octubre de 2026 · Jhon (líder) · @JWRCompany
+**Gobernación de Córdoba · Dirección TIC · Versión 4.2**
+28 de octubre de 2026 · Jhon (líder) · @JWRCompany
 
 > Documento de referencia permanente del proyecto. La versión 4 cambia la **fuente** del análisis: deja de construirse a partir del Excel del inventario 2026 y pasa a apoyarse en la documentación oficial de la Gobernación (sección 2). El modelo de datos completo está en [base-de-datos.md](./base-de-datos.md).
 > Hay una versión Word de este mismo documento en [analisis-requerimientos-v4.docx](./analisis-requerimientos-v4.docx).
@@ -53,6 +53,7 @@ Responder, con evidencia y en un solo lugar:
 | 3 | Códigos QR (RF-08 esencial, RF-48 a RF-51). |
 | **4** | **Cambio de fuente:** documentación oficial en lugar del Excel 2026, que solo se usa para cargar datos. Estructura organizacional jerárquica, sedes reales con sus pisos, catálogo oficial de cargos, valoración GT-M4, datos de adquisición, levantamiento con acta. RF-52 a RF-60, RN-20 a RN-28, modelo de datos v4. |
 | **4.1** | Se confirma que el **mantenimiento sigue fuera del alcance**: se quitan el módulo de mantenimiento (antiguos RF-60 a RF-64), sus tablas, el tipo de evento, el formato, los casos de uso y los reportes; RN-08 vuelve a su texto de v3. La estructura organizacional pasa a ser RF-60. |
+| **4.2** | **Fase 2 cerrada** (`v2.0`) tras la auditoría RF por RF del 21 de octubre de 2026 (todos los esenciales y los importantes de la fase hechos, Pest en verde); la **Fase 3 pasa a ser la fase activa**, con el mismo equipo de la Fase 2 ([plan-fase3.md](./plan-fase3.md)). Decisión registrada sobre RF-39 en [base-de-datos.md, sección 6.2](./base-de-datos.md#62-segundo-tiempo--al-cerrar-el-día-2-jhon). **Pendiente para el líder:** replicar este cambio en [analisis-requerimientos-v4.docx](./analisis-requerimientos-v4.docx) (el binario no se edita desde el repositorio). |
 
 ### 1.4 Definiciones
 
@@ -417,11 +418,11 @@ Todo lo cargado sin serial queda «Pendiente de verificar» y se verifica dentro
 | Fase | Alcance | RF |
 |---|---|---|
 | **1 — Cerrada** (oct-2026, `v1.0`) | Inventario, hoja de vida, movimientos, formatos, QR, reportes, administración. | 35 esenciales de v3 |
-| **2 — Reestructuración con fuentes oficiales** | Modelo v4, catálogos oficiales, personas desde la planta, ficha ampliada, valoración GT-M4, levantamiento con acta, matriz FOR.01, cargas nuevas, y los «importantes» de v3 que más pesan | RF-01, 02, 04, 07, 09, 10, 12, 18, 19, 34, 37, 38, 39, 44, 45, 53 a 58, 60 (esenciales), más RF-23, 27, 36, 47, 52, 59. RF-22, 26, 33, 49 y 51 ya entraron con los PR #9 y #10 |
-| **3 — Consolidación** | Puestos de trabajo, fotos, historial por fecha, tipos de evento configurables, destino de lo retirado, pendientes de firma, cargas posteriores | RF-05, 06, 13, 16, 17, 31, 42 |
+| **2 — Cerrada** (oct-2026, `v2.0`) | Reestructuración con fuentes oficiales: modelo v4, catálogos oficiales, personas desde la planta, ficha ampliada, valoración GT-M4, levantamiento con acta, matriz FOR.01, cargas nuevas, y los «importantes» de v3 que más pesan | RF-01, 02, 04, 07, 09, 10, 12, 18, 19, 34, 37, 38, 39, 44, 45, 53 a 58, 60 (esenciales), más RF-23, 27, 36, 47, 52, 59. RF-22, 26, 33, 49 y 51 ya entraron con los PR #9 y #10 |
+| **3 — Consolidación** (fase activa) | Puestos de trabajo, fotos, historial por fecha, tipos de evento configurables, destino de lo retirado, pendientes de firma, cargas posteriores | RF-05, 06, 13, 16, 17, 31, 42 |
 | **4 — Mejoras** | Firma en pantalla | RF-32 |
 
-El reparto de la Fase 2 está en [plan-fase2.md](./plan-fase2.md).
+La Fase 2 se cerró con la auditoría RF por RF del 21 de octubre de 2026. El reparto de la Fase 3 está en [plan-fase3.md](./plan-fase3.md).
 
 ---
 
@@ -449,8 +450,9 @@ El reparto de la Fase 2 está en [plan-fase2.md](./plan-fase2.md).
 - [ ] Pedir a Talento Humano el procedimiento de entrega de la planta (con autorización de tratamiento de datos).
 - [ ] Pedir a Almacén los datos de adquisición y la base de códigos de activo.
 - [ ] Leer las páginas 334 a 353 del Decreto 608.
-- [ ] Arrancar la Fase 2 según [plan-fase2.md](./plan-fase2.md).
+- [x] Fase 2 cerrada (`v2.0`, auditoría del 21-oct-2026).
+- [ ] Arrancar la Fase 3 según [plan-fase3.md](./plan-fase3.md).
 
 ---
 
-**Ver también:** [Base de datos v4](./base-de-datos.md) · [Plan de Fase 2](./plan-fase2.md) · [Normas de trabajo](./normas-de-trabajo.md)
+**Ver también:** [Base de datos v4](./base-de-datos.md) · [Plan de Fase 3](./plan-fase3.md) · [Normas de trabajo](./normas-de-trabajo.md)
