@@ -123,7 +123,9 @@ class PendientesDeFirma
     }
 
     /**
-     * Tipos de evento que hoy tienen pendientes, para el filtro.
+     * Tipos de evento que hoy tienen pendientes, para el filtro, ordenados por
+     * su etiqueta. Se ordena en PHP y no con ORDER BY: en MySQL `eventos.tipo`
+     * es un ENUM y ordenaría por la posición del valor, no alfabéticamente.
      *
      * @return array<string, string>
      */
@@ -131,9 +133,9 @@ class PendientesDeFirma
     {
         return self::base()
             ->distinct()
-            ->orderBy('tipo')
             ->pluck('tipo')
             ->mapWithKeys(fn (string $tipo) => [$tipo => self::etiquetaTipo($tipo)])
+            ->sort()
             ->all();
     }
 
