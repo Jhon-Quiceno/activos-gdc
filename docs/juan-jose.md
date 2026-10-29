@@ -1,48 +1,47 @@
-# Juan José — Núcleo 1: Equipos, hoja de vida, valoración y QR
+# Juan José — Núcleo 1: Equipos y QR
 
 **Sistema de Hoja de Vida de Activos Tecnológicos · Gobernación de Córdoba · Dirección TIC**
-Fase 2 · Bloques: Equipos y QR · Ver el [Plan de Fase 2](./plan-fase2.md)
+Fase 3 · Bloques: Equipos y QR · Ver el [Plan de Fase 3](./plan-fase3.md)
 
 ## Rol
 
-Llevas el bloque central: la ficha del equipo y su hoja de vida. En esta fase la ficha crece con los datos oficiales del FOR.01 y de adquisición, y se suma la **valoración del activo del Manual GT-M4**, que después usan Alex (matriz FOR.01, riesgos) y Anuar (levantamiento). Desde el 9 de octubre también eres dueño del bloque QR; RF-49 y RF-51 ya están hechos (PR #10).
+Sigues con el bloque central: la ficha del equipo y su hoja de vida. En esta fase completas tres de los «importantes» que quedaron fuera de la Fase 2: agrupar equipos en un puesto de trabajo, adjuntar fotos y consultar la configuración en una fecha dada.
 
-## Lo que ya te dejó Jhon
+## Lo que te deja Jhon
 
-- `equipos` con `numero_activo` (se asigna solo y no cambia, RN-27), `modelo_id`, `descripcion`, `proceso_id`, `proveedor_tercero_id`, `forma_ingreso` y los datos de adquisición y garantía.
-- `ModeloEquipo` (catálogo de modelos por marca y tipo) y `Proveedor`.
-- `Equipo::garantiaPorVencer()`, `Equipo::vidaUtilSuperada()`, `$equipo->valoracionVigente`, `$equipo->valoraciones`.
-- **`ValoracionActivo::registrar($equipo, $usuario, $datos)`**: crea la valoración y su evento `valoracion`, calcula total, importancia y riesgo, deja no vigente la anterior y aplica RN-22 a RN-25. Tu pantalla solo arma `$datos` y muestra los errores de validación.
-- Textos de las escalas para el formulario: `ValoracionActivo::ESCALA_CONFIDENCIALIDAD`, `ESCALA_INTEGRIDAD`, `ESCALA_DISPONIBILIDAD`, `CLASIFICACIONES_DATOS`, `CONTROLES_MONITOREO`.
-- Selectores `<x-ui.dependencia-select>` y `<x-ui.ubicacion-select sede="sedeId" piso="pisoId" dependencia="dependenciaId" />`: este último, al elegir la sede, solo muestra sus pisos y sus dependencias (con «Ver todas las dependencias» como salida). Úsalo en el registro y la edición del equipo en lugar de los tres selects actuales. También `Dependencia::idsDeRama($id)`.
+- **F3-1** (`puestos_trabajo.activo`, único por piso) antes del día 4.
+- **F3-2** (`fotos_equipo` + modelo `FotoEquipo`, con `$equipo->fotos` y `fotoPrincipal`) antes del día 6.
+- Todo lo de la Fase 2: `ValoracionActivo::registrar()`, los selectores `<x-ui.dependencia-select>` y `<x-ui.ubicacion-select>`, `Dependencia::idsDeRama($id)`.
 
 ## Tareas por día
 
 | Días | Tareas | Entregable |
 |---|---|---|
-| 1–2 | **Adaptar al modelo nuevo** (paso 3 del plan): registro y edición con modelo del catálogo (marca → modelo) en vez de texto, propietario tercero desde `proveedores`, número de activo visible, descripción y proceso (por defecto el de la dependencia). Filtros de equipos y de QR (`FiltrosDeEquipos`) por rama de dependencia con `x-ui.dependencia-select` y por sede → piso. Dejar de usar `modelo`, `propietario_tercero` y `asignacion->sede`. | Tu bloque sin columnas viejas. |
-| 3 | Datos de adquisición (RF-52): forma de ingreso, fecha, valor COP, proveedor, contrato, factura, garantía y vida útil, con avisos de garantía por vencer y vida útil superada. Configuración de cómputo con ofimática, dominio, IP y MAC. | Ficha completa. |
-| 4–5 | **Pantalla de valoración (RF-56, RF-57):** formulario en la hoja de vida con las escalas (el texto de cada nivel, no solo el número), total, importancia y marca de riesgo en vivo. Guarda con `ValoracionActivo::registrar()`. | Valorar un equipo. |
-| 6 | Reclasificación con historial (RF-58): todas las valoraciones en la hoja de vida, la vigente destacada. | Historial de valoraciones. |
-| 7 | Hoja de vida (RF-09) y su PDF (RF-33) con valoración vigente, adquisición y cargo oficial del responsable. | Hoja de vida v4. |
-| 8 | Dejar el formulario de valoración reusable (componente Livewire o parcial) para el levantamiento de Anuar (RF-59). | Valoración usable desde el levantamiento. |
-| 9–10 | Prueba cruzada del bloque de Levantamientos (Anuar); pruebas propias y correcciones. | Pest en verde. |
+| 4 | **RF-05 (parte ficha):** en el registro y la edición del equipo, asignarlo a un puesto de trabajo existente o crear uno nuevo (nombre o código, piso, dependencia). Filtro de equipos por puesto. El traslado del puesto completo lo hace Anuar (Movimientos) sobre esta misma asignación. | Un equipo pertenece a un puesto. |
+| 5 | **RF-16:** en la hoja de vida, consultar la configuración de cómputo (componentes y software) que tenía el equipo en una fecha dada, a partir de `componentes.fecha_instalacion`/`fecha_retiro` y `eventos.valores`. | Configuración histórica consultable. |
+| 6 | **RF-06** (usa F3-2): subir y quitar fotos del equipo desde la hoja de vida (vista frontal, placa con el serial…), marcar la principal (una sola por equipo), con su evento `actualizacion_datos`. Límite de tamaño y solo imágenes (RNF-19: son fotos del equipo, nunca de personas). | Fotos en la ficha. |
+| 8 | Montar en la hoja de vida el componente compartido de Jhon para **registrar un evento de un tipo configurable** (botón «Registrar otro evento»). | Tipos de evento configurables usables desde la ficha. |
+| 9–10 | Prueba cruzada del bloque de Administración (Manuel); pruebas propias y correcciones. | Pest en verde. |
 
 ## Requerimientos a cargo
 
-RF-01, RF-02, RF-04, RF-07, RF-09, RF-33, RF-52, RF-56, RF-57, RF-58 y la adaptación del QR. Detalle en el [Análisis v4.1](./analisis-requerimientos.md), secciones 5.1, 5.2 y 5.11, y en [base-de-datos.md §4.4 y §4.5](./base-de-datos.md#44-equipos-columnas-nuevas).
+RF-05 (parte ficha), RF-06, RF-16. Detalle en el [Análisis v4.2](./analisis-requerimientos.md), sección 13, y en [base-de-datos.md, sección 10](./base-de-datos.md#10-fase-3--cambios-de-esquema-los-crea-el-líder).
 
 ## Pruebas mínimas
 
-- La pantalla muestra el error de RN-24 (datos personales) y de RN-25 (soporte) que lanza el modelo.
-- El número de activo aparece en la ficha y no se puede editar.
-- Filtrar por «Secretaría de Hacienda» trae los equipos de sus direcciones.
+- Un equipo asignado a un puesto aparece al filtrar por ese puesto.
+- La configuración consultada «al 1 de octubre» no muestra un componente instalado el 5 de octubre.
+- Subir una segunda foto «principal» deja la anterior como no principal, no borra ninguna.
 
 ## Normas
 
-Ramas `feature/equipos-<tarea>` y `feature/qr-<tarea>` desde `develop`; escribes en `app/Livewire/Equipos`, `app/Livewire/Qr`, sus vistas y sus carpetas de `tests/Feature`. Lo que falte en el modelo se le pide a Jhon. Todo cambio pasa por `HistorialService::registrar()` (la valoración, por `ValoracionActivo::registrar()`). Detalle en [normas-de-trabajo.md](./normas-de-trabajo.md).
+Ramas `feature/equipos-<tarea>` y `feature/qr-<tarea>` desde `develop`; escribes en `app/Livewire/Equipos`, `app/Livewire/Qr`, sus vistas y sus carpetas de `tests/Feature`. Lo que falte en el modelo se le pide a Jhon. Todo cambio pasa por `HistorialService::registrar()`. Detalle en [normas-de-trabajo.md](./normas-de-trabajo.md).
 
 ```bash
 git checkout develop && git pull origin develop
-git checkout -b feature/equipos-modelo-v4
+git checkout -b feature/equipos-puestos-trabajo
 ```
+
+---
+
+**Ver también:** [Plan de Fase 3](./plan-fase3.md) · [Análisis de requerimientos](./analisis-requerimientos.md) · [Normas de trabajo](./normas-de-trabajo.md)
