@@ -271,6 +271,7 @@ class Index extends Component
             'kpis' => [
                 'filas' => $resultados->count(),
                 'listas' => $resultados->filter(fn ($r) => $r['errores'] === [] && ! ($r['omitida'] ?? false))->count(),
+                'actualizaciones' => $resultados->filter(fn ($r) => $r['errores'] === [] && ! ($r['omitida'] ?? false) && ($r['actualizacion'] ?? false))->count(),
                 'advertencias' => $resultados->filter(fn ($r) => $r['errores'] === [] && $r['advertencias'] !== [])->count(),
                 'errores' => $resultados->filter(fn ($r) => $r['errores'] !== [])->count(),
             ],

@@ -157,7 +157,7 @@ it('sin serial queda con uno provisional y pendiente de verificar (RN-02, RF-41)
         ->and($equipo->verificacion)->toBe('pendiente_de_verificar');
 });
 
-it('un serial repetido en el archivo o en la base da error de fila', function () {
+it('un serial repetido dentro del archivo da error, uno existente es actualizacion', function () {
     Equipo::create(['serial' => 'YA-EXISTE', 'tipo_equipo_id' => $this->pc->id, 'marca_id' => Marca::first()->id, 'propiedad' => 'gobernacion']);
 
     $carga = cargaEquipos(plantillaCsv([
@@ -167,7 +167,8 @@ it('un serial repetido en el archivo o en la base da error de fila', function ()
     ]));
 
     expect($carga->get('resultados.0.errores'))->toContain('El serial DUP-1 está repetido en el archivo.')
-        ->and($carga->get('resultados.2.errores'))->toContain('El serial YA-EXISTE ya está registrado.');
+        ->and($carga->get('resultados.2.errores'))->toBe([])
+        ->and($carga->get('resultados.2.actualizacion'))->toBeTrue();
 });
 
 it('un código mal escrito se normaliza y uno sin forma de código da error', function () {
@@ -278,4 +279,54 @@ it('un responsable sin documento se crea una sola vez y se reutiliza en la sigui
     expect(Equipo::count())->toBe(3)
         ->and(Persona::count())->toBe(1)
         ->and(Asignacion::whereNotNull('persona_id')->distinct()->pluck('persona_id')->all())->toBe([Persona::sole()->id]);
+});
+
+
+it('volver a cargar el mismo archivo actualiza los equipos sin duplicarlos (RF-42)', function () {
+    $archivo = fn () => plantillaCsv([filaPlantilla()]);
+
+    cargaEquipos($archivo())->call('confirmar')->assertHasNoErrors();
+    expect(Equipo::count())->toBe(1);
+
+    $segunda = cargaEquipos($archivo());
+    expect($segunda->get('resultados.0.actualizacion'))->toBeTrue();
+
+    $segunda->call('confirmar')->assertHasNoErrors();
+
+    expect(Equipo::count())->toBe(1)
+        ->and($segunda->get('resumen')['actualizados'])->toBe(1)
+        ->and($segunda->get('resumen')['creados'])->toBe(0);
+});
+
+it('una actualizacion no toca la asignacion aunque cambie el piso (RF-42)', function () {
+    cargaEquipos(plantillaCsv([filaPlantilla()]))->call('confirmar')->assertHasNoErrors();
+    $equipo = Equipo::sole();
+    $asignacionOriginal = $equipo->asignacionActual->id;
+
+    Piso::create(['sede_id' => $this->sede->id, 'numero' => 7]);
+
+    $segunda = cargaEquipos(plantillaCsv([filaPlantilla(['piso' => '7'])]));
+    expect($segunda->get('resultados.0.advertencias'))
+        ->toContain('La ubicación o el responsable cambiaron: se requiere traslado firmado (RF-20).');
+
+    $segunda->call('confirmar')->assertHasNoErrors();
+
+    expect($equipo->fresh()->asignacionActual->id)->toBe($asignacionOriginal)
+        ->and($equipo->fresh()->asignacionActual->piso_id)->toBe($this->piso->id);
+});
+
+it('una actualizacion registra un evento con los valores anteriores y nuevos (RF-42)', function () {
+    cargaEquipos(plantillaCsv([filaPlantilla(['estado_funcionamiento' => 'Bueno'])]))->call('confirmar')->assertHasNoErrors();
+    $equipo = Equipo::sole();
+
+    cargaEquipos(plantillaCsv([filaPlantilla(['estado_funcionamiento' => 'Regular'])]))->call('confirmar')->assertHasNoErrors();
+
+    $evento = Evento::where('equipo_id', $equipo->id)
+        ->where('tipo', 'actualizacion_datos')
+        ->first();
+
+    expect($evento)->not->toBeNull()
+        ->and($evento->valores['cambios'])->toHaveKey('estado_funcionamiento')
+        ->and($evento->valores['cambios']['estado_funcionamiento']['anterior'])->toBe('bueno')
+        ->and($evento->valores['cambios']['estado_funcionamiento']['nuevo'])->toBe('regular');
 });
