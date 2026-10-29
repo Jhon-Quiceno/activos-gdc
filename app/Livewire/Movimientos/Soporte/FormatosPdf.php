@@ -72,10 +72,24 @@ class FormatosPdf
             'equipo.componentes' => fn ($q) => $q->whereNull('fecha_retiro')->with('tipoComponente')->orderBy('id'),
         ]);
 
+        // Traslado del puesto completo (RF-05): un solo formato con una hoja
+        // por equipo del puesto, cada una con su firmante. Para un evento de un
+        // solo equipo, el «grupo» es el propio evento.
+        $eventos = PuestosDeTrabajo::eventosDelGrupo($evento)->each(fn (Evento $e) => $e->loadMissing([
+            'equipo.tipoEquipo',
+            'equipo.marca',
+            'equipo.modeloEquipo',
+            'equipo.componentes' => fn ($q) => $q->whereNull('fecha_retiro')->with('tipoComponente')->orderBy('id'),
+        ]));
+        $principal = $eventos->first();
+
         // Quien entrega firma el formato de baja; quien recibe, el de entrega.
-        $asignacion = $tipoFormato === 'formato_baja'
-            ? $this->asignaciones->vigenteAntesDe($evento)
-            : $this->asignaciones->vigenteDespuesDe($evento);
+        $asignaciones = $eventos->mapWithKeys(fn (Evento $e) => [
+            $e->equipo_id => $tipoFormato === 'formato_baja'
+                ? $this->asignaciones->vigenteAntesDe($e)
+                : $this->asignaciones->vigenteDespuesDe($e),
+        ]);
+        $asignacion = $asignaciones[$evento->equipo_id] ?? null;
 
         $contexto = match (true) {
             $tipoFormato === 'formato_entrega' => 'entrega',
@@ -88,13 +102,17 @@ class FormatosPdf
             'tipoFormato' => $tipoFormato,
             'contexto' => $contexto,
             'titulo' => self::TITULOS[$contexto],
-            'consecutivo' => self::consecutivo($evento, $tipoFormato),
+            'consecutivo' => self::consecutivo($principal, $tipoFormato),
             'fecha' => $evento->fecha,
             'evento' => $evento,
             'motivo' => $this->motivo($evento),
-            'equipos' => collect([$evento->equipo]),
+            'equipos' => $eventos->map(fn (Evento $e) => $e->equipo)->values(),
             'persona' => $asignacion?->persona,
             'asignacion' => $asignacion,
+            // Por equipo (id del equipo): con un puesto, cada hoja tiene su firmante.
+            'personasPorEquipo' => $asignaciones->map(fn ($a) => $a?->persona),
+            'asignacionesPorEquipo' => $asignaciones,
+            'puesto' => PuestosDeTrabajo::grupo($evento),
             'diagnostico' => $evento->diagnostico,
             'observaciones' => $evento->descripcion,
             'tecnico' => $evento->usuario,
@@ -148,24 +166,38 @@ class FormatosPdf
      */
     public function generarYGuardar(Evento $evento, array $tipos): Collection
     {
-        return collect($tipos)->map(function (string $tipo) use ($evento) {
-            $ruta = sprintf('movimientos/eventos/%d/%s-prellenado.pdf', $evento->id, $tipo);
+        // Con un traslado de puesto (RF-05) se genera un solo archivo por tipo
+        // y se registra como documento de cada evento del puesto.
+        $eventos = PuestosDeTrabajo::eventosDelGrupo($evento);
+        $principal = $eventos->first();
+        $carpeta = PuestosDeTrabajo::grupo($evento)
+            ? sprintf('movimientos/puestos/%d', $principal->id)
+            : sprintf('movimientos/eventos/%d', $evento->id);
 
-            Storage::disk(self::DISCO)->put($ruta, $this->pdf($evento, $tipo)->output());
+        return collect($tipos)->flatMap(function (string $tipo) use ($principal, $eventos, $carpeta) {
+            $ruta = sprintf('%s/%s-prellenado.pdf', $carpeta, $tipo);
 
-            return Documento::create([
-                'evento_id' => $evento->id,
+            Storage::disk(self::DISCO)->put($ruta, $this->pdf($principal, $tipo)->output());
+
+            return $eventos->map(fn (Evento $e) => Documento::create([
+                'evento_id' => $e->id,
                 'tipo' => $tipo,
-                'consecutivo' => self::consecutivo($evento, $tipo),
+                'consecutivo' => self::consecutivo($principal, $tipo),
                 'archivo_path' => $ruta,
                 'firmado' => false,
                 'fecha' => now()->toDateString(),
-            ]);
-        });
+            ]));
+        })->values();
     }
 
+    /**
+     * Los eventos de un mismo traslado de puesto comparten el consecutivo del
+     * primero: es un solo juego de formatos (RF-05).
+     */
     public static function consecutivo(Evento $evento, string $tipoFormato): string
     {
+        $evento = PuestosDeTrabajo::principal($evento);
+
         $prefijo = match ($tipoFormato) {
             'formato_entrega' => 'FE',
             'formato_baja' => 'FB',
@@ -237,6 +269,10 @@ class FormatosPdf
             : null;
         $componentes = self::textoComponentes($equipo);
         $motivo = self::motivoDelEvento($evento);
+        $grupo = $evento ? PuestosDeTrabajo::grupo($evento) : null;
+        $puesto = $grupo
+            ? trans_choice('Traslado del puesto de trabajo :puesto completo (:count equipo).|Traslado del puesto de trabajo :puesto completo (:count equipos).', $grupo['equipos'], ['puesto' => $grupo['puesto'], 'count' => $grupo['equipos']])
+            : null;
 
         [$diagnosticoTexto, $recomendaciones] = match ($contexto) {
             'retiro' => [
@@ -245,6 +281,7 @@ class FormatosPdf
                         'quien' => $persona ? __('El funcionario :nombre', ['nombre' => $persona->nombreCompleto()]) : __('El responsable'),
                         'fecha' => $fecha,
                     ]),
+                    $puesto,
                     $motivo ? __('Motivo: :motivo.', ['motivo' => rtrim($motivo, '.')]) : null,
                     $estado,
                     $componentes,
@@ -261,6 +298,7 @@ class FormatosPdf
                         'ubicacion' => self::textoUbicacion($asignacion),
                         'fecha' => $fecha,
                     ]),
+                    $puesto,
                     $motivo ? __('Motivo: :motivo.', ['motivo' => rtrim($motivo, '.')]) : null,
                     $estado,
                     $componentes,

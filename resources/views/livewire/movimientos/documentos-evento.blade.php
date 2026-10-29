@@ -49,6 +49,21 @@
             </div>
         @endif
 
+        @if ($puesto)
+            {{-- RF-05: un solo juego de formatos para todo el puesto. --}}
+            <div class="mt-4 rounded-lg border border-line bg-info-bg px-4 py-3 text-[14px] text-ink">
+                <p class="font-semibold">
+                    {{ trans_choice('Traslado del puesto :puesto completo (:count equipo)|Traslado del puesto :puesto completo (:count equipos)', $puesto['equipos'], ['puesto' => $puesto['puesto'], 'count' => $puesto['equipos']]) }}
+                </p>
+                <p class="mt-1 text-[13px] text-ink-muted">
+                    {{ __('Los formatos son uno solo para todo el puesto, con una hoja por equipo. Cada documento firmado que subas se aplica al traslado de todos los equipos del puesto.') }}
+                </p>
+                <p class="mt-1 text-[13px] text-ink-muted">
+                    {{ $equiposDelPuesto->map(fn ($e) => trim(($e->tipoEquipo?->nombre ?? '').' '.($e->codigo_activo ?: $e->serial)))->implode(' · ') }}
+                </p>
+            </div>
+        @endif
+
         <x-input-error :messages="$errors->get('archivo')" class="mt-3" />
 
         @if ($admiteUnico && $pendiente)

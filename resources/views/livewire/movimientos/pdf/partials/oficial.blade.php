@@ -10,7 +10,9 @@
     - diagnostico: diagnóstico técnico con formato.
 
     Lo usan el PDF (dompdf) y la vista previa imprimible. Con varios equipos
-    (formato consolidado de un funcionario) sale una hoja por equipo.
+    (formato consolidado de un funcionario, o el traslado de un puesto de
+    trabajo completo, RF-05) sale una hoja por equipo. En el traslado de puesto
+    cada hoja lleva su propio firmante ($personasPorEquipo, por id del equipo).
 
     Espera los datos de FormatosPdf::datos() / datosConsolidado(), incluido $contexto.
 --}}
@@ -21,7 +23,13 @@
 
 @foreach ($equipos as $equipoFormato)
     @php
-        $contenido = $formatos::contenido($contexto, $equipoFormato, $evento ?? null, $persona ?? null, $asignacion ?? null, $diagnostico ?? null);
+        $personaHoja = isset($personasPorEquipo) && $personasPorEquipo->has($equipoFormato->id)
+            ? $personasPorEquipo[$equipoFormato->id]
+            : ($persona ?? null);
+        $asignacionHoja = isset($asignacionesPorEquipo) && $asignacionesPorEquipo->has($equipoFormato->id)
+            ? $asignacionesPorEquipo[$equipoFormato->id]
+            : ($asignacion ?? null);
+        $contenido = $formatos::contenido($contexto, $equipoFormato, $evento ?? null, $personaHoja, $asignacionHoja, $diagnostico ?? null);
     @endphp
 
     <div class="ofi" @if (! $loop->last) style="page-break-after: always;" @endif>
@@ -60,11 +68,11 @@
             </tr>
             <tr>
                 <td class="ofi-etiqueta">{{ __('Funcionario Responsable:') }}</td>
-                <td colspan="3">{{ $persona?->nombreCompleto() ?? __('Sin responsable (bodega)') }}</td>
+                <td colspan="3">{{ $personaHoja?->nombreCompleto() ?? __('Sin responsable (bodega)') }}</td>
             </tr>
             <tr>
                 <td class="ofi-etiqueta">{{ __('Cargo:') }}</td>
-                <td colspan="3">{{ $persona?->cargoTexto() }}</td>
+                <td colspan="3">{{ $personaHoja?->cargoTexto() }}</td>
             </tr>
             <tr><td colspan="4" class="ofi-gris ofi-centro">{{ __('Diagnóstico') }}</td></tr>
             <tr><td colspan="4" class="ofi-caja-diagnostico">{!! nl2br(e($contenido['diagnostico'])) !!}</td></tr>
@@ -85,10 +93,10 @@
                 <td>
                     <div class="ofi-linea-firma"></div>
                     {{ __('Aprobado: funcionario responsable') }}<br>
-                    <span class="ofi-nombre">{{ $persona?->nombreCompleto() }}</span>
+                    <span class="ofi-nombre">{{ $personaHoja?->nombreCompleto() }}</span>
                     {{-- Completo: es el formato que se firma (RN-12). --}}
-                    @if ($persona?->numero_documento)
-                        <br><span class="ofi-nombre">{{ ($persona->tipo_documento === 'CC' ? 'C.C.' : $persona->tipo_documento).' '.$persona->numero_documento }}</span>
+                    @if ($personaHoja?->numero_documento)
+                        <br><span class="ofi-nombre">{{ ($personaHoja->tipo_documento === 'CC' ? 'C.C.' : $personaHoja->tipo_documento).' '.$personaHoja->numero_documento }}</span>
                     @endif
                 </td>
             </tr>
