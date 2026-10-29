@@ -100,7 +100,8 @@ it('muestra el evento en Pendientes de firma hasta completarlo (RF-31)', functio
     $this->get(route('movimientos.pendientes'))->assertOk();
 
     Livewire::test(PendientesListado::class)
-        ->assertSee('Formato de baja + Formato de entrega')
+        ->assertSee('Formato de retiro / baja')
+        ->assertSee('Formato de entrega')
         ->call('gestionar', $this->traslado->id)
         ->assertSet('eventoSeleccionado', $this->traslado->id);
 

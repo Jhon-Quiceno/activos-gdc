@@ -11,15 +11,8 @@
     <div class="space-y-6">
         <x-ui.page-header
             :title="__('Pendientes de firma')"
-            :subtitle="__('Movimientos que aún no tienen sus documentos firmados. Un evento queda completo al subir todos sus formatos.')"
-        >
-            <x-slot name="actions">
-                {{-- TODO: exportación real a Excel pendiente de alcance futuro; por ahora el botón no tiene lógica. --}}
-                <x-ui.button variant="secondary" size="md">
-                    {{ __('Exportar a Excel') }}
-                </x-ui.button>
-            </x-slot>
-        </x-ui.page-header>
+            :subtitle="__('Movimientos que aún esperan sus documentos firmados. Un evento sale de esta lista al subir todos sus formatos (o el documento único del traslado).')"
+        />
 
         <livewire:movimientos.pendientes-listado />
     </div>
