@@ -88,6 +88,11 @@ class Evento extends Model
         return $this->belongsTo(Equipo::class);
     }
 
+    public function tipoEvento(): BelongsTo
+    {
+        return $this->belongsTo(TipoEvento::class, 'tipo', 'clave');
+    }
+
     public function usuario(): BelongsTo
     {
         return $this->belongsTo(User::class, 'usuario_id');
