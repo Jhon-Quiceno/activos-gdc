@@ -53,6 +53,7 @@ Route::middleware(['auth', 'cambiar.contrasena'])->group(function () {
     Route::view('/admin/listas', 'livewire.admin.listas')->name('admin.listas');
     Route::view('/admin/dependencias', 'livewire.admin.dependencias')->name('admin.dependencias');
     Route::view('/admin/catalogos', 'livewire.admin.catalogos')->name('admin.catalogos');
+    Route::view('/admin/tipos-evento', 'livewire.admin.tipos-evento')->name('admin.tipos-evento');
 
     // --- Etiquetas QR (desde el 9 oct, Juan José; antes Manuel) ---
     Route::view('/qr', 'livewire.qr.page')->name('qr.index');
