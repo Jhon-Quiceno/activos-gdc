@@ -21,6 +21,7 @@
         ['label' => 'Listas', 'route' => 'admin.listas', 'pattern' => 'admin.listas', 'icon' => 'listas'],
         ['label' => 'Dependencias', 'route' => 'admin.dependencias', 'pattern' => 'admin.dependencias', 'icon' => 'listas'],
         ['label' => 'Catálogos', 'route' => 'admin.catalogos', 'pattern' => 'admin.catalogos', 'icon' => 'listas'],
+        ['label' => 'Tipos de evento', 'route' => 'admin.tipos-evento', 'pattern' => 'admin.tipos-evento', 'icon' => 'listas'],
     ];
 
     // RF-30/RN-05: eventos cuyo movimiento aún no tiene los documentos firmados.
