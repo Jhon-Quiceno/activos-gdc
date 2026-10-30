@@ -94,9 +94,10 @@
 
     @if ($resultados)
         {{-- 2. Revisión --}}
-        <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <div class="grid grid-cols-2 gap-4 lg:grid-cols-5">
             <x-ui.kpi-card :value="$kpis['filas']" :label="$tipo === 'inventario' ? __('Equipos detectados') : __('Filas leídas')" />
             <x-ui.kpi-card :value="$kpis['listas']" :label="__('Se cargan')" accent="success" />
+            <x-ui.kpi-card :value="$kpis['actualizaciones']" :label="__('Se actualizan')" accent="info" />
             <x-ui.kpi-card :value="$kpis['advertencias']" :label="__('Con advertencias')" accent="warning" />
             <x-ui.kpi-card :value="$kpis['errores']" :label="__('Con errores (no se cargan)')" accent="danger" />
         </div>
@@ -167,6 +168,8 @@
                                 <x-ui.badge variant="danger">{{ __('No se carga') }}</x-ui.badge>
                             @elseif ($resultado['omitida'] ?? false)
                                 <x-ui.badge variant="neutral">{{ __('Se omite') }}</x-ui.badge>
+                            @elseif ($resultado['actualizacion'] ?? false)
+                                <x-ui.badge variant="info">{{ __('Actualización') }}</x-ui.badge>
                             @elseif ($resultado['advertencias'])
                                 <x-ui.badge variant="warning">{{ __('Con advertencias') }}</x-ui.badge>
                             @else

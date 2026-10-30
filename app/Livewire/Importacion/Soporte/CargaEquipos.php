@@ -96,16 +96,24 @@ final class CargaEquipos
 
     /**
      * @param  array<int, array<string, mixed>>  $resultados
-     * @return array{creados: int, omitidos: int, personas_nuevas: int, modelos_nuevos: int, proveedores_nuevos: int}
+     * @return array{creados: int, actualizados: int, omitidos: int, personas_nuevas: int, marcas_nuevas: int, modelos_nuevos: int, proveedores_nuevos: int}
      */
     public function guardar(array $resultados, User $usuario, Importacion $importacion): array
     {
-        $resumen = ['creados' => 0, 'omitidos' => 0, 'personas_nuevas' => 0, 'marcas_nuevas' => 0, 'modelos_nuevos' => 0, 'proveedores_nuevos' => 0];
+        $resumen = ['creados' => 0, 'actualizados' => 0, 'omitidos' => 0, 'personas_nuevas' => 0, 'marcas_nuevas' => 0, 'modelos_nuevos' => 0, 'proveedores_nuevos' => 0];
         $personas = [];
 
         foreach ($resultados as $resultado) {
             if ($resultado['errores'] !== []) {
                 $resumen['omitidos']++;
+
+                continue;
+            }
+
+            // RF-42: si la fila corresponde a un equipo ya registrado, se actualiza su
+            // ficha; la asignacion y los movimientos quedan intactos.
+            if (($resultado['equipo_existente_id'] ?? null) !== null) {
+                $this->actualizarEquipo($resultado, $usuario, $importacion, $resumen);
 
                 continue;
             }
@@ -191,6 +199,104 @@ final class CargaEquipos
         }
 
         return $resumen;
+    }
+
+
+
+    /**
+     * RF-42: actualiza solo la ficha del equipo. La asignacion y los
+     * componentes NO se tocan: si algo de eso cambio, la vista previa ya lo
+     * advirtio como "requiere traslado".
+     *
+     * @param  array<string, mixed>  $resultado
+     * @param  array<string, int>  $resumen
+     */
+    private function actualizarEquipo(array $resultado, User $usuario, Importacion $importacion, array &$resumen): void
+    {
+        $equipo = Equipo::find($resultado['equipo_existente_id']);
+        if (! $equipo) {
+            $resumen['omitidos']++;
+
+            return;
+        }
+
+        $v = $resultado['valores'];
+
+        $marcaId = $v['marca_id'];
+        if ($marcaId === null && $v['marca_nueva'] !== null) {
+            $marca = Marca::all()->first(fn (Marca $m) => Normalizar::clave($m->nombre) === Normalizar::clave($v['marca_nueva']))
+                ?? Marca::create(['nombre' => $v['marca_nueva']]);
+            $resumen['marcas_nuevas'] += (int) $marca->wasRecentlyCreated;
+            $marcaId = $marca->id;
+        }
+
+        $modeloId = $equipo->modelo_id;
+        if ($v['modelo'] !== null && $marcaId !== null && $v['tipo_equipo_id'] !== null) {
+            $modelo = ModeloEquipo::firstOrCreate(['marca_id' => $marcaId, 'tipo_equipo_id' => $v['tipo_equipo_id'], 'nombre' => $v['modelo']]);
+            $resumen['modelos_nuevos'] += (int) $modelo->wasRecentlyCreated;
+            $modeloId = $modelo->id;
+        }
+
+        $proveedorTerceroId = $this->proveedorId($v['propietario_tercero'], $resumen);
+        $proveedorId = $this->proveedorId($v['proveedor'], $resumen);
+
+        $nuevos = [
+            'tipo_equipo_id' => $v['tipo_equipo_id'] ?? $equipo->tipo_equipo_id,
+            'marca_id' => $marcaId ?? $equipo->marca_id,
+            'modelo_id' => $modeloId,
+            'descripcion' => $v['descripcion'],
+            'proceso_id' => $v['proceso_id'],
+            'propiedad' => $v['propiedad'],
+            'proveedor_tercero_id' => $proveedorTerceroId,
+            'figura_tercero' => $v['figura_tercero'],
+            'forma_ingreso' => $v['forma_ingreso'],
+            'fecha_adquisicion' => $v['fecha_adquisicion'],
+            'valor_adquisicion' => $v['valor_adquisicion'],
+            'proveedor_id' => $proveedorId,
+            'numero_contrato' => $v['numero_contrato'],
+            'numero_factura' => $v['numero_factura'],
+            'fecha_fin_garantia' => $v['fecha_fin_garantia'],
+            'vida_util_meses' => $v['vida_util_meses'],
+            'estado_funcionamiento' => $v['estado_funcionamiento'],
+            'observaciones' => $v['observaciones'],
+        ];
+
+        $norm = function ($valor) {
+            if ($valor === null) {
+                return null;
+            }
+            if ($valor instanceof \DateTimeInterface) {
+                return $valor->format('Y-m-d');
+            }
+            if (is_numeric($valor)) {
+                return (string) (float) $valor;
+            }
+
+            return (string) $valor;
+        };
+
+        $cambios = [];
+        foreach ($nuevos as $campo => $valorNuevo) {
+            $valorAnterior = $equipo->{$campo};
+            if ($norm($valorAnterior) !== $norm($valorNuevo)) {
+                $cambios[$campo] = ['anterior' => $valorAnterior, 'nuevo' => $valorNuevo];
+                $equipo->{$campo} = $valorNuevo;
+            }
+        }
+
+        if ($cambios !== []) {
+            $equipo->save();
+
+            app(HistorialService::class)->registrar(
+                equipo: $equipo,
+                tipo: 'actualizacion_datos',
+                usuario: $usuario,
+                datos: ['valores' => ['cambios' => $cambios]],
+                descripcion: "Actualizacion por carga de datos ({$importacion->archivo}, fila {$resultado['numero']}).",
+            );
+        }
+
+        $resumen['actualizados']++;
     }
 
     /**
@@ -279,20 +385,35 @@ final class CargaEquipos
 
         // --- Identificación ---
         $serial = $intentar(fn () => Normalizar::serial($d['serial'] ?? null));
+        $codigo = $intentar(fn () => Normalizar::codigoActivo($d['codigo_activo'] ?? null));
+        $justificacion = $txt('justificacion_codigo');
+
+        // RF-42: si el serial o el código corresponden a un equipo ya registrado,
+        // la fila es una actualización de su ficha (no un alta nueva).
+        $porSerial = $serial !== null ? Equipo::where('serial', $serial)->first() : null;
+        $porCodigo = $codigo !== null ? Equipo::where('codigo_activo', $codigo)->first() : null;
+
+        $equipoExistente = null;
+        if ($porSerial && $porCodigo && $porSerial->id !== $porCodigo->id) {
+            $errores[] = "El serial {$serial} y el código {$codigo} pertenecen a equipos distintos: revisa los datos.";
+        } elseif ($porSerial) {
+            $equipoExistente = $porSerial;
+        } elseif ($porCodigo) {
+            $equipoExistente = $porCodigo;
+        }
+
         if ($serial === null) {
             $advertencias[] = 'Sin serial: se guarda uno provisional (RN-02).';
         } elseif (($seriales[$serial] ?? 0) > 1) {
             $errores[] = "El serial {$serial} está repetido en el archivo.";
-        } elseif (Equipo::where('serial', $serial)->exists()) {
-            $errores[] = "El serial {$serial} ya está registrado.";
+            $equipoExistente = null;
         }
 
-        $codigo = $intentar(fn () => Normalizar::codigoActivo($d['codigo_activo'] ?? null));
-        $justificacion = $txt('justificacion_codigo');
         if ($codigo === null && ! in_array("El código de activo «{$txt('codigo_activo')}» no tiene el formato I1-######.", $errores, true)) {
             $advertencias[] = 'Sin código de activo.';
-        } elseif ($codigo !== null && (($codigos[$codigo] ?? 0) > 1 || Equipo::where('codigo_activo', $codigo)->exists()) && $justificacion === null) {
-            $errores[] = "El código {$codigo} ya está en otro equipo: escribe la justificación (RN-03).";
+        } elseif ($codigo !== null && ($codigos[$codigo] ?? 0) > 1) {
+            $errores[] = "El código {$codigo} está repetido en el archivo.";
+            $equipoExistente = null;
         }
 
         // Sin serial ni código no hay con qué reconocer un repetido: si esta misma
@@ -326,6 +447,20 @@ final class CargaEquipos
 
         // --- Responsable (RF-18) ---
         $persona = $this->datosPersona($d, $errores, $advertencias, $intentar, $dudosas);
+
+        // RF-42 / RF-20: en una actualización, si cambia la ubicación o el
+        // responsable se advierte que requiere traslado firmado. La asignación
+        // NO se modifica desde esta carga.
+        if ($equipoExistente !== null) {
+            $asignacionActual = $equipoExistente->asignacionActual;
+            $cambiaUbicacion = ($piso !== null && $asignacionActual?->piso_id !== $piso->id)
+                || ($dependencia !== null && $asignacionActual?->dependencia_id !== $dependencia->id);
+            $cambiaResponsable = $persona !== null && ($persona['existente_id'] ?? null) !== $asignacionActual?->persona_id;
+
+            if ($cambiaUbicacion || $cambiaResponsable) {
+                $advertencias[] = 'La ubicación o el responsable cambiaron: se requiere traslado firmado (RF-20).';
+            }
+        }
 
         // --- Cómputo ---
         $usaComputo = (bool) $tipo?->usa_configuracion_computo;
@@ -411,6 +546,8 @@ final class CargaEquipos
             'errores' => array_values(array_unique($errores)),
             'advertencias' => array_values(array_unique($advertencias)),
             'dudosa' => $dudosas > 0,
+            'actualizacion' => $equipoExistente !== null,
+            'equipo_existente_id' => $equipoExistente?->id,
             // Para ofrecer crear la equivalencia desde la pantalla (RF-39).
             'dependencia_sin_resolver' => $dependencia === null ? $dependenciaTexto : null,
             'valores' => $valores,
