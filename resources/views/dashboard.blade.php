@@ -14,15 +14,9 @@
     $totalPuestos = \App\Models\PuestoTrabajo::count();
     $totalSedes = \App\Models\Sede::count();
 
-    $tipoEventoLabels = [
-        'alta' => __('Alta'),
-        'traslado_responsable' => __('Traslado de responsable'),
-        'cambio_componente' => __('Cambio de componente'),
-        'diagnostico' => __('Diagnóstico'),
-        'baja' => __('Baja'),
-        'actualizacion_datos' => __('Actualización de datos'),
-        'anulacion_aclaracion' => __('Anulación / aclaración'),
-    ];
+    // RF-13: las etiquetas salen de tipos_evento (F3-3), no de un arreglo fijo
+    // en código — un tipo configurable nuevo aparece aquí sin tocar esta vista.
+    $tipoEventoLabels = \App\Models\TipoEvento::pluck('nombre', 'clave')->all();
 
     $eventosRecientes = \App\Models\Evento::with(['equipo', 'usuario'])
         ->latest('fecha')

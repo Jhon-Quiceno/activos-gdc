@@ -3,8 +3,10 @@
 use App\Models\Equipo;
 use App\Models\Marca;
 use App\Models\TipoEquipo;
+use App\Models\TipoEvento;
 use App\Models\User;
 use App\Models\ValoracionActivo;
+use App\Services\HistorialService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
@@ -39,4 +41,22 @@ it('cuenta los equipos de hardware sin valoración vigente', function () {
 
     // Una valoración media y un equipo sin valoración.
     expect($html)->toContain('Media')->toContain('Sin valoración');
+});
+
+it('el tablero muestra el nombre de un tipo de evento configurable, no su clave (RF-13)', function () {
+    $usuario = User::factory()->create(['debe_cambiar_contrasena' => false]);
+    $equipo = Equipo::factory()->create(['tipo_equipo_id' => $this->tipo->id]);
+
+    TipoEvento::create(['clave' => 'inspeccion_electrica', 'nombre' => 'Inspección eléctrica']);
+
+    app(HistorialService::class)->registrar(
+        $equipo,
+        'inspeccion_electrica',
+        $usuario,
+        descripcion: 'Inspección eléctrica de prueba.',
+    );
+
+    $html = $this->actingAs($usuario)->get('/dashboard')->assertOk()->getContent();
+
+    expect($html)->toContain('Inspección eléctrica')->not->toContain('inspeccion_electrica');
 });
