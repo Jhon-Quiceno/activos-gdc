@@ -39,6 +39,37 @@ Decisiones registradas que **no** se reabren en esta fase ([base-de-datos.md, se
 - El tablero no se compara con los conteos del PAMP (falta esa fuente en el sistema).
 - RF-39: la tabla editable de equivalencias es solo para dependencias; sedes, marcas, modelos y sistemas operativos se resuelven en código.
 
+### Estado al 30 de octubre de 2026
+
+Manuel ya no desarrolla: sus tareas pendientes (RF-13, pantalla y tablero) las
+hizo Jhon directamente sobre `develop`, siguiendo [manuel.md](./manuel.md) tal
+cual estaba escrito.
+
+**Hecho y fusionado a `develop`:**
+
+- **F3-3** (`tipos_evento` + modelo `TipoEvento`, `HistorialService` validando
+  contra la tabla) — Jhon.
+- **RF-13 pantalla** (`/admin/tipos-evento`, crear/renombrar/describir/activar
+  tipos configurables; los 8 del sistema no se editan) y **RF-13 tablero**
+  (`dashboard.blade.php` lee las etiquetas desde `TipoEvento`) — Jhon, por
+  Manuel.
+- **RF-05** traslado del puesto completo, **RF-17** destino del componente
+  retirado, **RF-31** pendientes de firma — Anuar.
+- **RF-42** cargas posteriores sin duplicar — Juan Camilo.
+
+**Pendiente:**
+
+- **F3-1** (`ajustar_puestos_trabajo`) y **F3-2** (`create_fotos_equipo_table`)
+  — Jhon todavía no las ha creado. Bloquean a Juan José: no ha empezado
+  **RF-05** (ficha/asignación del equipo a un puesto), **RF-06** (fotos, usa
+  F3-2) ni **RF-16** (configuración en una fecha; esta última no depende de
+  ninguna migración, podría adelantarse).
+- **RF-13 apoyo en Reportes** (Alex): F3-3 ya está en `develop` desde hoy —
+  Alex puede fusionar `develop` en su rama y aplicar su parte. Todavía no se
+  ve ningún cambio suyo en `app/Livewire/Reportes`.
+- **Día 9–10** (pruebas cruzadas y correcciones): no puede arrancar hasta que
+  Juan José y Alex cierren lo anterior.
+
 ### Antes del día 1 (Jhon)
 
 1. Pasar `develop` a `main` y poner la etiqueta `v2.0`.
