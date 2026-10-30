@@ -5,8 +5,10 @@ namespace App\Services;
 use App\Models\Auditoria;
 use App\Models\Equipo;
 use App\Models\Evento;
+use App\Models\TipoEvento;
 use App\Models\User;
 use Illuminate\Support\Facades\Date;
+use InvalidArgumentException;
 
 /**
  * Único punto de entrada para registrar hechos en la hoja de vida de un equipo.
@@ -40,6 +42,12 @@ class HistorialService
      *   que se agregue un campo opcional.
      * - `$eventoAnulado` solo se usa cuando `$tipo === 'anulacion_aclaracion'`, y
      *   enlaza este evento con el evento que queda anulado.
+     * - `$tipo` debe existir en `tipos_evento` y estar activo (F3-3, RF-13); si no,
+     *   lanza `InvalidArgumentException`. Si el tipo tiene `requiere_firma` y el
+     *   caller no pasó `estado_firma` en `$datos`, el evento nace «pendiente de
+     *   firma» (RF-30). Los 8 tipos del sistema no definen `requiere_firma`: cada
+     *   módulo (traslado, baja, diagnóstico con formato) ya decide su propio
+     *   `estado_firma` explícitamente, y ese valor explícito nunca se sobrescribe.
      *
      * @param  Equipo  $equipo  Equipo al que pertenece el evento.
      * @param  string  $tipo  Uno de: alta, traslado_responsable, cambio_componente,
@@ -65,6 +73,16 @@ class HistorialService
         ?string $descripcion = null,
         ?Evento $eventoAnulado = null,
     ): Evento {
+        $tipoEvento = TipoEvento::where('clave', $tipo)->first();
+
+        if (! $tipoEvento || ! $tipoEvento->activo) {
+            throw new InvalidArgumentException("Tipo de evento inválido o inactivo: {$tipo}");
+        }
+
+        if ($tipoEvento->requiere_firma && ! array_key_exists('estado_firma', $datos)) {
+            $datos['estado_firma'] = 'pendiente_de_firma';
+        }
+
         $evento = Evento::create(array_merge([
             'equipo_id' => $equipo->id,
             'tipo' => $tipo,

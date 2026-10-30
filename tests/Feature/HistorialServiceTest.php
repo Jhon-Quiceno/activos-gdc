@@ -6,9 +6,11 @@ use App\Models\Equipo;
 use App\Models\Evento;
 use App\Models\Marca;
 use App\Models\TipoEquipo;
+use App\Models\TipoEvento;
 use App\Models\User;
 use App\Services\HistorialService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use InvalidArgumentException;
 use LogicException;
 use Tests\TestCase;
 
@@ -97,5 +99,70 @@ class HistorialServiceTest extends TestCase
         );
 
         $this->assertSame($eventoOriginal->id, $eventoAnulacion->fresh()->evento_anulado_id);
+    }
+
+    public function test_registrar_rechaza_un_tipo_que_no_existe_en_tipos_evento(): void
+    {
+        $usuario = User::factory()->create();
+        $equipo = $this->crearEquipo();
+
+        $this->expectException(InvalidArgumentException::class);
+
+        app(HistorialService::class)->registrar($equipo, 'tipo_inexistente', $usuario);
+    }
+
+    public function test_registrar_rechaza_un_tipo_configurable_desactivado(): void
+    {
+        TipoEvento::create([
+            'clave' => 'configurable_prueba',
+            'nombre' => 'Configurable de prueba',
+            'activo' => false,
+        ]);
+
+        $usuario = User::factory()->create();
+        $equipo = $this->crearEquipo();
+
+        $this->expectException(InvalidArgumentException::class);
+
+        app(HistorialService::class)->registrar($equipo, 'configurable_prueba', $usuario);
+    }
+
+    public function test_registrar_marca_pendiente_de_firma_cuando_el_tipo_configurable_lo_requiere(): void
+    {
+        TipoEvento::create([
+            'clave' => 'configurable_firma',
+            'nombre' => 'Configurable con firma',
+            'requiere_firma' => true,
+            'activo' => true,
+        ]);
+
+        $usuario = User::factory()->create();
+        $equipo = $this->crearEquipo();
+
+        $evento = app(HistorialService::class)->registrar($equipo, 'configurable_firma', $usuario);
+
+        $this->assertSame('pendiente_de_firma', $evento->estado_firma);
+    }
+
+    public function test_registrar_no_sobrescribe_un_estado_firma_explicito_aunque_el_tipo_requiera_firma(): void
+    {
+        TipoEvento::create([
+            'clave' => 'configurable_firma_explicita',
+            'nombre' => 'Configurable con firma explícita',
+            'requiere_firma' => true,
+            'activo' => true,
+        ]);
+
+        $usuario = User::factory()->create();
+        $equipo = $this->crearEquipo();
+
+        $evento = app(HistorialService::class)->registrar(
+            equipo: $equipo,
+            tipo: 'configurable_firma_explicita',
+            usuario: $usuario,
+            datos: ['estado_firma' => 'no_aplica'],
+        );
+
+        $this->assertSame('no_aplica', $evento->estado_firma);
     }
 }
