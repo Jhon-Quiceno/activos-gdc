@@ -5,6 +5,7 @@ namespace App\Livewire\Movimientos;
 use App\Livewire\Movimientos\Soporte\FormatosPdf;
 use App\Livewire\Movimientos\Soporte\GestorAsignaciones;
 use App\Livewire\Movimientos\Soporte\GestorFirmas;
+use App\Livewire\Movimientos\Soporte\PuestosDeTrabajo;
 use App\Models\Documento;
 use App\Models\Evento;
 use Livewire\Attributes\Locked;
@@ -92,7 +93,10 @@ class DocumentosEvento extends Component
         abort_unless(in_array($tipo, ['formato_entrega', 'formato_baja'], true), 404);
 
         $datos = $formatos->datos($evento, $tipo);
-        $nombre = FormatosPdf::nombreArchivo($evento->equipo, $tipo, $datos['consecutivo'], $datos['contexto']);
+        $nombre = $datos['puesto']
+            // Un solo formato para todo el puesto (RF-05): el nombre lleva el puesto, no un serial.
+            ? sprintf('formato-%s-%s-puesto-%s.pdf', $datos['contexto'], $datos['consecutivo'], preg_replace('/[^A-Za-z0-9\-]/', '', $datos['puesto']['puesto']))
+            : FormatosPdf::nombreArchivo($evento->equipo, $tipo, $datos['consecutivo'], $datos['contexto']);
         $pdf = $formatos->pdf($evento, $tipo);
 
         return response()->streamDownload(fn () => print ($pdf->output()), $nombre, ['Content-Type' => 'application/pdf']);
@@ -126,6 +130,10 @@ class DocumentosEvento extends Component
         return view('livewire.movimientos.documentos-evento', [
             'evento' => $evento,
             'firmantes' => $firmantes,
+            'puesto' => PuestosDeTrabajo::grupo($evento),
+            'equiposDelPuesto' => PuestosDeTrabajo::grupo($evento)
+                ? PuestosDeTrabajo::eventosDelGrupo($evento)->load('equipo.tipoEquipo')->pluck('equipo')
+                : collect(),
             'estado' => $firmas->estado($evento),
             'documentoUnico' => $firmas->documentoUnico($evento),
             'admiteUnico' => $firmas->admiteDocumentoUnico($evento),

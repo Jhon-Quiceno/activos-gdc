@@ -24,6 +24,9 @@ use Illuminate\Validation\ValidationException;
  *
  * Mientras falte alguno, el evento sigue «Pendiente de firma»; al completar
  * el último, pasa a «Completo».
+ *
+ * En el traslado de un puesto completo (RF-05) cada firmado que se sube se
+ * aplica a los traslados de todos los equipos del puesto.
  */
 class GestorFirmas
 {
@@ -208,6 +211,32 @@ class GestorFirmas
             ]);
 
             $this->completarSiCorresponde($evento);
+
+            // RF-05: en el traslado de un puesto completo hay un solo juego de
+            // formatos, así que el firmado vale para el traslado de cada equipo
+            // del puesto (mismo archivo, un documento por evento).
+            foreach (PuestosDeTrabajo::eventosDelGrupo($evento) as $otro) {
+                if ($otro->id === $evento->id) {
+                    continue;
+                }
+
+                $otro = Evento::query()->whereKey($otro->id)->lockForUpdate()->first();
+
+                if ($otro->estado_firma !== 'pendiente_de_firma' || $otro->anulaciones()->exists()) {
+                    continue;
+                }
+
+                Documento::create([
+                    'evento_id' => $otro->id,
+                    'tipo' => $documento->tipo,
+                    'consecutivo' => $documento->consecutivo,
+                    'archivo_path' => $ruta,
+                    'firmado' => true,
+                    'fecha' => $documento->fecha,
+                ]);
+
+                $this->completarSiCorresponde($otro);
+            }
 
             return $documento;
         });

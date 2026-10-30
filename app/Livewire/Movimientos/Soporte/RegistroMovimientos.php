@@ -6,10 +6,13 @@ use App\Models\Diagnostico;
 use App\Models\Equipo;
 use App\Models\Evento;
 use App\Models\Persona;
+use App\Models\PuestoTrabajo;
 use App\Models\User;
 use App\Services\HistorialService;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -28,6 +31,7 @@ class RegistroMovimientos
         private GestorAsignaciones $asignaciones,
         private FormatosPdf $formatos,
         private GestorFirmas $firmas,
+        private PuestosDeTrabajo $puestos,
     ) {}
 
     /**
@@ -76,6 +80,101 @@ class RegistroMovimientos
             $this->formatos->generarYGuardar($evento, ['formato_baja', 'formato_entrega']);
 
             return $evento;
+        });
+    }
+
+    /**
+     * RF-05 · Traslado del puesto de trabajo completo.
+     *
+     * Traslada a la vez todos los equipos que hoy están en el puesto, al mismo
+     * responsable y ubicación. Cada equipo recibe su propio evento de traslado
+     * (su hoja de vida lo necesita, RN-06), pero se genera UN SOLO juego de
+     * formatos para todo el puesto: un formato de retiro y uno de entrega, con
+     * una hoja por equipo. Al subir cada firmado se aplica a todos los eventos
+     * del puesto (GestorFirmas::subirFirmado()).
+     *
+     * Si un solo equipo del puesto no admite el traslado (dado de baja o con
+     * baja en trámite), no se traslada ninguno.
+     *
+     * `puesto_destino_id` es el puesto en el que quedan los equipos (null: en ninguno).
+     *
+     * @param  array{persona: ?Persona, piso_id: int, dependencia_id: ?int, puesto_destino_id: ?int, fecha: string, motivo: string}  $datos
+     * @return Collection<int, Evento> Los eventos creados, uno por equipo, en orden.
+     */
+    public function trasladarPuesto(PuestoTrabajo $puesto, User $usuario, array $datos): Collection
+    {
+        return DB::transaction(function () use ($puesto, $usuario, $datos) {
+            $equipos = $this->puestos->equiposDelPuesto($puesto);
+
+            if ($equipos->isEmpty()) {
+                throw ValidationException::withMessages([
+                    'equipo' => __('El puesto :puesto no tiene equipos para trasladar.', ['puesto' => $puesto->nombre_o_codigo]),
+                ]);
+            }
+
+            // Primero se revisan (y bloquean) todos: si uno falla no se crea nada.
+            foreach ($equipos as $equipo) {
+                try {
+                    ReglasMovimiento::asegurarQueAdmiteEventos($equipo);
+                } catch (ValidationException $e) {
+                    throw ValidationException::withMessages([
+                        'equipo' => __('No se puede trasladar el puesto completo: el equipo :equipo no admite el traslado. :motivo', [
+                            'equipo' => $equipo->codigo_activo ?: $equipo->serial,
+                            'motivo' => collect($e->errors())->flatten()->first(),
+                        ]),
+                    ]);
+                }
+            }
+
+            $persona = $datos['persona'];
+            $destino = $persona?->nombreCompleto() ?? __('Sin asignar (bodega)');
+            $grupo = [
+                'grupo' => (string) Str::uuid(),
+                'puesto_trabajo_id' => $puesto->id,
+                'puesto' => $puesto->nombre_o_codigo,
+                'puesto_destino_id' => $datos['puesto_destino_id'] ?? null,
+                'equipos' => $equipos->count(),
+            ];
+
+            $eventos = $equipos->map(function (Equipo $equipo) use ($usuario, $datos, $persona, $destino, $grupo) {
+                $origen = $equipo->asignacionActual?->persona?->nombreCompleto() ?? __('Sin asignar (bodega)');
+
+                $evento = $this->historial->registrar(
+                    equipo: $equipo,
+                    tipo: 'traslado_responsable',
+                    usuario: $usuario,
+                    datos: [
+                        'fecha' => $datos['fecha'],
+                        'estado_firma' => 'pendiente_de_firma',
+                        'valores' => [PuestosDeTrabajo::CLAVE => $grupo],
+                    ],
+                    // «Motivo:» al final: FormatosPdf lo lee de ahí.
+                    descripcion: __('Traslado del puesto :puesto (:n equipos) de :origen a :destino. Motivo: :motivo', [
+                        'puesto' => $grupo['puesto'],
+                        'n' => $grupo['equipos'],
+                        'origen' => $origen,
+                        'destino' => $destino,
+                        'motivo' => trim($datos['motivo']),
+                    ]),
+                );
+
+                $this->asignaciones->asignar(
+                    equipo: $equipo,
+                    persona: $persona,
+                    pisoId: $datos['piso_id'],
+                    dependenciaId: $datos['dependencia_id'] ?? null,
+                    fecha: $datos['fecha'],
+                    eventoOrigen: $evento,
+                    puestoTrabajoId: $datos['puesto_destino_id'] ?? null,
+                );
+
+                return $evento;
+            })->values();
+
+            // Un solo juego para el puesto, compartido por todos sus eventos.
+            $this->formatos->generarYGuardar($eventos->first(), ['formato_baja', 'formato_entrega']);
+
+            return $eventos;
         });
     }
 

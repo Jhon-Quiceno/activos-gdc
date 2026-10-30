@@ -16,7 +16,11 @@
     @if ($eventoId)
         {{-- Paso 2: el traslado ya quedó registrado; ahora se gestionan las firmas. --}}
         <div class="rounded-lg border border-line bg-success-bg px-4 py-3 text-[14px] text-success-text" role="status">
-            {{ __('Traslado registrado. Descarga los dos formatos prellenados, hazlos firmar y súbelos para completar el evento.') }}
+            @if ($equiposTrasladados > 1)
+                {{ __('Traslado del puesto registrado: :n equipos. Se generó un solo juego de formatos para todo el puesto; descárgalos, hazlos firmar y súbelos para completar el traslado de todos los equipos.', ['n' => $equiposTrasladados]) }}
+            @else
+                {{ __('Traslado registrado. Descarga los dos formatos prellenados, hazlos firmar y súbelos para completar el evento.') }}
+            @endif
         </div>
 
         <x-ui.card>
@@ -25,6 +29,7 @@
                 __('Responsable') => $asignacion?->persona?->nombreCompleto() ?? __('Sin asignar (bodega)'),
                 __('Sede / Piso') => $ubicacionTexto($asignacion),
                 __('Dependencia') => $asignacion?->dependencia?->nombre ?? '—',
+                __('Puesto de trabajo') => $asignacion?->puestoTrabajo?->nombre_o_codigo ?? '—',
             ]" class="mt-2" />
         </x-ui.card>
 
@@ -60,7 +65,32 @@
                     __('Responsable') => $asignacion?->persona?->nombreCompleto() ?? __('Sin asignar'),
                     __('Sede / Piso') => $ubicacionTexto($asignacion),
                     __('Dependencia') => $asignacion?->dependencia?->nombre ?? '—',
-                ]" class="mt-2" />
+                ] + ($puestoActual ? [__('Puesto de trabajo') => $puestoActual->nombre_o_codigo] : [])" class="mt-2" />
+
+                @if ($puestoActual)
+                    {{-- RF-05: trasladar todos los equipos del puesto de una vez. --}}
+                    <div class="mt-4 rounded-lg border border-line p-3">
+                        <label class="flex items-start gap-2 text-[14px] text-ink">
+                            <input type="checkbox" wire:model.live="trasladarPuesto" class="mt-0.5 rounded border-line-input text-primary focus:ring-primary">
+                            <span>
+                                <span class="font-semibold">{{ trans_choice('Trasladar el puesto completo (:count equipo)|Trasladar el puesto completo (:count equipos)', $equiposDelPuesto->count(), ['count' => $equiposDelPuesto->count()]) }}</span>
+                                <span class="block text-[13px] text-ink-muted">{{ __('Todos los equipos del puesto :puesto van al mismo responsable y ubicación, con un solo juego de formatos.', ['puesto' => $puestoActual->nombre_o_codigo]) }}</span>
+                            </span>
+                        </label>
+
+                        <ul class="mt-3 divide-y divide-line rounded-lg border border-line">
+                            @foreach ($equiposDelPuesto as $equipoPuesto)
+                                <li wire:key="equipo-puesto-{{ $equipoPuesto->id }}" class="flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-[13px]">
+                                    <span class="text-ink">
+                                        {{ $equipoPuesto->tipoEquipo?->nombre }} · {{ trim(($equipoPuesto->marca?->nombre ?? '').' '.($equipoPuesto->modeloEquipo?->nombre ?? '')) }}
+                                        <span class="font-mono text-ink-muted">{{ $equipoPuesto->codigo_activo ?: $equipoPuesto->serial }}</span>
+                                    </span>
+                                    <span class="text-ink-muted">{{ $equipoPuesto->asignacionActual?->persona?->nombreCompleto() ?? __('Sin responsable') }}</span>
+                                </li>
+                            @endforeach
+                        </ul>
+                    </div>
+                @endif
             </x-ui.card>
 
             <x-ui.card>
@@ -131,6 +161,20 @@
                     <x-ui.ubicacion-select sede="sedeId" piso="pisoId" dependencia="dependenciaId" class="mt-2" columnas="grid gap-4 sm:grid-cols-2" wire:key="ubicacion-persona" />
                 @endif
 
+                @if ($trasladarPuesto && $puestoActual && ! $bodega)
+                    <div class="mt-4">
+                        <label for="puestoDestinoId" class="text-[13px] font-semibold text-ink-label">{{ __('Puesto de trabajo destino') }}</label>
+                        <select id="puestoDestinoId" wire:model="puestoDestinoId" class="mt-1 h-11 w-full rounded-lg border-line-input text-[14px] text-ink focus:border-primary focus:ring-primary">
+                            <option value="">{{ __('Ninguno (los equipos salen del puesto)') }}</option>
+                            @foreach ($puestosDestino as $puestoDestino)
+                                <option value="{{ $puestoDestino->id }}">{{ $puestoDestino->nombre_o_codigo }}</option>
+                            @endforeach
+                        </select>
+                        <p class="mt-1 text-[13px] text-ink-muted">{{ __('Solo los puestos del piso destino.') }}</p>
+                        <x-input-error :messages="$errors->get('puestoDestinoId')" class="mt-1" />
+                    </div>
+                @endif
+
                 <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <x-ui.input type="date" name="fecha" :label="__('Fecha')" wire:model="fecha" max="{{ now()->toDateString() }}" required />
 
@@ -145,6 +189,11 @@
 
         <x-ui.card>
             <p class="section-title">{{ __('Documentos del traslado') }}</p>
+            @if ($trasladarPuesto && $puestoActual)
+                <p class="mt-1 text-[13px] text-ink-muted">
+                    {{ trans_choice('Se registra un traslado en la hoja de vida de cada equipo del puesto, pero se genera un solo juego de formatos para todo el puesto (:count hoja por formato).|Se registra un traslado en la hoja de vida de cada equipo del puesto, pero se genera un solo juego de formatos para todo el puesto (:count hojas por formato, una por equipo).', $equiposDelPuesto->count(), ['count' => $equiposDelPuesto->count()]) }}
+                </p>
+            @endif
             <p class="mt-1 text-[13px] text-ink-muted">
                 {{ __('Al guardar se generan dos formatos prellenados: el formato de baja (firma :entrega, quien entrega) y el formato de entrega (firma quien recibe). El traslado queda «Pendiente de firma» hasta subir los dos firmados, o el documento único si la Dirección TIC lo aprueba.', ['entrega' => $asignacion?->persona?->nombreCompleto() ?? __('el área de sistemas')]) }}
             </p>
@@ -155,7 +204,7 @@
                 {{ __('Cancelar') }}
             </x-ui.button>
             <x-ui.button variant="primary" wire:click="guardar" wire:loading.attr="disabled" wire:target="guardar">
-                {{ __('Guardar traslado') }}
+                {{ $trasladarPuesto && $puestoActual ? __('Guardar traslado del puesto') : __('Guardar traslado') }}
             </x-ui.button>
         </div>
     @endif

@@ -21,7 +21,9 @@ class GestorAsignaciones
     /**
      * Cierra la asignación abierta y abre la nueva. Si $persona es null el
      * equipo queda «Sin asignar» (bodega), que es un estado válido (RF-21).
-     * La sede no se pasa: es la del piso (RN-21).
+     * La sede no se pasa: es la del piso (RN-21). $puestoTrabajoId deja la
+     * asignación en un puesto de trabajo (RF-05); por defecto no queda en
+     * ninguno, porque un equipo que se traslada solo sale de su puesto.
      */
     public function asignar(
         Equipo $equipo,
@@ -30,6 +32,7 @@ class GestorAsignaciones
         ?int $dependenciaId,
         CarbonInterface|string $fecha,
         ?Evento $eventoOrigen = null,
+        ?int $puestoTrabajoId = null,
     ): Asignacion {
         $fecha = $fecha instanceof CarbonInterface ? $fecha : Carbon::parse($fecha);
 
@@ -50,6 +53,7 @@ class GestorAsignaciones
             'persona_id' => $persona?->id,
             'piso_id' => $pisoId,
             'dependencia_id' => $persona ? ($dependenciaId ?? $persona->dependencia_id) : $dependenciaId,
+            'puesto_trabajo_id' => $puestoTrabajoId,
             'fecha_inicio' => $fecha->toDateString(),
             'fecha_fin' => null,
             'evento_origen_id' => $eventoOrigen?->id,
