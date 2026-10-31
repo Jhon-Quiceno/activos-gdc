@@ -42,7 +42,6 @@ class Equipo extends Model
         'observaciones',
         'estado_ciclo_vida',
         'verificacion',
-        'puesto_trabajo_id',
         'importacion_id',
         'fila_origen_importacion',
     ];
@@ -237,9 +236,16 @@ class Equipo extends Model
         return $this->hasOne(ValoracionActivo::class)->where('vigente', true);
     }
 
-    public function puestoTrabajo(): BelongsTo
+    /** Fotos del equipo (RF-06), más reciente primero. */
+    public function fotos(): HasMany
     {
-        return $this->belongsTo(PuestoTrabajo::class);
+        return $this->hasMany(FotoEquipo::class)->latest('id');
+    }
+
+    /** Foto principal del equipo, si tiene (RN-22: como máximo una). */
+    public function fotoPrincipal(): HasOne
+    {
+        return $this->hasOne(FotoEquipo::class)->where('es_principal', true);
     }
 
     public function importacion(): BelongsTo

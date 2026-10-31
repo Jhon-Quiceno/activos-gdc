@@ -34,7 +34,6 @@ class EquipoFactory extends Factory
             'estado_funcionamiento' => fake()->randomElement(['bueno', 'regular', 'malo']),
             'estado_ciclo_vida' => 'en_servicio',
             'verificacion' => fake()->randomElement(['verificado', 'pendiente_de_verificar']),
-            'puesto_trabajo_id' => null,
             'importacion_id' => null,
             'fila_origen_importacion' => null,
         ];

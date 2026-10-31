@@ -1224,25 +1224,27 @@ Table importaciones {
 
 ## 10. Fase 3 — cambios de esquema (los crea el líder)
 
-> Esta sección **describe** lo que la Fase 3 necesita en la base de datos; las migraciones todavía no existen. **Solo Jhon las crea** ([normas-de-trabajo.md, sección 2](./normas-de-trabajo.md#2-migraciones)). La migración en dos tiempos de la Fase 2 está **cerrada** y no se reabre: estas son migraciones nuevas, cada una con su `down()`. El reparto y el orden están en [plan-fase3.md](./plan-fase3.md) y [jhon.md](./jhon.md).
+> Esta sección **describe** lo que la Fase 3 necesita en la base de datos. **Solo Jhon las crea** ([normas-de-trabajo.md, sección 2](./normas-de-trabajo.md#2-migraciones)). La migración en dos tiempos de la Fase 2 está **cerrada** y no se reabre: estas son migraciones nuevas, cada una con su `down()`. El reparto y el orden están en [plan-fase3.md](./plan-fase3.md) y [jhon.md](./jhon.md).
+>
+> **Estado (31 de octubre):** F3-1, F3-2 y F3-3 ya están en `develop`. El detalle de 10.2 queda como referencia de diseño; lo que describe ya está hecho.
 
 ### 10.1 Lo que ya existe y no necesita migración
 
 | RF | Ya está en el esquema |
 |---|---|
-| RF-05 Puestos de trabajo | `puestos_trabajo` (`nombre_o_codigo`, `piso_id`, `dependencia_id`; su `sede_id` se borró en el cierre de la Fase 2), `asignaciones.puesto_trabajo_id` y `equipos.puesto_trabajo_id`. El seeder siembra 25 puestos de ejemplo. Falta la pantalla, no la tabla (salvo los ajustes de la migración F3-1). |
+| RF-05 Puestos de trabajo | `puestos_trabajo` (`nombre_o_codigo`, `piso_id`, `dependencia_id`, `activo`; su `sede_id` se borró en el cierre de la Fase 2) y `asignaciones.puesto_trabajo_id`. `equipos.puesto_trabajo_id` se eliminó en F3-1 (nadie lo escribía). El seeder siembra 25 puestos de ejemplo. Falta la pantalla, no la tabla. |
 | RF-16 Configuración en una fecha | `componentes.fecha_instalacion` y `componentes.fecha_retiro` (null = instalado hoy), y `eventos.valores` (JSON `antes`/`despues`) para los cambios de la configuración de cómputo. |
 | RF-17 Destino de lo retirado | `cambios_componente.destino_retirado` (`bodega`, `otro_equipo`, `descarte`) y `cambios_componente.equipo_destino_id` (agregado en la Fase 2, todavía sin uso en pantalla). |
 | RF-31 Pendientes de firma | `eventos.estado_firma` y `documentos.firmado`. |
 | RF-42 Cargas posteriores | `equipos.serial` único, `equipos.codigo_activo` indexado, `eventos.valores` para registrar qué cambió, `importaciones` para la trazabilidad. |
 
-### 10.2 Migraciones a crear, en este orden
+### 10.2 Migraciones, en este orden (las 3 ya están en `develop`)
 
 | # | Migración | Qué hace | Habilita |
 |---|---|---|---|
-| **F3-1** | `ajustar_puestos_trabajo` | `puestos_trabajo` + `activo` (boolean, default `true`) y `unique(piso_id, nombre_o_codigo)`. **Decisión del líder:** la fuente de verdad del puesto de un equipo es la asignación abierta (`asignaciones.puesto_trabajo_id`), igual que el piso; `equipos.puesto_trabajo_id` es un resto de v3 que ningún código escribe hoy. Recomendación: borrarlo en esta misma migración (o dejarlo y documentarlo como no usado). | RF-05 (Juan José, Anuar) |
-| **F3-2** | `create_fotos_equipo_table` | Tabla nueva `fotos_equipo` (ver 10.3). | RF-06 (Juan José) |
-| **F3-3** | `create_tipos_evento_table` | Tabla nueva `tipos_evento` (ver 10.4), sembrada con los 8 tipos del sistema; `eventos.tipo` pasa de `enum` a `varchar(40)` con llave foránea a `tipos_evento.clave`, **conservando exactamente las mismas claves** para no tocar ningún evento existente. | RF-13 (Jhon, Manuel, Alex) |
+| ✅ **F3-1** | `ajustar_puestos_trabajo` | `puestos_trabajo` + `activo` (boolean, default `true`) y `unique(piso_id, nombre_o_codigo)`. **Decisión del líder aplicada:** la fuente de verdad del puesto de un equipo es la asignación abierta (`asignaciones.puesto_trabajo_id`), igual que el piso; `equipos.puesto_trabajo_id` era un resto de v3 que ningún código escribía, y se eliminó en esta misma migración. | RF-05 (Juan José, Anuar) |
+| ✅ **F3-2** | `create_fotos_equipo_table` | Tabla nueva `fotos_equipo` (ver 10.3). | RF-06 (Juan José) |
+| ✅ **F3-3** | `create_tipos_evento_table` | Tabla nueva `tipos_evento` (ver 10.4), sembrada con los 8 tipos del sistema; `eventos.tipo` pasa de `enum` a `varchar(40)` con llave foránea a `tipos_evento.clave`, **conservando exactamente las mismas claves** para no tocar ningún evento existente. | RF-13 (Jhon, Manuel, Alex) |
 
 ### 10.3 `fotos_equipo` (RF-06)
 

@@ -18,9 +18,9 @@ Detalle de columnas en [base-de-datos.md, sección 10](./base-de-datos.md#10-fas
 
 | Orden | Migración | Qué hace | Habilita | Día |
 |---|---|---|---|---|
-| 1 | **F3-1** `ajustar_puestos_trabajo` | `puestos_trabajo.activo` y `unique(piso_id, nombre_o_codigo)`. Decidir y documentar `equipos.puesto_trabajo_id` (recomendado: borrarlo; la fuente de verdad es `asignaciones.puesto_trabajo_id`). Ajustar `PuestoTrabajo` (`activo` en `$fillable`, cast) y el seeder. | RF-05 (Juan José y Anuar) | 1 |
-| 2 | **F3-2** `create_fotos_equipo_table` | Tabla `fotos_equipo` + modelo `FotoEquipo` (relación `$equipo->fotos`, `fotoPrincipal`), regla de una sola principal por equipo en el modelo y factory. | RF-06 (Juan José) | 2 |
-| 3 | **F3-3** `create_tipos_evento_table` | Tabla `tipos_evento` sembrada con los 8 tipos del sistema; `eventos.tipo` de `enum` a `varchar(40)` con llave foránea a `tipos_evento.clave`, conservando las claves actuales. Modelo `TipoEvento`. | RF-13 (núcleo) | 3–4 |
+| 1 | ✅ **F3-1** `ajustar_puestos_trabajo` | `puestos_trabajo.activo` y `unique(piso_id, nombre_o_codigo)`. `equipos.puesto_trabajo_id` se borró (resto de v3 sin uso; la fuente de verdad es `asignaciones.puesto_trabajo_id`). `PuestoTrabajo` con `activo` en `$fillable` y cast. | RF-05 (Juan José y Anuar) — ya pueden empezar. | 1 |
+| 2 | ✅ **F3-2** `create_fotos_equipo_table` | Tabla `fotos_equipo` + modelo `FotoEquipo` (relación `$equipo->fotos`, `fotoPrincipal`), regla de una sola principal por equipo en el modelo (`saving`) y factory con estado `principal()`. | RF-06 (Juan José) — ya puede empezar. | 2 |
+| 3 | ✅ **F3-3** `create_tipos_evento_table` | Tabla `tipos_evento` sembrada con los 8 tipos del sistema; `eventos.tipo` de `enum` a `varchar(40)` con llave foránea a `tipos_evento.clave`, conservando las claves actuales. Modelo `TipoEvento`. | RF-13 (núcleo) | 3–4 |
 
 RF-16, RF-17, RF-31 y RF-42 **no** necesitan migración. Si alguien pide un campo en el camino, se crea el mismo día.
 
