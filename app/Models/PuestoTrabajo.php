@@ -14,7 +14,15 @@ class PuestoTrabajo extends Model
         'nombre_o_codigo',
         'piso_id',
         'dependencia_id',
+        'activo',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'activo' => 'boolean',
+        ];
+    }
 
     public function piso(): BelongsTo
     {
